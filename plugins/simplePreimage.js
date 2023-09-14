@@ -42,3 +42,6 @@ const prove = async (publicInput, secretInput) => {
 const getInputs = async () => {
     return Object.keys(roleMapping);
 };
+
+
+module.exports = SimplePreimage;

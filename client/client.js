@@ -63,3 +63,23 @@ async function refreshToken(refreshToken) {
         }
     }
 })();
+
+
+
+// ---------- proof submission
+
+const makePostRequest = async (url, data) => {
+    return fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+};
+
+// Make a POST request to the API submitting the proof
+const submitProof = async (proof) => {
+    const data = { proof };
+    return makePostRequest(api_url, data);
+};

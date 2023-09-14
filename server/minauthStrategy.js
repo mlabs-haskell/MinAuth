@@ -22,11 +22,14 @@ const SECRET_KEY = "YOUR_SECRET_KEY";
 // }
 
 class MinAuthStrategy extends Strategy {
+    static get name() {
+        return 'minauth';
+    }
     constructor() {
         super();
 
         // Name of the strategy
-        this.name = 'custom';
+        this.name = MinAuthStrategy.name;
     }
 
     authenticate(req, _options) {

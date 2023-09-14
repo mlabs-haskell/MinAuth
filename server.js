@@ -5,6 +5,7 @@ const passport = require('passport');
 const passportJWT = require("passport-jwt");
 
 const MinAuthStrategy = require('./minauthStrategy');
+const SimplePreimage = require('../plugins/simple-preimage');
 
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
@@ -57,13 +58,19 @@ app.get('/', (_req, res) => {
     res.send('Hello, World!');
 });
 
+// compile verifiers
+const provePreimageVK = SimplePreimage.compile();
+
+
+// Start the server
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 app.post('/login',
-    passport.authenticate('custom', { session: false }),
+    passport.authenticate(MinAuthStrategy.name, { session: false }),
     (req, res) => {
         // Store the refresh token
         refreshTokenStore[req.user.refreshToken] = req.user;
