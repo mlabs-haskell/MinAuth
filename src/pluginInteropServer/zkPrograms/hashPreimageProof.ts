@@ -1,5 +1,4 @@
-import { Field, Experimental, Poseidon} from 'snarkyjs';
-
+import { Field, Experimental, Poseidon } from 'snarkyjs';
 
 export const ProvePreimageProgram = Experimental.ZkProgram({
     publicInput: Field,
@@ -8,10 +7,12 @@ export const ProvePreimageProgram = Experimental.ZkProgram({
     methods: {
         baseCase: {
             privateInputs: [Field],
-            method(publicInput, secretInput) {
+            method(publicInput: Field, secretInput: Field) {
                 Poseidon.hash([secretInput]).assertEquals(publicInput);
                 return publicInput;
             },
         },
     },
 });
+
+export default ProvePreimageProgram;
