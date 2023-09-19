@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import { PluginType, SimplePreimage } from './plugins/simplePreimage';
+import { SimplePreimage } from './plugins/simplePreimage';
 import { JsonProof } from 'snarkyjs';
+import { PluginType } from './plugin';
+import SimplePasswordTree from './plugins/simplePasswordTree';
 
 const app = express();
 const PORT = 3001;
@@ -16,6 +18,10 @@ const EntryPoints: Record<string, EntryPoint> = {
         plugin: SimplePreimage,
         verification_key: null,
     },
+    SimplePasswordTree: {
+        plugin: SimplePasswordTree,
+        verification_key: null,
+    }
 };
 
 app.use(bodyParser.json());
@@ -48,6 +54,7 @@ async function prepareProofFunction(
 
     const plugin = entry.plugin;
     const jsonProof = await plugin.prove(data.arguments);
+    if (!jsonProof) throw 'entrypoint/plugin ${plugin_name} unable to generate proof';
     return jsonProof;
 }
 
