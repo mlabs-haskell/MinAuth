@@ -1,7 +1,6 @@
 import { verify, Proof, Field, JsonProof, Experimental } from 'snarkyjs';
-import { ProvePreimageProgram } from '../zkPrograms/hashPreimageProof';
+import { ProvePreimageProgram } from 'hashPreimageProof';
 
-const ProvePreimageProofClass = Experimental.ZkProgram.Proof(ProvePreimageProgram);
 
 export type PluginType = {
     compile: () => Promise<string>;

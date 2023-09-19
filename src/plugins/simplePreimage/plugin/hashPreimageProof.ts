@@ -1,5 +1,7 @@
 import { Field, Experimental, Poseidon } from 'snarkyjs';
 
+export const ProvePreimageProofClass = Experimental.ZkProgram.Proof(ProvePreimageProgram);
+
 export const ProvePreimageProgram = Experimental.ZkProgram({
     publicInput: Field,
     publicOutput: Field,
