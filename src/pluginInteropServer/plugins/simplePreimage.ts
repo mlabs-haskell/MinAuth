@@ -1,17 +1,8 @@
 import { verify, Proof, Field, JsonProof, Experimental } from 'snarkyjs';
 import { ProvePreimageProgram } from '../zkPrograms/hashPreimageProof';
+import { PluginType } from '../plugin';
 
 const ProvePreimageProofClass = Experimental.ZkProgram.Proof(ProvePreimageProgram);
-
-export type PluginType = {
-    compile: () => Promise<string>;
-    getInputs: () => Promise<string[]>;
-    verify: (
-        jsonProof: JsonProof,
-        verificationKey: string,
-    ) => Promise<[string | boolean | undefined, string]>;
-    prove: (inputs: string[]) => Promise<JsonProof>;
-};
 
 const roleMapping: Record<string, string> = {
     '7555220006856562833147743033256142154591945963958408607501861037584894828141':
@@ -42,7 +33,7 @@ const verifyAndGetRoleProgram = async (
     return [role, 'role proved'];
 };
 
-const prove = async (inputs: string[]): Promise<JsonProof> => {
+const prove = async (inputs: string[]): Promise<undefined | JsonProof> => {
     const [publicInput, secretInput] = inputs;
     console.log('simplePreimage proving for', publicInput, secretInput);
     const proof = await ProvePreimageProgram.baseCase(
