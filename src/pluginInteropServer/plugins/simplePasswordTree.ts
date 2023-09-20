@@ -2,7 +2,7 @@ import { Experimental, Field, JsonProof, MerkleTree, Poseidon, verify } from "sn
 import ProvePasswordInTreeProgram, { PASSWORD_TREE_HEIGHT, PasswordTreePublicInput, PasswordTreeWitness } from "../zkPrograms/passwordTreeProof";
 import { PluginType } from "../plugin";
 
-const PasswordInTreeProverClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
+const PasswordInTreeProofClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
 
 abstract class TreeStorage {
   abstract getRoot(): Promise<Field>;
@@ -53,7 +53,7 @@ const verifyAndGetRoleProgram = async (
   if (!verify(jsonProof, verificationKey)) {
     return [false, 'proof invalid'];
   }
-  const proof = PasswordInTreeProverClass.fromJSON(jsonProof);
+  const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
   const role = await storage.getRole(proof.publicInput.witness.calculateIndex().toBigInt());
   if (!role) { return [undefined, 'unknown public input']; }
   return [role, 'role proved'];
