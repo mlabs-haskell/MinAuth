@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { JsonProof } from 'o1js';
 import { PluginType } from 'plugin/pluginType';
-import SimplePreimage from 'plugins/simplePreimage/plugin';
-import SimplePasswordTree from 'plugins/passwordTree/plugin';
+import { SimplePreimage } from '../../plugins/simplePreimage/plugin'
+import SimplePasswordTree from '../../plugins/passwordTree/plugin'
 
 const app = express();
 const PORT = 3001;
