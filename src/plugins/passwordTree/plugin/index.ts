@@ -89,3 +89,4 @@ export const SimplePasswordTree: PluginType = {
 }
 
 export default SimplePasswordTree;
+
