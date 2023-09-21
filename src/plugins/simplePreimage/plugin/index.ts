@@ -1,5 +1,5 @@
 import { verify, Proof, Field, JsonProof, Experimental } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory, MinAuthPlugin, PluginType } from 'plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory, MinAuthPlugin, PluginType } from '../../../library/plugin/pluginType';
 import ProvePreimageProgram, { ProvePreimageProofClass } from './hashPreimageProof';
 import { RequestHandler } from 'express';
 

@@ -1,6 +1,6 @@
 import { Experimental, Field, JsonProof, MerkleTree, Poseidon, verify } from "o1js";
 import ProvePasswordInTreeProgram, { PASSWORD_TREE_HEIGHT, PasswordTreePublicInput, PasswordTreeWitness } from "./passwordTreeProgram";
-import { PluginType } from 'plugin/pluginType';
+import { PluginType } from '../../../library/plugin/pluginType';
 
 const PasswordInTreeProofClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
 

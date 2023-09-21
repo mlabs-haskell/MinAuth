@@ -4,12 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start-api": "nodemon src/apiServer/apiServer.ts",
-    "start-plugin-server": "nodemon src/pluginInteropServer/pluginServer.ts",
+    "start-api": "nodemon src/someServer/apiServer.ts",
+    "start-plugin-server": "nodemon src/library/tools/pluginServer.ts",
     "start-client": "nodemon src/headlessClient/client.ts",
     "build": "tsc",
-    "serve-api": "node ./dist/apiServer/server.js",
-    "serve-plugin-server": "node ./dist/pluginInteropServer/pluginServer.js",
+    "serve-api": "node ./dist/someServer/apiServer.js",
+    "serve-plugin-server": "node ./dist/library/tools/pluginServer.js",
     "run-client": "node ./dist/headlessClient/client.js"
   },
   "keywords": [],
