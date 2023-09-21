@@ -19,6 +19,9 @@ export interface IMinAuthPlugin<PublicInputsArgs, Output> {
     publicInputArgs: PublicInputsArgs,
     serializedProof: JsonProof): Promise<undefined | Output>;
 
+
+  checkOutputValidity(output: Output): Promise<boolean>;
+
   readonly customRoutes: Map<string, RequestHandler>;
 
   readonly verificationKey: string;
@@ -64,6 +67,8 @@ export function mkUntypedPlugin<
         publicInputArgs: string,
         serializedProof: JsonProof): Promise<undefined | any> =>
         await obj.verifyAndGetOutput(publicInputArgs as PublicInputsArgs, serializedProof),
+      checkOutputValidity: async (output: any): Promise<boolean> =>
+        await obj.checkOutputValidity(output),
       customRoutes: obj.customRoutes,
       verificationKey: obj.verificationKey
     };

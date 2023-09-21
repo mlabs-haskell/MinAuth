@@ -75,6 +75,11 @@ class SimplePreimagePlugin extends MinAuthPlugin<{ roles: Record<string, string>
         return role;
     };
 
+    checkOutputValidity(output: string): Promise<boolean> {
+        return Promise.resolve(output in this.roles);
+    }
+
+
     get customRoutes(): Map<string, RequestHandler> {
         return new Map([["/roles", (_, res) => {
             res.status(200).json(this.roles);
@@ -109,6 +114,10 @@ class SimplePreimagePlugin_ implements IMinAuthPlugin<[], string>{
         const { verificationKey } = await ProvePreimageProgram.compile();
         return new SimplePreimagePlugin_(verificationKey, configuration.roles);
     };
+
+    checkOutputValidity(output: string): Promise<boolean> {
+        return Promise.resolve(output in this.roles);
+    }
 }
 
 SimplePreimagePlugin_ satisfies IMinAuthPluginFactory<SimplePreimagePlugin_, { roles: Record<string, string> }, [], string>;
