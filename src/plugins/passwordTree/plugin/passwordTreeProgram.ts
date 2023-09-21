@@ -1,4 +1,4 @@
-import { Experimental, Field, MerkleWitness, Poseidon, Struct } from "snarkyjs";
+import { Experimental, Field, MerkleWitness, Poseidon, Struct } from "o1js";
 
 export const PASSWORD_TREE_HEIGHT = 10;
 

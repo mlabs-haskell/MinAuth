@@ -1,6 +1,6 @@
-import { verify, Proof, Field, JsonProof, Experimental } from 'snarkyjs';
-import { ProvePreimageProgram } from 'hashPreimageProof';
-import { PluginType } from '../../../library/plugin/pluginType';
+import { verify, Proof, Field, JsonProof, Experimental } from 'o1js';
+import { PluginType } from 'plugin/pluginType';
+import ProvePreimageProgram, { ProvePreimageProofClass } from './hashPreimageProof';
 
 
 const roleMapping: Record<string, string> = {

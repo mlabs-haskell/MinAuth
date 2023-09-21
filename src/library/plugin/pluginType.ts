@@ -1,4 +1,4 @@
-import { JsonProof } from "snarkyjs";
+import { JsonProof } from "o1js";
 
 export type PluginType = {
   compile: () => Promise<string>;

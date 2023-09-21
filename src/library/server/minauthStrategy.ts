@@ -3,7 +3,7 @@ import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { JsonProof } from 'snarkyjs';
+import { JsonProof } from 'o1js';
 
 const PROVER_URL: string = 'http://localhost:3001/verifyProof';
 const SECRET_KEY: string = 'YOUR_SECRET_KEY';
