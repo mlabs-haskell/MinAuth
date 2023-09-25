@@ -1,6 +1,9 @@
 import { Experimental, Field, JsonProof, MerkleTree, Poseidon, verify } from "o1js";
 import ProvePasswordInTreeProgram, { PASSWORD_TREE_HEIGHT, PasswordTreePublicInput, PasswordTreeWitness } from "./passwordTreeProgram";
-import { PluginType } from '../../../library/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory, PluginType } from 'plugin/pluginType';
+import { RequestHandler } from "express";
+import { z } from "zod";
+import { initialize } from "passport";
 
 const PasswordInTreeProofClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
 
@@ -90,3 +93,45 @@ export const SimplePasswordTree: PluginType = {
 
 export default SimplePasswordTree;
 
+export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
+  readonly verificationKey: string;
+  private readonly storage: TreeStorage
+
+  customRoutes: Record<string, RequestHandler> = {};
+
+  publicInputArgsSchema: z.ZodType<bigint> = z.bigint();
+
+  async verifyAndGetOutput(uid: bigint, jsonProof: JsonProof):
+    Promise<string> {
+    const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
+    const role = await storage.getRole(proof.publicInput.witness.calculateIndex().toBigInt());
+    if (!role) { throw 'unknown public input'; }
+    return role;
+  };
+
+  constructor(verificationKey: string, roles: Array<[bigint, Field, string]>) {
+    this.verificationKey = verificationKey;
+    this.storage = new InMemoryStorage(roles);
+  }
+
+  static async initialize(configuration: { roles: Array<[bigint, Field, string]> })
+    : Promise<SimplePasswordTreePlugin> {
+    const { verificationKey } = await ProvePasswordInTreeProgram.compile();
+    return new SimplePasswordTreePlugin(verificationKey, configuration.roles);
+  }
+
+  static readonly configurationSchema: z.ZodType<{ roles: Array<[bigint, Field, string]> }> =
+    z.object({
+      roles: z.array(z.tuple([
+        z.bigint(),
+        z.custom<Field>((val) => typeof val === "string" ? /^[0-9]+$/.test(val) : false),
+        z.string()]))
+    })
+}
+
+SimplePasswordTreePlugin satisfies
+  IMinAuthPluginFactory<
+    IMinAuthPlugin<bigint, string>,
+    { roles: Array<[bigint, Field, string]> },
+    bigint,
+    string>;

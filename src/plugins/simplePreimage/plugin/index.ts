@@ -1,7 +1,8 @@
 import { verify, Proof, Field, JsonProof, Experimental } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory, MinAuthPlugin, PluginType } from '../../../library/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory, PluginType } from '../../../library/plugin/pluginType';
 import ProvePreimageProgram, { ProvePreimageProofClass } from './hashPreimageProof';
 import { RequestHandler } from 'express';
+import { z } from 'zod';
 
 
 const roleMapping: Record<string, string> = {
@@ -56,53 +57,29 @@ export const SimplePreimage: PluginType = {
 
 export default SimplePreimage;
 
-class SimplePreimagePlugin extends MinAuthPlugin<{ roles: Record<string, string> }, [], string>{
-    private roles: Record<string, string> = {};
 
-    async initialize(configuration: { roles: Record<string, string> }): Promise<string> {
-
-        const { verificationKey } = await ProvePreimageProgram.compile();
-
-        this.roles = configuration.roles;
-
-        return verificationKey;
-    };
-
-    async verifyAndGetOutput(_: [], serializedProof: JsonProof):
-        Promise<undefined | string> {
-        const proof = ProvePreimageProofClass.fromJSON(serializedProof);
-        const role = roleMapping[proof.publicOutput.toString()];
-        return role;
-    };
-
-    checkOutputValidity(output: string): Promise<boolean> {
-        return Promise.resolve(output in this.roles);
-    }
-
-
-    get customRoutes(): Map<string, RequestHandler> {
-        return new Map([["/roles", (_, res) => {
-            res.status(200).json(this.roles);
-        }]]);
-    }
-}
-
-class SimplePreimagePlugin_ implements IMinAuthPlugin<[], string>{
+export class SimplePreimagePlugin implements IMinAuthPlugin<any, string>{
     readonly verificationKey: string;
     private readonly roles: Record<string, string>;
 
-    async verifyAndGetOutput(_: [], serializedProof: JsonProof):
-        Promise<undefined | string> {
+    async verifyAndGetOutput(_: any, serializedProof: JsonProof):
+        Promise<string> {
         const proof = ProvePreimageProofClass.fromJSON(serializedProof);
         const role = roleMapping[proof.publicOutput.toString()];
         return role;
     };
 
-    get customRoutes(): Map<string, RequestHandler> {
-        return new Map([["/roles", (_, res) => {
+    publicInputArgsSchema: z.ZodType<any> = z.any();
+
+    customRoutes: Record<string, RequestHandler> = {
+        "/roles": (_, res) => {
             res.status(200).json(this.roles);
-        }]]);
+        }
     }
+
+    // checkOutputValidity(output: string): Promise<boolean> {
+    //     return Promise.resolve(output in this.roles);
+    // }
 
     constructor(verificationKey: string, roles: Record<string, string>) {
         this.verificationKey = verificationKey;
@@ -110,14 +87,19 @@ class SimplePreimagePlugin_ implements IMinAuthPlugin<[], string>{
     }
 
     static async initialize(configuration: { roles: Record<string, string> })
-        : Promise<SimplePreimagePlugin_> {
+        : Promise<SimplePreimagePlugin> {
         const { verificationKey } = await ProvePreimageProgram.compile();
-        return new SimplePreimagePlugin_(verificationKey, configuration.roles);
+        return new SimplePreimagePlugin(verificationKey, configuration.roles);
     };
 
-    checkOutputValidity(output: string): Promise<boolean> {
-        return Promise.resolve(output in this.roles);
-    }
+    static readonly configurationSchema: z.ZodType<{ roles: Record<string, string> }> =
+        z.object({
+            roles: z.record(
+                // FIXME: the key should be a valid poseidon hash
+                z.string(),
+                z.string())
+        });
 }
 
-SimplePreimagePlugin_ satisfies IMinAuthPluginFactory<SimplePreimagePlugin_, { roles: Record<string, string> }, [], string>;
+// sanity check
+SimplePreimagePlugin satisfies IMinAuthPluginFactory<SimplePreimagePlugin, { roles: Record<string, string> }, any, string>;
