@@ -2,11 +2,15 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { JsonProof } from 'o1js';
 import { PluginType } from '../plugin/pluginType';
-import { SimplePreimage } from '../../plugins/simplePreimage/plugin'
-import SimplePasswordTree from '../../plugins/passwordTree/plugin'
+import { SimplePreimage } from '../../plugins/simplePreimage/plugin';
+import SimplePasswordTree from '../../plugins/passwordTree/plugin';
+import fs from 'fs';
+import yaml from 'yaml';
 
 const app = express();
 const PORT = 3001;
+
+const config = yaml.parse(fs.readFileSync('config.yaml', 'utf8'));
 
 interface EntryPoint {
     plugin: PluginType; // To be replaced with a base class

@@ -3,6 +3,7 @@ import { PublicKeyInput } from "crypto";
 import { RequestHandler } from "express";
 import { JsonProof } from "o1js";
 import { initialize } from "passport";
+import z from 'zod';
 
 export type PluginType = {
   compile: () => Promise<string>;
@@ -17,60 +18,38 @@ export type PluginType = {
 export interface IMinAuthPlugin<PublicInputsArgs, Output> {
   verifyAndGetOutput(
     publicInputArgs: PublicInputsArgs,
-    serializedProof: JsonProof): Promise<undefined | Output>;
+    serializedProof: JsonProof): Promise<Output>;
 
+  readonly publicInputArgsSchema: z.ZodType<PublicInputsArgs>;
 
-  checkOutputValidity(output: Output): Promise<boolean>;
+  // FIXME(Connor): I still have some questions regarding the validation functionality.
+  // In particular, what if a plugin want to invalidate the proof once the public inputs change?
+  // We have to at least pass PublicInputsArgs.
+  //
+  // checkOutputValidity(output: Output): Promise<boolean>;
 
-  readonly customRoutes: Map<string, RequestHandler>;
+  readonly customRoutes: Record<string, RequestHandler>;
 
   readonly verificationKey: string;
 }
 
+// TODO: generic type inference?
 export interface IMinAuthPluginFactory<
   T extends IMinAuthPlugin<PublicInputsArgs, Output>,
   Configuration, PublicInputsArgs, Output> {
+
   initialize(cfg: Configuration): Promise<T>;
+
+  readonly configurationSchema: z.ZodType<Configuration>;
 }
 
-export abstract class MinAuthPlugin<Configuration, PublicInputsArgs, Output> {
-  abstract initialize(configuration: Configuration): Promise<string/*The verification key*/>;
-
-  abstract verifyAndGetOutput(
-    publicInputArgs: PublicInputsArgs,
-    serializedProof: JsonProof): Promise<undefined | Output>;
-
-  abstract readonly customRoutes: Map<string, RequestHandler>;
-}
-
-export abstract class MinAuthProver<Configuration, PublicInputsArgs, PublicInput, PrivateInput> {
-  abstract initialize(configuration: Configuration): Promise<void>;
-
-  abstract prove(publicInput: PublicInput, secretInput: PrivateInput):
+export interface IMinAuthProver<PublicInputsArgs, PublicInput, PrivateInput> {
+  prove(publicInput: PublicInput, secretInput: PrivateInput):
     Promise<undefined | JsonProof>;
 
-  abstract fetchPublicInputs(args: PublicInputsArgs): Promise<PublicInput>;
+  fetchPublicInputs(args: PublicInputsArgs): Promise<PublicInput>;
+
+  // TODO(Connor): schemas?
 }
 
-
-export function mkUntypedPlugin<
-  T extends IMinAuthPlugin<PublicInputsArgs, Output>,
-  Configuration, PublicInputsArgs, Output>(
-    type: IMinAuthPluginFactory<T, Configuration, PublicInputsArgs, Output>,
-  ): // Oh please let me use haskell
-  ((_: any) => Promise<IMinAuthPlugin<any, any>>) {
-  return async (cfg: any): Promise<IMinAuthPlugin<any, any>> => {
-    const obj = await type.initialize(cfg as Configuration);
-
-    return {
-      verifyAndGetOutput: async (
-        publicInputArgs: string,
-        serializedProof: JsonProof): Promise<undefined | any> =>
-        await obj.verifyAndGetOutput(publicInputArgs as PublicInputsArgs, serializedProof),
-      checkOutputValidity: async (output: any): Promise<boolean> =>
-        await obj.checkOutputValidity(output),
-      customRoutes: obj.customRoutes,
-      verificationKey: obj.verificationKey
-    };
-  };
-}
+// TODO: IMinAuthProverFactory
