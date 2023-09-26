@@ -33,7 +33,7 @@ export type ServerConfigurations = z.infer<typeof serverConfigurationsSchema>;
 
 export function readConfigurations(): ServerConfigurations {
   const configFile =
-    env.get('MAINAUTH_CONFIG')
+    env.get('MINAUTH_CONFIG')
       .default("config.yaml")
       .asString();
   const configFileContent = fs.readFileSync(configFile, 'utf8');

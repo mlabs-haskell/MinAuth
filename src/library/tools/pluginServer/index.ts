@@ -50,7 +50,7 @@ initializePlugins()
       Object
         .entries(plugin.customRoutes)
         .map(([path, handler]) =>
-          app.use(`plugins/${name}${path}`, handler)
+          app.use(`plugins/${name}/${path}`, handler)
         )
     );
 
