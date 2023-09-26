@@ -1,9 +1,10 @@
 import { Experimental, Field, JsonProof, MerkleTree, Poseidon, verify } from "o1js";
 import ProvePasswordInTreeProgram, { PASSWORD_TREE_HEIGHT, PasswordTreePublicInput, PasswordTreeWitness } from "./passwordTreeProgram";
-import { IMinAuthPlugin, IMinAuthPluginFactory, PluginType } from 'plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory, IMinAuthProver, IMinAuthProverFactory, PluginType } from 'plugin/pluginType';
 import { RequestHandler } from "express";
 import { z } from "zod";
 import { initialize } from "passport";
+import axios from "axios";
 
 const PasswordInTreeProofClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
 
@@ -97,14 +98,48 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
   readonly verificationKey: string;
   private readonly storage: TreeStorage
 
-  customRoutes: Record<string, RequestHandler> = {};
+  customRoutes: Record<string, RequestHandler> = {
+    "/witness/:uid": async (req, resp) => {
+      if (req.method != 'GET') {
+        resp.status(400);
+        return;
+      }
+
+      const uid = BigInt(req.params['uid']);
+      const witness = await storage.getWitness(uid);
+
+      if (!witness) {
+        resp
+          .status(400)
+          .json({ error: "requested user doesn't exist" });
+        return;
+      }
+
+      resp.status(200).json(witness);
+    },
+    "/root": async (req, resp) => {
+      if (req.method != 'GET') {
+        resp.status(400);
+        return;
+      }
+
+      const root = await storage.getRoot();
+      return resp.status(200).json(root);
+    }
+  };
 
   publicInputArgsSchema: z.ZodType<bigint> = z.bigint();
 
   async verifyAndGetOutput(uid: bigint, jsonProof: JsonProof):
     Promise<string> {
     const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
-    const role = await storage.getRole(proof.publicInput.witness.calculateIndex().toBigInt());
+    const expectedWitness = await storage.getWitness(uid);
+    const expectedRoot = await storage.getRoot();
+    if (proof.publicInput.witness != expectedWitness ||
+      proof.publicInput.root != expectedRoot) {
+      throw 'public input invalid';
+    }
+    const role = await storage.getRole(uid);
     if (!role) { throw 'unknown public input'; }
     return role;
   };
@@ -135,3 +170,56 @@ SimplePasswordTreePlugin satisfies
     { roles: Array<[bigint, Field, string]> },
     bigint,
     string>;
+
+export type SimplePasswordTreeProverConfiguration = {
+  apiServer: URL
+}
+
+export class SimplePasswordTreeProver implements
+  IMinAuthProver<bigint, PasswordTreePublicInput, Field>
+{
+  private readonly cfg: SimplePasswordTreeProverConfiguration;
+
+  async prove(publicInput: PasswordTreePublicInput, secretInput: Field)
+    : Promise<JsonProof> {
+    const proof = await ProvePasswordInTreeProgram.baseCase(
+      publicInput, Field(secretInput));
+    return proof.toJSON();
+  }
+
+  async fetchPublicInputs(uid: bigint): Promise<PasswordTreePublicInput> {
+    const mkUrl = (endpoint: string) => `${this.cfg.apiServer}/${endpoint}`;
+    const getWitness = async (): Promise<PasswordTreeWitness> => {
+      const resp = await axios.get(mkUrl(`/witness/${uid.toString()}`));
+      if (resp.status != 200) {
+        throw `unable to fetch witness for ${uid.toString()}, error: ${(resp.data as { error: string }).error}`;
+      }
+      return PasswordTreeWitness.fromJSON(resp.data);
+    };
+    const getRoot = async (): Promise<Field> => {
+      const resp = await axios.get(mkUrl('/root'));
+      return Field.fromJSON(resp.data);
+    }
+    const witness = await getWitness();
+    const root = await getRoot();
+
+    return new PasswordTreePublicInput({ witness, root });
+  }
+
+  constructor(cfg: SimplePasswordTreeProverConfiguration) {
+    this.cfg = cfg;
+  }
+
+  static async initialize(cfg: SimplePasswordTreeProverConfiguration):
+    Promise<SimplePasswordTreeProver> {
+    return new SimplePasswordTreeProver(cfg);
+  }
+}
+
+SimplePasswordTreeProver satisfies IMinAuthProverFactory<
+  SimplePasswordTreeProver,
+  SimplePasswordTreeProverConfiguration,
+  bigint,
+  PasswordTreePublicInput,
+  Field
+>

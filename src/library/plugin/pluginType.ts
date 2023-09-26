@@ -15,6 +15,8 @@ export type PluginType = {
   prove: (inputs: string[]) => Promise<undefined | JsonProof>;
 };
 
+// Interfaces used on the server side.
+
 export interface IMinAuthPlugin<PublicInputsArgs, Output> {
   verifyAndGetOutput(
     publicInputArgs: PublicInputsArgs,
@@ -43,13 +45,22 @@ export interface IMinAuthPluginFactory<
   readonly configurationSchema: z.ZodType<Configuration>;
 }
 
+// Interfaces used on the client side.
+
 export interface IMinAuthProver<PublicInputsArgs, PublicInput, PrivateInput> {
-  prove(publicInput: PublicInput, secretInput: PrivateInput):
-    Promise<undefined | JsonProof>;
+  prove(publicInput: PublicInput, secretInput: PrivateInput): Promise<JsonProof>;
 
   fetchPublicInputs(args: PublicInputsArgs): Promise<PublicInput>;
-
-  // TODO(Connor): schemas?
 }
 
-// TODO: IMinAuthProverFactory
+export interface IMinAuthProverFactory<
+  T extends IMinAuthProver<
+    PublicInputsArgs,
+    PublicInput,
+    PrivateInput>,
+  Configuration,
+  PublicInputsArgs,
+  PublicInput,
+  PrivateInput> {
+  initialize(cfg: Configuration): Promise<T>;
+}
