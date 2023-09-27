@@ -1,71 +1,61 @@
-import { json } from "body-parser";
-import { PublicKeyInput } from "crypto";
 import { RequestHandler } from "express";
 import { JsonProof } from "o1js";
-import { initialize } from "passport";
+import z from 'zod';
 
-export type PluginType = {
-  compile: () => Promise<string>;
-  getInputs: () => Promise<string[]>;
-  verify: (
-    jsonProof: JsonProof,
-    verificationKey: string,
-  ) => Promise<[string | boolean | undefined, string]>;
-  prove: (inputs: string[]) => Promise<undefined | JsonProof>;
-};
+// Interfaces used on the server side.
 
 export interface IMinAuthPlugin<PublicInputsArgs, Output> {
+  // Verify a proof give the arguments for fetching public inputs, and return
+  // the output.
   verifyAndGetOutput(
     publicInputArgs: PublicInputsArgs,
-    serializedProof: JsonProof): Promise<undefined | Output>;
+    serializedProof: JsonProof): Promise<Output>;
 
-  readonly customRoutes: Map<string, RequestHandler>;
+  // The schema of the arguments for fetching public inputs.
+  readonly publicInputArgsSchema: z.ZodType<PublicInputsArgs>;
 
+  // TODO: enable plugins to invalidate a proof.
+  // FIXME(Connor): I still have some questions regarding the validation functionality.
+  // In particular, what if a plugin want to invalidate the proof once the public inputs change?
+  // We have to at least pass PublicInputsArgs.
+  //
+  // checkOutputValidity(output: Output): Promise<boolean>;
+
+  // Custom routes and handlers. Will be installed under `/plugins/<plugin name>`
+  readonly customRoutes: Record<string, RequestHandler>;
+
+  // The verification key of the underlying zk circuit.
   readonly verificationKey: string;
 }
 
+// TODO: generic type inference?
 export interface IMinAuthPluginFactory<
   T extends IMinAuthPlugin<PublicInputsArgs, Output>,
   Configuration, PublicInputsArgs, Output> {
+
+  // Initialize the plugin given the configuration. The underlying zk program is 
+  // typically compiled here.
   initialize(cfg: Configuration): Promise<T>;
+
+  readonly configurationSchema: z.ZodType<Configuration>;
 }
 
-export abstract class MinAuthPlugin<Configuration, PublicInputsArgs, Output> {
-  abstract initialize(configuration: Configuration): Promise<string/*The verification key*/>;
+// Interfaces used on the client side.
 
-  abstract verifyAndGetOutput(
-    publicInputArgs: PublicInputsArgs,
-    serializedProof: JsonProof): Promise<undefined | Output>;
+export interface IMinAuthProver<PublicInputsArgs, PublicInput, PrivateInput> {
+  prove(publicInput: PublicInput, secretInput: PrivateInput): Promise<JsonProof>;
 
-  abstract readonly customRoutes: Map<string, RequestHandler>;
+  fetchPublicInputs(args: PublicInputsArgs): Promise<PublicInput>;
 }
 
-export abstract class MinAuthProver<Configuration, PublicInputsArgs, PublicInput, PrivateInput> {
-  abstract initialize(configuration: Configuration): Promise<void>;
-
-  abstract prove(publicInput: PublicInput, secretInput: PrivateInput):
-    Promise<undefined | JsonProof>;
-
-  abstract fetchPublicInputs(args: PublicInputsArgs): Promise<PublicInput>;
-}
-
-
-export function mkUntypedPlugin<
-  T extends IMinAuthPlugin<PublicInputsArgs, Output>,
-  Configuration, PublicInputsArgs, Output>(
-    type: IMinAuthPluginFactory<T, Configuration, PublicInputsArgs, Output>,
-  ): // Oh please let me use haskell
-  ((_: any) => Promise<IMinAuthPlugin<any, any>>) {
-  return async (cfg: any): Promise<IMinAuthPlugin<any, any>> => {
-    const obj = await type.initialize(cfg as Configuration);
-
-    return {
-      verifyAndGetOutput: async (
-        publicInputArgs: string,
-        serializedProof: JsonProof): Promise<undefined | any> =>
-        await obj.verifyAndGetOutput(publicInputArgs as PublicInputsArgs, serializedProof),
-      customRoutes: obj.customRoutes,
-      verificationKey: obj.verificationKey
-    };
-  };
+export interface IMinAuthProverFactory<
+  T extends IMinAuthProver<
+    PublicInputsArgs,
+    PublicInput,
+    PrivateInput>,
+  Configuration,
+  PublicInputsArgs,
+  PublicInput,
+  PrivateInput> {
+  initialize(cfg: Configuration): Promise<T>;
 }
