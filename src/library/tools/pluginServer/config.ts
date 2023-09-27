@@ -7,6 +7,9 @@ import { SimplePreimagePlugin } from "plugins/simplePreimage/plugin";
 import { SimplePasswordTreePlugin } from "plugins/passwordTree/plugin";
 
 // TODO: make use of heterogeneous lists
+/**
+ * All the available plugins and their names go here.
+ */
 export const untypedPlugins:
   Record<string,
     IMinAuthPluginFactory<IMinAuthPlugin<any, any>, any, any, any>>
@@ -31,6 +34,13 @@ const serverConfigurationsSchema = z.object({
 
 export type ServerConfigurations = z.infer<typeof serverConfigurationsSchema>;
 
+/**
+ * Load configurations from disk. The configuration is encoded in yaml and
+ * should conform to `serverConfigurationsSchema`. The location of the file can
+ * be specified using the `MINAUTH_CONFIG` environmental variable; if it's not
+ * set, `./config.yaml` will be used.
+ * @returns The decoded configurations for the server and plugins.
+ */
 export function readConfigurations(): ServerConfigurations {
   const configFile =
     env.get('MINAUTH_CONFIG')
