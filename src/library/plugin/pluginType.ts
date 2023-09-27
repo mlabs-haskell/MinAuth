@@ -1,19 +1,6 @@
-import { json } from "body-parser";
-import { PublicKeyInput } from "crypto";
 import { RequestHandler } from "express";
 import { JsonProof } from "o1js";
-import { initialize } from "passport";
 import z from 'zod';
-
-export type PluginType = {
-  compile: () => Promise<string>;
-  getInputs: () => Promise<string[]>;
-  verify: (
-    jsonProof: JsonProof,
-    verificationKey: string,
-  ) => Promise<[string | boolean | undefined, string]>;
-  prove: (inputs: string[]) => Promise<undefined | JsonProof>;
-};
 
 // Interfaces used on the server side.
 
