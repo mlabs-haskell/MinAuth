@@ -1,9 +1,11 @@
-import { Experimental, Field, JsonProof, MerkleTree, Poseidon } from "o1js";
+import { Experimental, Field, JsonProof, MerkleTree, Poseidon, PrivateKey, AccountUpdate, Mina } from "o1js";
 import ProvePasswordInTreeProgram, { PASSWORD_TREE_HEIGHT, PasswordTreePublicInput, PasswordTreeWitness } from "./passwordTreeProgram";
 import { IMinAuthPlugin, IMinAuthPluginFactory, IMinAuthProver, IMinAuthProverFactory } from 'plugin/pluginType';
 import { RequestHandler } from "express";
 import { z } from "zod";
 import axios from "axios";
+import { TreeRootStorageContract } from "./treeRootStorageContract";
+import fs from 'fs/promises'
 
 const PasswordInTreeProofClass = Experimental.ZkProgram.Proof(ProvePasswordInTreeProgram);
 
@@ -11,21 +13,13 @@ abstract class TreeStorage {
   abstract getRoot(): Promise<Field>;
   abstract getWitness(uid: bigint): Promise<undefined | PasswordTreeWitness>;
   abstract getRole(uid: bigint): Promise<undefined | string>;
+  abstract updateUser(uid: bigint, passwordHash: Field, role: string): Promise<void>;
+  abstract hasUser(uid: bigint): Promise<boolean>;
 }
 
 class InMemoryStorage implements TreeStorage {
-  roles: Map<bigint, string>;
-  merkleTree: MerkleTree;
-
-  constructor(roleMappings: Array<[bigint, Field, string]> = []) {
-    this.roles = new Map();
-    this.merkleTree = new MerkleTree(PASSWORD_TREE_HEIGHT);
-
-    roleMappings.forEach(([uid, password, role]) => {
-      this.roles.set(uid, role);
-      this.merkleTree.setLeaf(uid, Poseidon.hash([password]));
-    })
-  }
+  roles: Map<bigint, string> = new Map();;
+  merkleTree: MerkleTree = new MerkleTree(PASSWORD_TREE_HEIGHT);
 
   async getRoot() { return this.merkleTree.getRoot(); }
 
@@ -35,12 +29,161 @@ class InMemoryStorage implements TreeStorage {
   }
 
   async getRole(uid: bigint) { return this.roles.get(uid); }
+
+  async updateUser(uid: bigint, passwordHash: Field, role: string): Promise<void> {
+    this.roles.set(uid, role);
+    this.merkleTree.setLeaf(uid, passwordHash);
+  }
+
+  async hasUser(uid: bigint): Promise<boolean> {
+    return this.roles.has(uid);
+  }
 }
 
-const storage = new InMemoryStorage([
-  [BigInt(0), Field('7555220006856562833147743033256142154591945963958408607501861037584894828141'), 'admin'],
-  [BigInt(1), Field('21565680844461314807147611702860246336805372493508489110556896454939225549736'), 'member']
-]);
+class PersistentInMemoryStorage extends InMemoryStorage {
+  readonly file: fs.FileHandle;
+
+  async persist() {
+    const emptyObj: Record<string, { passwordHash: string, role: string }> = {}
+    const storageObj = Array.from(this.roles.entries())
+      .reduce((prev, [uid, role]) => {
+        const passwordHash =
+          this.merkleTree.getNode(PASSWORD_TREE_HEIGHT, uid).toString();
+        prev[uid.toString()] = { passwordHash, role };
+        return prev;
+      }, emptyObj);
+    await this.file.write(JSON.stringify(storageObj), 0, 'utf-8');
+  }
+
+  private constructor(
+    file: fs.FileHandle,
+    roles: Map<bigint, string>,
+    merkleTree: MerkleTree) {
+    super();
+
+    this.file = file;
+    this.roles = roles;
+    this.merkleTree = merkleTree;
+  }
+
+  static async initialize(path: string): Promise<PersistentInMemoryStorage> {
+    const handle = await fs.open(path, 'r+');
+    const content = await handle.readFile('utf-8');
+    const storageObj: Record<string, { passwordHash: string, role: string }> =
+      JSON.parse(content);
+
+    const roles: Map<bigint, string> = new Map();
+    const merkleTree: MerkleTree = new MerkleTree(PASSWORD_TREE_HEIGHT);
+
+    Object
+      .entries(storageObj)
+      .forEach((
+        [uidStr, { passwordHash: passwordHashStr, role }]) => {
+        const uid = BigInt(uidStr);
+        const passwordHash = Field.from(passwordHashStr);
+        roles.set(uid, role);
+        merkleTree.setLeaf(uid, passwordHash);
+      });
+
+    return new PersistentInMemoryStorage(handle, roles, merkleTree);
+  }
+
+  async updateUser(uid: bigint, passwordHash: Field, role: string): Promise<void> {
+    const prevRoot = this.merkleTree.getRoot();
+    await super.updateUser(uid, passwordHash, role);
+    const root = this.merkleTree.getRoot();
+    if (prevRoot.equals(root).toBoolean()) return;
+    await this.persist();
+  }
+}
+
+class GenericMinaBlockchainStorage<T extends TreeStorage> implements TreeStorage {
+  private underlyingStorage: T;
+  private contract: TreeRootStorageContract
+  private mkTx: (txFn: () => void) => Promise<void>
+
+  constructor(
+    storage: T,
+    contract: TreeRootStorageContract,
+    mkTx: (txFn: () => void) => Promise<void>) {
+    this.underlyingStorage = storage;
+    this.contract = contract;
+    this.mkTx = mkTx;
+  }
+
+  async updateTreeRootOnChainIfNecessary() {
+    const onChain = await this.contract.treeRoot.fetch();
+    const offChain = await this.underlyingStorage.getRoot();
+
+    if (!onChain)
+      throw "tree root storage contract not deployed";
+
+    if (onChain.equals(offChain).toBoolean())
+      return;
+
+    await this.mkTx(() => this.contract.treeRoot.set(offChain));
+  }
+
+  async getRoot() { return this.underlyingStorage.getRoot(); }
+
+  async getWitness(uid: bigint) { return this.underlyingStorage.getWitness(uid); }
+
+  async getRole(uid: bigint) { return this.underlyingStorage.getRole(uid); }
+
+  async updateUser(uid: bigint, passwordHash: Field, role: string): Promise<void> {
+    await this.underlyingStorage.updateUser(uid, passwordHash, role);
+    await this.updateTreeRootOnChainIfNecessary();
+  }
+
+  async hasUser(uid: bigint): Promise<boolean> {
+    return this.underlyingStorage.hasUser(uid);
+  }
+}
+
+async function initializeGenericMinaBlockchainStorage<T extends TreeStorage>(
+  storage: T,
+  contractPrivateKey: PrivateKey,
+  feePayerPrivateKey: PrivateKey
+): Promise<GenericMinaBlockchainStorage<T>> {
+  await TreeRootStorageContract.compile();
+  const contract = new TreeRootStorageContract(contractPrivateKey.toPublicKey());
+  const feePayerPublicKey = feePayerPrivateKey.toPublicKey();
+
+  const mkTx = async (txFn: () => void): Promise<void> => {
+    const txn = await Mina.transaction(feePayerPublicKey, txFn);
+    await txn.prove();
+    await txn.sign([feePayerPrivateKey, contractPrivateKey]).send();
+  };
+
+  const blockchainStorage = new GenericMinaBlockchainStorage(storage, contract, mkTx);
+
+  if (contract.account.isNew.get()) {
+    const treeRoot = await storage.getRoot();
+    await mkTx(() => {
+      AccountUpdate.fundNewAccount(feePayerPublicKey);
+      contract.treeRoot.set(treeRoot);
+      contract.deploy();
+    });
+  } else {
+    await blockchainStorage.updateTreeRootOnChainIfNecessary();
+  }
+
+  return blockchainStorage;
+}
+
+class MinaBlockchainStorage
+  extends GenericMinaBlockchainStorage<PersistentInMemoryStorage>{
+  static async initialize(
+    path: string,
+    contractPrivateKey: PrivateKey,
+    feePayerPrivateKey: PrivateKey) {
+    const storage = await PersistentInMemoryStorage.initialize(path);
+    return initializeGenericMinaBlockchainStorage(
+      storage,
+      contractPrivateKey,
+      feePayerPrivateKey);
+  }
+}
 
 export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
   readonly verificationKey: string;
@@ -54,7 +197,7 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
       }
 
       const uid = BigInt(req.params['uid']);
-      const witness = await storage.getWitness(uid);
+      const witness = await this.storage.getWitness(uid);
 
       if (!witness) {
         resp
@@ -71,8 +214,18 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
         return;
       }
 
-      const root = await storage.getRoot();
+      const root = await this.storage.getRoot();
       return resp.status(200).json(root);
+    },
+    "/setPassword/:uid": async (req, resp) => {
+      const uid = BigInt(req.params['uid']);
+      const { passwordHashStr }: { passwordHashStr: string } = req.body;
+      const passwordHash = Field.from(passwordHashStr);
+      if (!await this.storage.hasUser(uid))
+        throw "user doesn't exist";
+      const role = await this.storage.getRole(uid);
+      this.storage.updateUser(uid, passwordHash, role!);
+      resp.status(200);
     }
   };
 
@@ -81,46 +234,63 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
   async verifyAndGetOutput(uid: bigint, jsonProof: JsonProof):
     Promise<string> {
     const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
-    const expectedWitness = await storage.getWitness(uid);
-    const expectedRoot = await storage.getRoot();
+    const expectedWitness = await this.storage.getWitness(uid);
+    const expectedRoot = await this.storage.getRoot();
     if (proof.publicInput.witness != expectedWitness ||
       proof.publicInput.root != expectedRoot) {
       throw 'public input invalid';
     }
-    const role = await storage.getRole(uid);
+    const role = await this.storage.getRole(uid);
     if (!role) { throw 'unknown public input'; }
     return role;
   };
 
-  constructor(verificationKey: string, roles: Array<[bigint, Field, string]>) {
+  constructor(verificationKey: string, storage: MinaBlockchainStorage) {
     this.verificationKey = verificationKey;
-    this.storage = new InMemoryStorage(roles);
+    this.storage = storage;
   }
 
-  static async initialize(configuration: { roles: Array<[bigint, Field, string]> })
-    : Promise<SimplePasswordTreePlugin> {
+  static async initialize(configuration: {
+    storageFile: string,
+    contractPrivateKey: string,
+    feePayerPrivateKey: string
+  }): Promise<SimplePasswordTreePlugin> {
     const { verificationKey } = await ProvePasswordInTreeProgram.compile();
-    return new SimplePasswordTreePlugin(verificationKey, configuration.roles);
+    const storage = await MinaBlockchainStorage
+      .initialize(
+        configuration.storageFile,
+        PrivateKey.fromBase58(configuration.contractPrivateKey),
+        PrivateKey.fromBase58(configuration.feePayerPrivateKey)
+      )
+    return new SimplePasswordTreePlugin(verificationKey, storage);
   }
 
-  static readonly configurationSchema: z.ZodType<{ roles: Array<[bigint, Field, string]> }> =
+  static readonly configurationSchema:
+    z.ZodType<{
+      storageFile: string,
+      contractPrivateKey: string,
+      feePayerPrivateKey: string
+    }> =
     z.object({
-      roles: z.array(z.tuple([
-        z.bigint(),
-        z.custom<Field>((val) => typeof val === "string" ? /^[0-9]+$/.test(val) : false),
-        z.string()]))
+      storageFile: z.string(),
+      contractPrivateKey: z.string(),
+      feePayerPrivateKey: z.string()
     })
 }
 
 SimplePasswordTreePlugin satisfies
   IMinAuthPluginFactory<
     IMinAuthPlugin<bigint, string>,
-    { roles: Array<[bigint, Field, string]> },
+    {
+      storageFile: string,
+      contractPrivateKey: string,
+      feePayerPrivateKey: string
+    },
     bigint,
     string>;
 
 export type SimplePasswordTreeProverConfiguration = {
-  apiServer: URL
+  apiServer: URL,
 }
 
 export class SimplePasswordTreeProver implements
@@ -131,7 +301,7 @@ export class SimplePasswordTreeProver implements
   async prove(publicInput: PasswordTreePublicInput, secretInput: Field)
     : Promise<JsonProof> {
     const proof = await ProvePasswordInTreeProgram.baseCase(
-      publicInput, Field(secretInput));
+      publicInput, Field.from(secretInput));
     return proof.toJSON();
   }
 
