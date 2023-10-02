@@ -35,7 +35,9 @@ export interface IMinAuthPluginFactory<
 
   // Initialize the plugin given the configuration. The underlying zk program is 
   // typically compiled here.
-  initialize(cfg: Configuration): Promise<T>;
+  initialize(cfg: Configuration,
+    traverseCache: (f: (publicInputArgs: any, proof: JsonProof)
+      => Promise<boolean>) => Promise<void>): Promise<T>;
 
   readonly configurationSchema: z.ZodType<Configuration>;
 }

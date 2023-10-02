@@ -3,8 +3,10 @@ import bodyParser from 'body-parser';
 import { JsonProof, verify } from 'o1js';
 import { IMinAuthPlugin } from 'plugin/pluginType';
 import { readConfigurations, untypedPlugins } from './config';
+import { InMemoryProofCache } from './cachedProof';
 
 const configurations = readConfigurations();
+const proofCache = new InMemoryProofCache(); // TODO: redis backend
 
 /**
  * Construct plugins which are enabled in the configuration.
@@ -17,7 +19,8 @@ async function initializePlugins():
     .entries(configurations.plugins)
     .reduce(async (o, [name, cfg]) => {
       const factory = untypedPlugins[name];
-      const plugin = await factory.initialize(cfg);
+      const scopedCache = await proofCache.getCacheOf(name);
+      const plugin = await factory.initialize(cfg, scopedCache.checkEach);
       return { ...o, [name]: plugin };
     }, {});
 }
@@ -31,8 +34,16 @@ initializePlugins()
       proof: JsonProof;
     }
 
+    interface VerifyCachedProofData {
+      plugin: string;
+      combinedHash: string;
+    }
+
     // Use the appropriate plugin to verify the proof and return the output.
-    async function verifyProof(data: VerifyProofData): Promise<any> {
+    async function verifyProof(data: VerifyProofData): Promise<{
+      output: any
+      combinedHash: string
+    }> {
       const pluginName = data.plugin;
       console.info(`verifying proof using plugin ${pluginName}`);
       const pluginInstance = activePlugins[pluginName];
@@ -48,7 +59,20 @@ initializePlugins()
         = pluginInstance.publicInputArgsSchema.parse(data.publicInputArgs);
       const output =
         await pluginInstance.verifyAndGetOutput(typedPublicInputArgs, data.proof);
-      return output;
+      // Step 3: cache the proof.
+      const scopedCache = await proofCache.getCacheOf(pluginName);
+      const combinedHash = await scopedCache.storeProof(data.publicInputArgs, data.proof);
+      return { output, combinedHash };
+    }
+
+    async function verifyCachedProof(data: VerifyCachedProofData): Promise<void> {
+      const pluginName = data.plugin;
+      const plugin = activePlugins[pluginName];
+      if (!plugin)
+        throw `plugin ${pluginName} not active`;
+      const scopedCache = await proofCache.getCacheOf(data.plugin);
+      const { publicInputArgs, proof } = await scopedCache.getProof(data.combinedHash);
+      await plugin.verifyAndGetOutput(publicInputArgs, proof);
     }
 
     const app = express().use(bodyParser.json());
@@ -72,6 +96,14 @@ initializePlugins()
           res
             .status(500)
             .json({ error: 'Internal Server Error' });
+        }
+      })
+      .post('/verifyCachedProof', async (req: Request, res: Response) => {
+        try {
+          await verifyCachedProof(req.body);
+          res.status(200);
+        } catch {
+          res.status(400).json({ error: "unable to validate proof" });
         }
       })
       .listen(
