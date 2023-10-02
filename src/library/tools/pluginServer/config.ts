@@ -21,7 +21,7 @@ export const untypedPlugins:
 const serverConfigurationsSchema = z.object({
   server: z.object({
     address: z.string().ip().default("127.0.0.1"),
-    port: z.bigint().default(BigInt(3001)),
+    port: z.number().default(3001),
   }),
   plugins: z.object
     (Object

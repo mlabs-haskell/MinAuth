@@ -74,7 +74,9 @@ initializePlugins()
             .json({ error: 'Internal Server Error' });
         }
       })
-      .listen(configurations.server.port,
+      .listen(
+        configurations.server.port,
+        configurations.server.address,
         () =>
           console.log(`Server is running on http://localhost:${configurations.server.port}`)
       );
