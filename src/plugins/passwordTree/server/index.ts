@@ -184,30 +184,39 @@ class MinaBlockchainStorage
   }
 }
 
-export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
+const PoseidonHashSchema = z.bigint();
+
+const publicInputArgsSchema = z.array(PoseidonHashSchema);
+
+export class MemberSetPlugin implements IMinAuthPlugin<z.infer<typeof publicInputArgsSchema>, string>{
   readonly verificationKey: string;
   private readonly storage: TreeStorage
 
   customRoutes: Record<string, RequestHandler> = {
-    "/witness/:uid": async (req, resp) => {
-      if (req.method != 'GET') {
-        resp.status(400);
-        return;
-      }
+      // NOTE: witnesses are not public inputs now
+    // "/witness/:uid": async (req, resp) => {
+    //   if (req.method != 'GET') {
+    //     resp.status(400);
+    //     return;
+    //   }
 
-      const uid = BigInt(req.params['uid']);
-      const witness = await this.storage.getWitness(uid);
+    //   const uid = BigInt(req.params['uid']);
+    //   const witness = await this.storage.getWitness(uid);
 
-      if (!witness) {
-        resp
-          .status(400)
-          .json({ error: "requested user doesn't exist" });
-        return;
-      }
+    //   if (!witness) {
+    //     resp
+    //       .status(400)
+    //       .json({ error: "requested user doesn't exist" });
+    //     return;
+    //   }
 
-      resp.status(200).json(witness);
-    },
-    "/root": async (req, resp) => {
+    //   resp.status(200).json(witness);
+    // },
+
+      // TODO:
+      // input: array of merkle roots (eg. [root1, root2, root3])
+      // output: object of the form { root1: tree1, root2: tree2, root3: tree3 }
+    "/roots": async (req, resp) => {
       if (req.method != 'GET') {
         resp.status(400);
         return;
@@ -228,10 +237,12 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
     }
   };
 
-  publicInputArgsSchema: z.ZodType<bigint> = z.bigint();
+  publicInputArgsSchema = publicInputArgsSchema;
 
-  async verifyAndGetOutput(uid: bigint, jsonProof: JsonProof):
+    async verifyAndGetOutput(uid: z.infer<typeof publicInputArgsSchema>, jsonProof: JsonProof):
     Promise<string> {
+
+        // build an array of merkle trees
     const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
     const expectedWitness = await this.storage.getWitness(uid);
     const expectedRoot = await this.storage.getRoot();
@@ -253,7 +264,7 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
     storageFile: string,
     contractPrivateKey: string,
     feePayerPrivateKey: string
-  }): Promise<SimplePasswordTreePlugin> {
+  }): Promise<MemberSetPlugin> {
     const { verificationKey } = await ProvePasswordInTreeProgram.compile();
     const storage = await MinaBlockchainStorage
       .initialize(
@@ -261,7 +272,7 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
         PrivateKey.fromBase58(configuration.contractPrivateKey),
         PrivateKey.fromBase58(configuration.feePayerPrivateKey)
       )
-    return new SimplePasswordTreePlugin(verificationKey, storage);
+    return new MemberSetPlugin(verificationKey, storage);
   }
 
   static readonly configurationSchema:
@@ -277,7 +288,7 @@ export class SimplePasswordTreePlugin implements IMinAuthPlugin<bigint, string>{
     })
 }
 
-SimplePasswordTreePlugin satisfies
+MemberSetPlugin satisfies
   IMinAuthPluginFactory<
     IMinAuthPlugin<bigint, string>,
     {

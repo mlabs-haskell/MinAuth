@@ -4,7 +4,7 @@ import env from 'env-var';
 import fs from 'fs';
 import yaml from 'yaml';
 import { SimplePreimagePlugin } from "./plugins/simplePreimage/server";
-import { SimplePasswordTreePlugin } from "./plugins/passwordTree/server";
+import { MemberSetPlugin } from "./plugins/passwordTree/server";
 
 // TODO: make use of heterogeneous lists
 /**
@@ -15,7 +15,7 @@ export const untypedPlugins:
     IMinAuthPluginFactory<IMinAuthPlugin<any, any>, any, any, any>>
   = {
   "SimplePreimagePlugin": SimplePreimagePlugin,
-  "SimplePasswordTreePlugin": SimplePasswordTreePlugin
+  "MemberSetPlugin": MemberSetPlugin
 };
 
 const serverConfigurationsSchema = z.object({
