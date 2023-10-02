@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start-api": "nodemon src/someServer/apiServer.ts",
-    "start-plugin-server": "nodemon src/library/tools/pluginServer.ts",
+    "start-plugin-server": "nodemon src/library/tools/pluginServer/index.ts",
     "start-client": "nodemon src/headlessClient/client.ts",
     "build": "tsc",
     "serve-api": "node ./dist/someServer/apiServer.js",

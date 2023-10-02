@@ -1,10 +1,10 @@
-import { IMinAuthPlugin, IMinAuthPluginFactory } from "plugin/pluginType";
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '../../../library/plugin/pluginType';
 import z from "zod";
 import env from 'env-var';
 import fs from 'fs';
 import yaml from 'yaml';
-import { SimplePreimagePlugin } from "plugins/simplePreimage/plugin";
-import { SimplePasswordTreePlugin } from "plugins/passwordTree/plugin";
+import { SimplePreimagePlugin } from "./plugins/simplePreimage/server";
+import { SimplePasswordTreePlugin } from "./plugins/passwordTree/server";
 
 // TODO: make use of heterogeneous lists
 /**
