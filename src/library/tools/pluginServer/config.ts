@@ -3,8 +3,8 @@ import z from "zod";
 import env from 'env-var';
 import fs from 'fs';
 import yaml from 'yaml';
-import { SimplePreimagePlugin } from "./plugins/simplePreimage/server";
-import { MemberSetPlugin } from "./plugins/passwordTree/server";
+import { SimplePreimagePlugin } from "plugins/simplePreimage/server";
+import { MerkleMembershipsPlugin } from "plugins/merkleMemberships/server";
 
 // TODO: make use of heterogeneous lists
 /**
@@ -15,7 +15,7 @@ export const untypedPlugins:
     IMinAuthPluginFactory<IMinAuthPlugin<any, any>, any, any, any>>
   = {
   "SimplePreimagePlugin": SimplePreimagePlugin,
-  "MemberSetPlugin": MemberSetPlugin
+  "MerkleMembershipsPlugin": MerkleMembershipsPlugin
 };
 
 const serverConfigurationsSchema = z.object({
