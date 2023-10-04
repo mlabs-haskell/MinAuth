@@ -14,10 +14,11 @@ console.log("configuration loaded", configurations)
  */
 async function initializePlugins():
   Promise<Record<string, IMinAuthPlugin<any, any>>> {
-  console.log('compiling plugins');
+  console.log('initializing plugins');
   return Object
     .entries(configurations.plugins)
     .reduce(async (o, [name, cfg]) => {
+      console.debug(`initializing ${name}`, cfg);
       const factory = untypedPlugins[name];
       const typedCfg = factory.configurationSchema.parse(cfg)
       const plugin = await factory.initialize(typedCfg);
