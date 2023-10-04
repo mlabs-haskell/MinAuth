@@ -2,7 +2,7 @@ import { Experimental, Field, JsonProof, Poseidon } from "o1js";
 import O from 'fp-ts/Option';
 import MerkleMembershipsProgram from "../common/merkleMembershipsProgram";
 import z from 'zod';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from "library/plugin/pluginType";
+import { IMinAuthPlugin, IMinAuthPluginFactory } from "../../../library/plugin/pluginType";
 import { MinaTreesProvider, MinaTreesProviderConfiguration, TreesProvider, minaTreesProviderConfigurationSchema } from "./treeStorage";
 import { RequestHandler } from "express";
 import A from 'fp-ts/Array';

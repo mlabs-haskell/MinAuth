@@ -3,8 +3,8 @@ import z from "zod";
 import env from 'env-var';
 import fs from 'fs';
 import yaml from 'yaml';
-import { SimplePreimagePlugin } from "plugins/simplePreimage/server";
-import { MerkleMembershipsPlugin } from "plugins/merkleMemberships/server";
+import { SimplePreimagePlugin } from "../../../plugins/simplePreimage/server";
+import { MerkleMembershipsPlugin } from "../../../plugins/merkleMemberships/server";
 
 // TODO: make use of heterogeneous lists
 /**
@@ -57,6 +57,7 @@ export function readConfigurations(): ServerConfigurations {
     env.get('MINAUTH_CONFIG')
       .default("config.yaml")
       .asString();
+  
   if (!fs.existsSync(configFile)) {
     console.warn("configuration file not exists, use the default configuration")
     return defaultConfiguration;
