@@ -112,69 +112,6 @@ export class MerkleMembershipsPlugin
   static readonly configurationSchema = minaTreesProviderConfigurationSchema;
 }
 
-//   customRoutes: Record<string, RequestHandler> = {
-//       // NOTE: witnesses are not public inputs now
-//     // "/witness/:uid": async (req, resp) => {
-//     //   if (req.method != 'GET') {
-//     //     resp.status(400);
-//     //     return;
-//     //   }
-
-//     //   const uid = BigInt(req.params['uid']);
-//     //   const witness = await this.storage.getWitness(uid);
-
-//     //   if (!witness) {
-//     //     resp
-//     //       .status(400)
-//     //       .json({ error: "requested user doesn't exist" });
-//     //     return;
-//     //   }
-
-//     //   resp.status(200).json(witness);
-//     // },
-
-//       // TODO:
-//       // input: array of merkle roots (eg. [root1, root2, root3])
-//       // output: object of the form { root1: tree1, root2: tree2, root3: tree3 }
-//     "/roots": async (req, resp) => {
-//       if (req.method != 'GET') {
-//         resp.status(400);
-//         return;
-//       }
-
-//       const root = await this.storage.getRoot();
-//       return resp.status(200).json(root);
-//     },
-//     "/setPassword/:uid": async (req, resp) => {
-//       const uid = BigInt(req.params['uid']);
-//       const { passwordHashStr }: { passwordHashStr: string } = req.body;
-//       const passwordHash = Field.from(passwordHashStr);
-//       if (!await this.storage.hasUser(uid))
-//         throw "user doesn't exist";
-//       const role = await this.storage.getRole(uid);
-//       this.storage.updateUser(uid, passwordHash, role!);
-//       resp.status(200);
-//     }
-//   };
-
-//   publicInputArgsSchema = publicInputArgsSchema;
-
-//     async verifyAndGetOutput(uid: z.infer<typeof publicInputArgsSchema>, jsonProof: JsonProof):
-//     Promise<string> {
-
-//         // build an array of merkle trees
-//     const proof = PasswordInTreeProofClass.fromJSON(jsonProof);
-//     const expectedWitness = await this.storage.getWitness(uid);
-//     const expectedRoot = await this.storage.getRoot();
-//     if (proof.publicInput.witness != expectedWitness ||
-//       proof.publicInput.root != expectedRoot) {
-//       throw 'public input invalid';
-//     }
-//     const role = await this.storage.getRole(uid);
-//     if (!role) { throw 'unknown public input'; }
-//     return role;
-//   };
-
 MerkleMembershipsPlugin satisfies
   IMinAuthPluginFactory<
     IMinAuthPlugin<MerkleMembershipsPublicInputArgs, Field>,
