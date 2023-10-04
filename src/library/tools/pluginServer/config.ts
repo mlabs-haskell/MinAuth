@@ -40,8 +40,8 @@ const defaultConfiguration: ServerConfigurations = {
     port: 3001
   },
   plugins: {
-    SimplePreimagePlugin: {},
-    MerkleMembershipsPlugin: {}
+    SimplePreimagePlugin: { roles: {} },
+    MerkleMembershipsPlugin: { trees: [] }
   }
 }
 
@@ -57,7 +57,7 @@ export function readConfigurations(): ServerConfigurations {
     env.get('MINAUTH_CONFIG')
       .default("config.yaml")
       .asString();
-  
+
   if (!fs.existsSync(configFile)) {
     console.warn("configuration file not exists, use the default configuration")
     return defaultConfiguration;

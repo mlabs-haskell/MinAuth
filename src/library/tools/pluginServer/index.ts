@@ -19,7 +19,8 @@ async function initializePlugins():
     .entries(configurations.plugins)
     .reduce(async (o, [name, cfg]) => {
       const factory = untypedPlugins[name];
-      const plugin = await factory.initialize(cfg);
+      const typedCfg = factory.configurationSchema.parse(cfg)
+      const plugin = await factory.initialize(typedCfg);
       return { ...o, [name]: plugin };
     }, {});
 }

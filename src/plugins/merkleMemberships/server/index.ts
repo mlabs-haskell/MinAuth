@@ -104,6 +104,7 @@ export class MerkleMembershipsPlugin
   }
 
   static async initialize(cfg: MinaTreesProviderConfiguration): Promise<MerkleMembershipsPlugin> {
+    console.log(cfg)
     const { verificationKey } = await MerkleMembershipsProgram.compile();
     const storage = await MinaTreesProvider.initialize(cfg);
     return new MerkleMembershipsPlugin(verificationKey, storage);
