@@ -21,7 +21,7 @@ export const untypedPlugins:
 const serverConfigurationsSchema = z.object({
   server: z.object({
     address: z.string().ip().default("127.0.0.1"),
-    port: z.bigint().default(BigInt(3001)),
+    port: z.number().default(3001),
   }),
   plugins: z.object
     (Object
@@ -33,6 +33,17 @@ const serverConfigurationsSchema = z.object({
 });
 
 export type ServerConfigurations = z.infer<typeof serverConfigurationsSchema>;
+
+const defaultConfiguration: ServerConfigurations = {
+  server: {
+    address: "127.0.0.1",
+    port: 3001
+  },
+  plugins: {
+    SimplePreimagePlugin: {},
+    MerkleMembershipsPlugin: {}
+  }
+}
 
 /**
  * Load configurations from disk. The configuration is encoded in yaml and
@@ -46,6 +57,10 @@ export function readConfigurations(): ServerConfigurations {
     env.get('MINAUTH_CONFIG')
       .default("config.yaml")
       .asString();
+  if (!fs.existsSync(configFile)) {
+    console.warn("configuration file not exists, use the default configuration")
+    return defaultConfiguration;
+  }
   const configFileContent = fs.readFileSync(configFile, 'utf8');
   const untypedConfig: any = yaml.parse(configFileContent);
   return serverConfigurationsSchema.parse(untypedConfig);

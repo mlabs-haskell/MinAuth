@@ -6,6 +6,8 @@ import { readConfigurations, untypedPlugins } from './config';
 
 const configurations = readConfigurations();
 
+console.log("configuration loaded", configurations)
+
 /**
  * Construct plugins which are enabled in the configuration.
  * @returns A record of plugin instances.
