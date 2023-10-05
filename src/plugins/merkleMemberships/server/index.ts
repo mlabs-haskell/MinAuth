@@ -1,11 +1,11 @@
 import { Experimental, Field, JsonProof, Poseidon } from "o1js";
-import O from 'fp-ts/Option';
+import * as O from 'fp-ts/Option';
 import MerkleMembershipsProgram from "../common/merkleMembershipsProgram";
 import z from 'zod';
 import { IMinAuthPlugin, IMinAuthPluginFactory } from "../../../library/plugin/pluginType";
 import { MinaTreesProvider, MinaTreesProviderConfiguration, TreesProvider, minaTreesProviderConfigurationSchema } from "./treeStorage";
 import { RequestHandler } from "express";
-import A from 'fp-ts/Array';
+import * as A from 'fp-ts/Array';
 
 const PoseidonHashSchema = z.bigint();
 
@@ -104,7 +104,6 @@ export class MerkleMembershipsPlugin
   }
 
   static async initialize(cfg: MinaTreesProviderConfiguration): Promise<MerkleMembershipsPlugin> {
-    console.log(cfg)
     const { verificationKey } = await MerkleMembershipsProgram.compile();
     const storage = await MinaTreesProvider.initialize(cfg);
     return new MerkleMembershipsPlugin(verificationKey, storage);

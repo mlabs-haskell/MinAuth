@@ -1,10 +1,10 @@
 import { AccountUpdate, Field, MerkleTree, Mina, PrivateKey } from "o1js";
-import O from 'fp-ts/Option';
+import * as O from 'fp-ts/Option';
 import { MERKLE_MEMBERSHIP_TREE_HEIGHT, MerkleMembershipTreeWitness } from "../common/merkleMembershipsProgram";
 import z from 'zod';
 import fs from "fs/promises"
 import { TreeRootStorageContract } from "../common/treeRootStorageContract";
-import A from 'fp-ts/Array';
+import * as A from 'fp-ts/Array';
 
 export interface TreeStorage {
   getRoot(): Promise<Field>;

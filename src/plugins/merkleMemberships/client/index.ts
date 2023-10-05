@@ -7,8 +7,8 @@ import {
     MerkleRoot
 } from "../common/merkleMembershipsProgram";
 import { IMinAuthProver, IMinAuthProverFactory } from '../../../library/plugin/pluginType';
-import A from 'fp-ts/Array'
-import O from 'fp-ts/Option'
+import * as A from 'fp-ts/Array'
+import * as O from 'fp-ts/Option'
 import axios from "axios";
 
 export type MembershipsProverConfiguration = {
