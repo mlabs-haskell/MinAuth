@@ -1,69 +1,98 @@
 import { AccountUpdate, Field, MerkleTree, Mina, PrivateKey } from 'o1js';
 import * as O from 'fp-ts/Option';
-import * as Program from '../common/merkleMembershipsProgram';
+import * as ZkProgram from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import fs from 'fs/promises';
 import { TreeRootStorageContract } from '../common/treeRootStorageContract';
+import { TaskEither } from 'fp-ts/TaskEither';
+import * as TE from 'fp-ts/TaskEither';
+import { pipe } from 'fp-ts/function';
+import {
+  dropResult,
+  fromFailablePromise,
+  liftZodParseResult
+} from '@utils/fp/TaskEither';
+import * as R from 'fp-ts/Record';
+import * as Str from 'fp-ts/string';
+import { toArray } from 'fp-ts/ReadonlyArray';
 import * as A from 'fp-ts/Array';
-import { Option } from 'fp-ts/Option';
+import { Either } from 'fp-ts/Either';
+import * as E from 'fp-ts/Either';
 
 export interface TreeStorage {
-  getRoot(): Promise<Field>;
-  getWitness(leafIndex: bigint): Promise<O.Option<Program.TreeWitness>>;
-  hasLeaf(leafIndex: bigint): Promise<boolean>;
-  setLeaf(leafIndex: bigint, leaf: Field): Promise<void>;
-  getLeaves(): Promise<Array<O.Option<Field>>>;
+  getRoot: () => TaskEither<string, Field>;
+  getWitness: (
+    leafIndex: bigint
+  ) => TaskEither<string, O.Option<ZkProgram.TreeWitness>>;
+  hasLeaf: (leafIndex: bigint) => TaskEither<string, boolean>;
+  setLeaf: (leafIndex: bigint, leaf: Field) => TaskEither<string, void>;
+  getLeaves(): TaskEither<string, Array<O.Option<Field>>>;
 }
 
 export class InMemoryStorage implements TreeStorage {
   occupied: Set<bigint> = new Set();
-  merkleTree: MerkleTree = new MerkleTree(Program.TREE_HEIGHT);
+  merkleTree: MerkleTree = new MerkleTree(ZkProgram.TREE_HEIGHT);
 
-  async getRoot() {
-    return this.merkleTree.getRoot();
+  getRoot() {
+    return TE.of(this.merkleTree.getRoot());
   }
 
-  async getWitness(leafIndex: bigint): Promise<O.Option<Program.TreeWitness>> {
-    return this.occupied.has(leafIndex)
-      ? O.none
-      : O.some(new Program.TreeWitness(this.merkleTree.getWitness(leafIndex)));
-  }
-
-  async hasLeaf(leafIndex: bigint): Promise<boolean> {
-    return this.occupied.has(leafIndex);
-  }
-
-  async setLeaf(leafIndex: bigint, leaf: Field): Promise<void> {
-    this.occupied.add(leafIndex);
-    this.merkleTree.setLeaf(leafIndex, leaf);
-  }
-
-  async getLeaves(): Promise<Array<O.Option<Field>>> {
-    const leaves: Array<O.Option<Field>> = new Array(
-      Number(this.merkleTree.leafCount)
+  getWitness(leafIndex: bigint) {
+    return TE.of(
+      this.occupied.has(leafIndex)
+        ? O.none
+        : O.some(
+            new ZkProgram.TreeWitness(this.merkleTree.getWitness(leafIndex))
+          )
     );
+  }
 
-    for (let i = 0; i < this.merkleTree.leafCount; i++)
-      leaves[i] = this.occupied.has(BigInt(i))
-        ? O.some(this.merkleTree.getNode(0, BigInt(i)))
-        : O.none;
+  hasLeaf(leafIndex: bigint) {
+    return TE.of(this.occupied.has(leafIndex));
+  }
 
-    return leaves;
+  setLeaf(leafIndex: bigint, leaf: Field) {
+    return TE.fromIO(() => {
+      this.occupied.add(leafIndex);
+      this.merkleTree.setLeaf(leafIndex, leaf);
+    });
+  }
+
+  getLeaves() {
+    return (): Promise<Either<string, Array<O.Option<Field>>>> => {
+      const leaves: Array<O.Option<Field>> = new Array(
+        Number(this.merkleTree.leafCount)
+      );
+
+      for (let i = 0; i < this.merkleTree.leafCount; i++)
+        leaves[i] = this.occupied.has(BigInt(i))
+          ? O.some(this.merkleTree.getNode(0, BigInt(i)))
+          : O.none;
+
+      return Promise.resolve(E.right(leaves));
+    };
   }
 }
 
 export class PersistentInMemoryStorage extends InMemoryStorage {
   readonly file: fs.FileHandle;
 
-  async persist() {
+  persist(): TaskEither<string, void> {
     const storageObj = Array.from(this.occupied.values()).reduce(
       (acc: Record<number, string>, idx: bigint) => {
-        acc[Number(idx)] = this.merkleTree.getNode(0, idx).toJSON();
+        acc[Number(idx)] = this.merkleTree
+          .getNode(ZkProgram.TREE_HEIGHT, idx)
+          .toJSON();
         return acc;
       },
       {}
     );
-    await this.file.write(JSON.stringify(storageObj), 0, 'utf-8');
+    return dropResult(
+      fromFailablePromise(
+        () => this.file.write(JSON.stringify(storageObj), 0, 'utf-8'),
+        ''
+      )
+    );
   }
 
   private constructor(
@@ -77,20 +106,42 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
     this.merkleTree = merkleTree;
   }
 
-  static async initialize(path: string): Promise<PersistentInMemoryStorage> {
-    const handle = await fs.open(path, 'r+');
-    const content = await handle.readFile('utf-8');
-    const storageObj: Record<number, string> = JSON.parse(content);
-    const occupied: Set<bigint> = new Set();
-    const merkleTree: MerkleTree = new MerkleTree(Program.TREE_HEIGHT);
-
-    Object.entries(storageObj).forEach(([rawIdx, rawLeaf]) => {
-      const idx = BigInt(rawIdx);
-      occupied.add(BigInt(rawIdx));
-      merkleTree.setLeaf(idx, Field.fromJSON(rawLeaf));
-    });
-
-    return new PersistentInMemoryStorage(handle, occupied, merkleTree);
+  static initialize(
+    path: string
+  ): TaskEither<string, PersistentInMemoryStorage> {
+    return pipe(
+      TE.Do,
+      TE.bind('handle', () =>
+        fromFailablePromise(
+          () => fs.open(path, 'r+'),
+          `unable to open file ${path} that stores the tree`
+        )
+      ),
+      TE.bind('content', ({ handle }) =>
+        fromFailablePromise(
+          () => handle.readFile('utf-8'),
+          `unable to read the content of the tree file`
+        )
+      ),
+      TE.bind('storageObject', ({ content }) =>
+        liftZodParseResult(z.record(z.string(), z.string()).safeParse(content))
+      ),
+      TE.map(({ handle, storageObject }) => {
+        const { occupied, merkleTree } = R.reduceWithIndex(Str.Ord)(
+          {
+            occupied: new Set<bigint>(),
+            merkleTree: new MerkleTree(ZkProgram.TREE_HEIGHT)
+          },
+          (rawIdx: string, { occupied, merkleTree }, rawLeaf: string) => {
+            const idx = BigInt(rawIdx);
+            occupied.add(BigInt(rawIdx));
+            merkleTree.setLeaf(idx, Field.fromJSON(rawLeaf));
+            return { occupied, merkleTree };
+          }
+        )(storageObject);
+        return new PersistentInMemoryStorage(handle, occupied, merkleTree);
+      })
+    );
   }
 }
 
@@ -99,107 +150,136 @@ export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
 {
   private underlyingStorage: T;
   private contract: TreeRootStorageContract;
-  private mkTx: (txFn: () => void) => Promise<void>;
+  private mkTx: (txFn: () => void) => TaskEither<string, void>;
 
   constructor(
     storage: T,
     contract: TreeRootStorageContract,
-    mkTx: (txFn: () => void) => Promise<void>
+    mkTx: (txFn: () => void) => TaskEither<string, void>
   ) {
     this.underlyingStorage = storage;
     this.contract = contract;
     this.mkTx = mkTx;
   }
 
-  async updateTreeRootOnChainIfNecessary() {
-    const onChain = await this.contract.treeRoot.fetch();
-    const offChain = await this.underlyingStorage.getRoot();
-
-    if (!onChain) throw 'tree root storage contract not deployed';
-
-    if (onChain.equals(offChain).toBoolean()) return;
-
-    await this.mkTx(() => this.contract.treeRoot.set(offChain));
+  private fetchOnChainRoot(): TaskEither<string, Field> {
+    return fromFailablePromise(
+      this.contract.treeRoot.fetch,
+      'unable to fetch root stored on chain, did you deploy the contract?'
+    );
   }
 
-  async getRoot() {
+  updateTreeRootOnChainIfNecessary(): TaskEither<string, void> {
+    return pipe(
+      TE.Do,
+      TE.bind('onChainRoot', () => this.fetchOnChainRoot()),
+      TE.bind('offChainRoot', () => this.underlyingStorage.getRoot()),
+      TE.chain(({ onChainRoot, offChainRoot }) => {
+        return onChainRoot.equals(offChainRoot).toBoolean()
+          ? TE.of(undefined)
+          : this.mkTx(() => this.contract.treeRoot.set(offChainRoot));
+      })
+    );
+  }
+
+  getRoot() {
     return this.underlyingStorage.getRoot();
   }
 
-  async getWitness(leafIdx: bigint) {
+  getWitness(leafIdx: bigint) {
     return this.underlyingStorage.getWitness(leafIdx);
   }
 
-  async hasLeaf(leafIdx: bigint): Promise<boolean> {
+  hasLeaf(leafIdx: bigint) {
     return this.underlyingStorage.hasLeaf(leafIdx);
   }
 
-  async setLeaf(leafIndex: bigint, leaf: Field): Promise<void> {
-    this.underlyingStorage.setLeaf(leafIndex, leaf);
-    await this.updateTreeRootOnChainIfNecessary();
+  setLeaf(leafIndex: bigint, leaf: Field) {
+    return TE.chain(() => this.updateTreeRootOnChainIfNecessary())(
+      this.underlyingStorage.setLeaf(leafIndex, leaf)
+    );
   }
 
-  async getLeaves(): Promise<O.Option<Field>[]> {
+  getLeaves() {
     return this.underlyingStorage.getLeaves();
   }
 }
 
-async function initializeGenericMinaBlockchainTreeStorage<
-  T extends TreeStorage
->(
+function initializeGenericMinaBlockchainTreeStorage<T extends TreeStorage>(
   storage: T,
   contractPrivateKey: PrivateKey,
   feePayerPrivateKey: PrivateKey
-): Promise<GenericMinaBlockchainTreeStorage<T>> {
-  await TreeRootStorageContract.compile();
-  const contract = new TreeRootStorageContract(
-    contractPrivateKey.toPublicKey()
-  );
+): TaskEither<string, GenericMinaBlockchainTreeStorage<T>> {
+  const contractPublicKey = contractPrivateKey.toPublicKey();
+  const contractInstance = new TreeRootStorageContract(contractPublicKey);
+
   const feePayerPublicKey = feePayerPrivateKey.toPublicKey();
 
-  const mkTx = async (txFn: () => void): Promise<void> => {
-    const txn = await Mina.transaction(feePayerPublicKey, txFn);
-    await txn.prove();
-    await txn.sign([feePayerPrivateKey, contractPrivateKey]).send();
-  };
+  const mkTx = (txFn: () => void): TaskEither<string, void> =>
+    fromFailablePromise(async () => {
+      const txn = await Mina.transaction(feePayerPublicKey, txFn);
+      await txn.prove();
+      await txn.sign([feePayerPrivateKey, contractPrivateKey]).send();
+    }, 'unable to make transaction');
 
   const blockchainStorage = new GenericMinaBlockchainTreeStorage(
     storage,
-    contract,
+    contractInstance,
     mkTx
   );
 
-  if (contract.account.isNew.get()) {
-    const treeRoot = await storage.getRoot();
-    await mkTx(() => {
-      AccountUpdate.fundNewAccount(feePayerPublicKey);
-      contract.treeRoot.set(treeRoot);
-      contract.deploy();
-    });
-  } else {
-    await blockchainStorage.updateTreeRootOnChainIfNecessary();
-  }
+  const compileContract = fromFailablePromise(
+    TreeRootStorageContract.compile,
+    'cannot compile tree root storage contract, this is a bug'
+  );
 
-  return blockchainStorage;
+  const deployContractIfNecessary: TaskEither<string, void> = pipe(
+    TE.Do,
+    TE.bind('treeRoot', storage.getRoot),
+    TE.bind('shouldDeployContract', () =>
+      TE.of(Mina.hasAccount(contractPublicKey))
+    ),
+    TE.chain(({ shouldDeployContract, treeRoot }) =>
+      shouldDeployContract
+        ? mkTx(() => {
+            AccountUpdate.fundNewAccount(feePayerPublicKey);
+            contractInstance.treeRoot.set(treeRoot);
+            contractInstance.deploy();
+          })
+        : blockchainStorage.updateTreeRootOnChainIfNecessary()
+    )
+  );
+
+  return pipe(
+    TE.Do,
+    TE.chain(() => compileContract),
+    TE.chain(() => deployContractIfNecessary),
+    TE.chain(() => TE.of(blockchainStorage))
+  );
 }
 
 export class MinaBlockchainTreeStorage extends GenericMinaBlockchainTreeStorage<PersistentInMemoryStorage> {
-  static async initialize(
+  static initialize(
     path: string,
     contractPrivateKey: PrivateKey,
     feePayerPrivateKey: PrivateKey
-  ) {
-    const storage = await PersistentInMemoryStorage.initialize(path);
-    return initializeGenericMinaBlockchainTreeStorage(
-      storage,
-      contractPrivateKey,
-      feePayerPrivateKey
+  ): TaskEither<string, MinaBlockchainTreeStorage> {
+    return pipe(
+      TE.Do,
+      TE.bind('storage', () => PersistentInMemoryStorage.initialize(path)),
+      TE.chain(({ storage }) =>
+        initializeGenericMinaBlockchainTreeStorage(
+          storage,
+          contractPrivateKey,
+          feePayerPrivateKey
+        )
+      )
     );
   }
 }
 
 export interface TreesProvider {
-  getTree(root: Field): Promise<Option<TreeStorage>>;
+  getTree(treeRoot: Field): TaskEither<string, O.Option<TreeStorage>>;
 }
 
 export const minaTreesProviderConfigurationSchema = z.object({
@@ -216,51 +296,59 @@ export type MinaTreesProviderConfiguration = z.infer<
   typeof minaTreesProviderConfigurationSchema
 >;
 
+const findM =
+  <T>(f: (x: T) => TaskEither<string, boolean>) =>
+  (arr: Array<T>): TaskEither<string, O.Option<T>> =>
+    A.foldLeft(
+      () => TE.right(O.none),
+      (x: T, left) =>
+        pipe(
+          pipe(
+            f(x),
+            TE.chain((found) => (found ? TE.right(O.some(x)) : findM(f)(left)))
+          )
+        )
+    )(arr);
+
 export class MinaTreesProvider implements TreesProvider {
   readonly treeStorages: Array<TreeStorage>;
 
-  async getTree(root: Field) {
-    for (const tree of this.treeStorages) {
-      const thisRoot = await tree.getRoot();
-      if (thisRoot.equals(root).toBoolean()) return O.some(tree);
-    }
-    return O.none;
+  getTree(treeRoot: Field): TaskEither<string, O.Option<TreeStorage>> {
+    return findM((t: TreeStorage) =>
+      pipe(
+        t.getRoot(),
+        TE.map((root) => root.equals(treeRoot).toBoolean())
+      )
+    )(this.treeStorages);
   }
 
-  constructor(treeStorages: Array<TreeStorage>) {
+  constructor(treeStorages: TreeStorage[]) {
     this.treeStorages = treeStorages;
   }
 
-  static async initialize(
+  static initialize(
     cfg: MinaTreesProviderConfiguration
-  ): Promise<MinaTreesProvider> {
+  ): TaskEither<string, MinaTreesProvider> {
     const feePayerPrivateKey = cfg.feePayerPrivateKey
       ? PrivateKey.fromBase58(cfg.feePayerPrivateKey)
       : undefined;
 
-    const trees: TreeStorage[] = await A.reduce(
-      Promise.resolve([]),
-      (
-        accP: Promise<Array<TreeStorage>>,
-        tCfg: {
-          offchainStoragePath: string;
-          contractPrivateKey?: string | undefined;
-        }
-      ) =>
-        accP.then((acc) =>
-          (feePayerPrivateKey && tCfg.contractPrivateKey
-            ? MinaBlockchainTreeStorage.initialize(
-                tCfg.offchainStoragePath,
-                PrivateKey.fromBase58(tCfg.contractPrivateKey),
-                feePayerPrivateKey
-              )
-            : PersistentInMemoryStorage.initialize(tCfg.offchainStoragePath)
-          ).then((storage: TreeStorage) =>
-            Promise.resolve(A.append(storage)(acc))
-          )
-        )
+    const trees = TE.traverseArray(
+      (tCfg: {
+        offchainStoragePath: string;
+        contractPrivateKey?: string | undefined;
+      }): TaskEither<string, TreeStorage> =>
+        feePayerPrivateKey && tCfg.contractPrivateKey
+          ? MinaBlockchainTreeStorage.initialize(
+              tCfg.offchainStoragePath,
+              PrivateKey.fromBase58(tCfg.contractPrivateKey),
+              feePayerPrivateKey
+            )
+          : PersistentInMemoryStorage.initialize(tCfg.offchainStoragePath)
     )(cfg.trees);
 
-    return new MinaTreesProvider(trees);
+    return TE.map(
+      (ts: readonly TreeStorage[]) => new MinaTreesProvider(toArray(ts))
+    )(trees);
   }
 }

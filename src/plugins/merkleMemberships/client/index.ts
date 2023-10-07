@@ -1,15 +1,24 @@
 import { Field, JsonProof, MerkleTree, SelfProof } from 'o1js';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
-import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin/pluginType';
+import {
+  FpInterfaceType,
+  IMinAuthProver,
+  IMinAuthProverFactory
+} from '@lib/plugin/fp/pluginType';
 import * as A from 'fp-ts/Array';
-import * as O from 'fp-ts/Option';
 import axios from 'axios';
+import { TaskEither } from 'fp-ts/TaskEither';
+import { pipe } from 'fp-ts/function';
+import * as TE from 'fp-ts/TaskEither';
+import * as NE from 'fp-ts/NonEmptyArray';
+import { fromFailablePromise } from '@utils/fp/TaskEither';
+import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 
-export type ProverConfiguration = {
+export type MembershipsProverConfiguration = {
   baseUrl: string;
 };
 
-export type PublicInputArgs = Array<{
+export type MembershipsPublicInputArgs = Array<{
   treeRoot: Field;
   leafIndex: bigint;
 }>;
@@ -17,72 +26,116 @@ export type PublicInputArgs = Array<{
 type ZkProof = SelfProof<ZkProgram.PublicInput, ZkProgram.PublicOutput>;
 
 // Prove that you belong to a set of user without revealing which user you are.
-export class MerkleMembershipsProver
+export class MembershipsProver
   implements
     IMinAuthProver<
-      PublicInputArgs,
+      FpInterfaceType,
+      MembershipsPublicInputArgs,
       Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
       Array<Field>
     >
 {
-  private readonly cfg: ProverConfiguration;
+  readonly __interface_tag = 'fp';
 
-  async prove(
+  private readonly cfg: MembershipsProverConfiguration;
+
+  prove(
     publicInput: Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
     secretInput: Array<Field>
-  ): Promise<JsonProof> {
-    if (publicInput.length != secretInput.length)
-      throw 'unmatched public/secret input list';
+  ): TaskEither<string, JsonProof> {
+    const computeBaseProof = ([[root, witness], secret]: [
+      [ZkProgram.PublicInput, ZkProgram.TreeWitness],
+      Field
+    ]): TaskEither<string, ZkProof> =>
+      fromFailablePromise(
+        () =>
+          ZkProgram.Program.baseCase(
+            root,
+            new ZkProgram.PrivateInput({ witness, secret })
+          ),
+        'failed in base case'
+      );
 
     // For each pair of inputs (secret and public) add another layer of the recursive proof
-    const proof: O.Option<ZkProof> = await A.reduce(
-      Promise.resolve<O.Option<ZkProof>>(O.none),
-      (
-        acc,
-        [[root, witness], secret]: [
-          [ZkProgram.PublicInput, ZkProgram.TreeWitness],
-          Field
-        ]
-      ) => {
-        const privInput = new ZkProgram.PrivateInput({ witness, secret });
-        return acc.then(
-          O.match(
-            () => ZkProgram.Program.baseCase(root, privInput).then(O.some),
-            (prev) =>
-              ZkProgram.Program.inductiveCase(root, prev, privInput).then(
-                O.some
-              )
-          )
-        );
-      }
-    )(A.zip(publicInput, secretInput));
+    const computeRecursiveProof =
+      (l: Array<[[ZkProgram.PublicInput, ZkProgram.TreeWitness], Field]>) =>
+      (sp: ZkProof): TaskEither<string, ZkProof> =>
+        A.foldLeft(
+          // Pattern matching, not actually folding
+          () => TE.right(sp),
+          (
+            [[root, witness], secret]: [
+              [ZkProgram.PublicInput, ZkProgram.TreeWitness],
+              Field
+            ],
+            tail
+          ) =>
+            pipe(
+              fromFailablePromise(
+                () =>
+                  ZkProgram.Program.inductiveCase(
+                    root,
+                    sp,
+                    new ZkProgram.PrivateInput({ witness, secret })
+                  ),
+                'failed in inductive case'
+              ),
+              TE.chain((proof) => computeRecursiveProof(tail)(proof))
+            )
+        )(l);
 
-    return O.match(
-      () => {
-        throw 'empty input list';
-      }, // TODO: make it pure
-      (p: ZkProof) => p.toJSON()
-    )(proof);
+    const computeFinalProof = (
+      pl: NonEmptyArray<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
+      sl: NonEmptyArray<Field>
+    ): TaskEither<string, ZkProof> => {
+      const l = NE.zip(pl, sl);
+      const h = NE.head(l);
+      const t = NE.tail(l);
+      return pipe(computeBaseProof(h), TE.chain(computeRecursiveProof(t)));
+    };
+
+    return pipe(
+      TE.Do,
+      TE.tap(() =>
+        publicInput.length != secretInput.length
+          ? TE.left('unmatched public/secret input list')
+          : TE.right(undefined)
+      ),
+      TE.bind('publicInputNE', () =>
+        TE.fromOption(() => 'public input list empty')(
+          NE.fromArray(publicInput)
+        )
+      ),
+      TE.bind('secretInputNE', () =>
+        TE.fromOption(() => 'private input list empty')(
+          NE.fromArray(secretInput)
+        )
+      ),
+      TE.chain(({ publicInputNE, secretInputNE }) =>
+        computeFinalProof(publicInputNE, secretInputNE)
+      ),
+      TE.map((finalProof) => finalProof.toJSON())
+    );
   }
 
-  // async fetchPublicInputs(
-  //   args: PublicInputArgs
-  // ): Promise<Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
-  //   const mkUrl = (treeRoot: Field, leafIndex: bigint) =>
-  //     `${this.cfg.baseUrl}/getWitness/${treeRoot
-  //       .toBigInt()
-  //       .toString()}/${leafIndex.toString()}`;
+  // fetchPublicInputs(
+  //   args: MembershipsPublicInputArgs
+  // ): TaskEither<string, Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
   //   const getRootAndWitness = async (
   //     treeRoot: Field,
   //     leafIndex: bigint
   //   ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-  //     const url = mkUrl(treeRoot, leafIndex);
+  //     const url = `${this.cfg.baseUrl}/getRootAndWitness/${treeRoot
+  //       .toBigInt()
+  //       .toString()}/${leafIndex.toString()}`;
   //     const resp = await axios.get(url);
   //     if (resp.status == 200) {
-  //       const body: {
-  //         witness: string;
-  //       } = resp.data;
-  //       const witness = ZkProgram.TreeWitness.fromJSON(body.witness);
+  //       const body: { leaves: Array<string | undefined> } = resp.data;
+  //       const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
+  //       body.leaves.forEach((leaf, index) => {
+  //         if (leaf !== undefined) tree.setLeaf(BigInt(index), Field.from(leaf));
+  //       });
+  //       const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
   //       return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
   //     } else {
   //       const body: { error: string } = resp.data;
@@ -90,23 +143,31 @@ export class MerkleMembershipsProver
   //     }
   //   };
 
-  //   return Promise.all(
-  //     A.map((args: { treeRoot: Field; leafIndex: bigint }) =>
-  //       getRootAndWitness(args.treeRoot, args.leafIndex)
-  //     )(args)
+  //   return fromFailablePromise(
+  //     () =>
+  //       Promise.all(
+  //         A.map(
+  //           (args: {
+  //             treeRoot: Field;
+  //             leafIndex: bigint;
+  //           }): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> =>
+  //             getRootAndWitness(args.treeRoot, args.leafIndex)
+  //         )(args)
+  //       ),
+  //     'unable to fetch inputs'
   //   );
   // }
 
-  async fetchPublicInputs(
-    args: PublicInputArgs
-  ): Promise<Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
+  fetchPublicInputs(
+    args: MembershipsPublicInputArgs
+  ): TaskEither<string, Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
     const getRootAndWitness = async (
       treeRoot: Field,
       leafIndex: bigint
     ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-      const mkUrl = (treeRoot: Field) =>
-        `${this.cfg.baseUrl}/getLeaves/${treeRoot.toBigInt()}`;
-      const url = mkUrl(treeRoot);
+      const url = `${this.cfg.baseUrl}/getLeaves/${treeRoot
+        .toBigInt()
+        .toString()}`;
       const resp = await axios.get(url);
       if (resp.status == 200) {
         const body: { leaves: Array<string | undefined> } = resp.data;
@@ -122,30 +183,41 @@ export class MerkleMembershipsProver
       }
     };
 
-    return Promise.all(
-      A.map((args: { treeRoot: Field; leafIndex: bigint }) =>
-        getRootAndWitness(args.treeRoot, args.leafIndex)
-      )(args)
+    return fromFailablePromise(
+      () =>
+        Promise.all(
+          A.map(
+            (args: {
+              treeRoot: Field;
+              leafIndex: bigint;
+            }): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> =>
+              getRootAndWitness(args.treeRoot, args.leafIndex)
+          )(args)
+        ),
+      'unable to fetch inputs'
     );
   }
 
-  constructor(cfg: ProverConfiguration) {
+  constructor(cfg: MembershipsProverConfiguration) {
     this.cfg = cfg;
   }
 
-  static async initialize(
-    cfg: ProverConfiguration
-  ): Promise<MerkleMembershipsProver> {
-    return new MerkleMembershipsProver(cfg);
+  static readonly __interface_tag = 'fp';
+
+  static initialize(
+    cfg: MembershipsProverConfiguration
+  ): TaskEither<string, MembershipsProver> {
+    return TE.right(new MembershipsProver(cfg));
   }
 }
 
-MerkleMembershipsProver satisfies IMinAuthProverFactory<
-  MerkleMembershipsProver,
-  ProverConfiguration,
-  PublicInputArgs,
+MembershipsProver satisfies IMinAuthProverFactory<
+  MembershipsProver,
+  FpInterfaceType,
+  MembershipsProverConfiguration,
+  MembershipsPublicInputArgs,
   Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
   Array<Field>
 >;
 
-export default MerkleMembershipsProver;
+export default MembershipsProver;

@@ -1,26 +1,38 @@
 import { Field, JsonProof } from 'o1js';
-import { IMinAuthProver } from '@lib/plugin/pluginType';
+import {
+  IMinAuthProver,
+  IMinAuthProverFactory,
+  TsInterfaceType
+} from '@lib/plugin';
 import ProvePreimageProgram from '../common/hashPreimageProof';
 
 export class SimplePreimageProver
-  implements IMinAuthProver<unknown, Field, Field>
+  implements IMinAuthProver<TsInterfaceType, unknown, Field, Field>
 {
+  readonly __interface_tag: 'ts';
+
   async prove(publicInput: Field, secretInput: Field): Promise<JsonProof> {
-    console.log('simplePreimage proving for', publicInput, secretInput);
-    const proof = await ProvePreimageProgram.baseCase(
-      Field(publicInput),
-      Field(secretInput)
-    );
+    console.debug('proving', publicInput, secretInput);
+    const proof = await ProvePreimageProgram.baseCase(publicInput, secretInput);
     return proof.toJSON();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async fetchPublicInputs(_: unknown): Promise<Field> {
+  fetchPublicInputs(): Promise<Field> {
     throw 'not implemented, please query the `/roles` endpoint';
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  static async initialize(_: unknown): Promise<SimplePreimageProver> {
+  static readonly __interface_tag: 'ts';
+
+  static async initialize(): Promise<SimplePreimageProver> {
     return new SimplePreimageProver();
   }
 }
+
+SimplePreimageProver satisfies IMinAuthProverFactory<
+  SimplePreimageProver,
+  TsInterfaceType,
+  unknown,
+  unknown,
+  Field,
+  Field
+>;
