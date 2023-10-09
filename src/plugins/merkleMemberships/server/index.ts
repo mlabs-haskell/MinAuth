@@ -10,8 +10,8 @@ import {
   minaTreesProviderConfigurationSchema
 } from './treeStorage';
 import { RequestHandler } from 'express';
-import * as A from 'fp-ts/Array';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
+import { pipe } from "fp-ts/lib/function";
 
 const PoseidonHashSchema = z.bigint();
 
@@ -26,30 +26,25 @@ export class MerkleMembershipsPlugin
   private readonly storageProvider: TreesProvider
 
   customRoutes: Record<string, RequestHandler> = {
-    "/getRootAndWitness/:treeIndex/:leafIndex": async (req, resp) => {
+    "/getWitness/:treeRoot/:leafIndex": async (req, resp) => {
       if (req.method != 'GET') {
         resp.status(400);
         return;
       }
 
-      const treeIndex = Number(req.params['treeIndex']);
-      const leafIndex = Number(req.params['leafIndex']);
+      const treeRoot = Field.from(req.params['treeRoot']);
+      const leafIndex = BigInt(req.params['leafIndex']);
 
-      const trees = await this.storageProvider.getTrees()
+      const tree = O.toUndefined(await this.storageProvider.getTree(treeRoot));
 
-
-      if (treeIndex >= trees.length) {
+      if (tree === undefined) {
         resp.status(400).json({
           error: "tree not exists"
         });
         return;
       }
 
-      const tree = trees[treeIndex];
-
-      const root = await tree.getRoot();
-      const witness = O.toUndefined(await tree.getWitness(BigInt(leafIndex)));
-
+      const witness = O.toUndefined(await tree.getWitness(leafIndex));
 
       if (witness == undefined) {
         resp.status(400).json({
@@ -59,43 +54,42 @@ export class MerkleMembershipsPlugin
       }
 
       resp.status(200).json({
-        merkleRoot: root.toJSON(),
         witness: witness.toJSON(),
       });
-
     }
   }
 
   readonly publicInputArgsSchema = publicInputArgsSchema;
 
   async verifyAndGetOutput(
-    publicInputArgs: PublicInputArgs,
+    treeRoots: PublicInputArgs,
     serializedProof: JsonProof): Promise<Field> {
     const proof =
       Experimental.ZkProgram
         .Proof(ZkProgram.Program)
         .fromJSON(serializedProof);
 
-    const trees = await this.storageProvider.getTrees();
+    const computeHash = async () => {
+      let hash: O.Option<Field> = O.none;
 
-    const expectedHash = O.toUndefined(await
-      A.reduce(
-        Promise.resolve<O.Option<Field>>(O.none),
-        (accP: Promise<O.Option<Field>>, idx: bigint) =>
-          accP.then((acc: O.Option<Field>) =>
-            trees[Number(idx)]
-              .getRoot()
-              .then(
-                (root) =>
-                  Promise.resolve(
-                    O.some(
-                      O.match(
-                        () => root,
-                        (last: Field) => Poseidon.hash([root, last])
-                      )(acc)))
-              )
+      for (const rawRoot of treeRoots) {
+        const root = Field(rawRoot);
+        const tree = await this.storageProvider.getTree(root);
+        if (O.isNone(tree)) throw "tree not found";
+        hash =
+          pipe(
+            hash,
+            O.fold
+              (
+                () => root,
+                (current: Field) => Poseidon.hash([current, root])),
+            O.some
           )
-      )(publicInputArgs));
+      };
+      return hash;
+    }
+
+    const expectedHash = O.toUndefined(await computeHash());
 
     if (expectedHash === undefined ||
       expectedHash.equals(proof.publicOutput.recursiveHash).not().toBoolean())

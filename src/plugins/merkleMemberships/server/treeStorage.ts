@@ -1,10 +1,11 @@
 import { AccountUpdate, Field, MerkleTree, Mina, PrivateKey } from "o1js";
 import * as O from 'fp-ts/Option';
-import * as Program from "../common/merkleMembershipsProgram";
+import * as Program from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import fs from "fs/promises"
-import { TreeRootStorageContract } from "../common/treeRootStorageContract";
+import { TreeRootStorageContract } from '../common/treeRootStorageContract';
 import * as A from 'fp-ts/Array';
+import { Option } from 'fp-ts/Option';
 
 export interface TreeStorage {
   getRoot(): Promise<Field>;
@@ -173,7 +174,7 @@ export class MinaBlockchainTreeStorage
 }
 
 export interface TreesProvider {
-  getTrees(): Promise<Array<TreeStorage>>;
+  getTree(root: Field): Promise<Option<TreeStorage>>;
 }
 
 export const minaTreesProviderConfigurationSchema =
@@ -190,9 +191,16 @@ export type MinaTreesProviderConfiguration =
   z.infer<typeof minaTreesProviderConfigurationSchema>;
 
 export class MinaTreesProvider implements TreesProvider {
-  treeStorages: Array<TreeStorage>;
+  readonly treeStorages: Array<TreeStorage>;
 
-  async getTrees() { return this.treeStorages; }
+  async getTree(root: Field) {
+    for (const tree of this.treeStorages) {
+      const thisRoot = await tree.getRoot();
+      if (thisRoot.equals(root).toBoolean())
+        return O.some(tree);
+    }
+    return O.none;
+  }
 
   constructor(treeStorages: Array<TreeStorage>) {
     this.treeStorages = treeStorages;

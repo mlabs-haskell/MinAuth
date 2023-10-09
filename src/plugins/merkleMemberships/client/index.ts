@@ -11,7 +11,7 @@ export type ProverConfiguration = {
 
 export type PublicInputArgs =
   Array<{
-    treeIndex: bigint,
+    treeRoot: Field,
     leafIndex: bigint
   }>
 
@@ -58,22 +58,19 @@ export class MerkleMembershipsProver implements
 
   async fetchPublicInputs(args: PublicInputArgs):
     Promise<Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
-    const mkUrl = (treeIndex: bigint, leafIndex: bigint) =>
-      `${this.cfg.baseUrl}/getRootAndWitness/${treeIndex.toString()}/${leafIndex.toString()}`;
+    const mkUrl = (treeRoot: Field, leafIndex: bigint) =>
+      `${this.cfg.baseUrl}/getWitness/${treeRoot.toBigInt().toString()}/${leafIndex.toString()}`;
     const getRootAndWitness =
-      async (treeIndex: bigint, leafIndex: bigint):
+      async (treeRoot: Field, leafIndex: bigint):
         Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-        const url =
-          `${this.cfg.baseUrl}/getRootAndWitness/${treeIndex.toString()}/${leafIndex.toString()}`;
+        const url = mkUrl(treeRoot, leafIndex);
         const resp = await axios.get(url);
         if (resp.status == 200) {
           const body: {
-            merkleRoot: string,
             witness: string
           } = resp.data;
-          const merkleRoot = Field.fromJSON(body.merkleRoot);
           const witness = ZkProgram.TreeWitness.fromJSON(body.witness);
-          return [new ZkProgram.PublicInput({ merkleRoot }), witness];
+          return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
         } else {
           const body: { error: string } = resp.data;
           throw `error while getting root and witness: ${body.error}`;
@@ -82,10 +79,10 @@ export class MerkleMembershipsProver implements
 
     return Promise.all(A.map(
       (args: {
-        treeIndex: bigint,
+        treeRoot: Field,
         leafIndex: bigint
       }) =>
-        getRootAndWitness(args.treeIndex, args.leafIndex)
+        getRootAndWitness(args.treeRoot, args.leafIndex)
     )(args));
   }
 
