@@ -1,5 +1,5 @@
 import { Field, JsonProof } from 'o1js';
-import { IMinAuthProver } from '../../../library/plugin/pluginType';
+import { IMinAuthProver } from '@lib/plugin/pluginType';
 import ProvePreimageProgram from '../common/hashPreimageProof';
 
 

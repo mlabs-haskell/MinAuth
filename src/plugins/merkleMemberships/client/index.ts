@@ -1,6 +1,6 @@
 import { Field, JsonProof, SelfProof } from "o1js";
 import * as ZkProgram from "../common/merkleMembershipsProgram";
-import { IMinAuthProver, IMinAuthProverFactory } from '../../../library/plugin/pluginType';
+import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin/pluginType';
 import * as A from 'fp-ts/Array'
 import * as O from 'fp-ts/Option'
 import axios from "axios";

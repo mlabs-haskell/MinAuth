@@ -2,7 +2,7 @@ import { Experimental, Field, JsonProof, Poseidon } from "o1js";
 import * as O from 'fp-ts/Option';
 import z from 'zod';
 import { IMinAuthPlugin, IMinAuthPluginFactory }
-  from '../../../library/plugin/pluginType';
+  from '@lib/plugin/pluginType';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,

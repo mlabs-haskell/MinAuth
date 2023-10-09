@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { JsonProof, verify } from 'o1js';
-import { IMinAuthPlugin } from '../../../library/plugin/pluginType';
+import { IMinAuthPlugin } from '@lib/plugin/pluginType';
 import { readConfigurations, untypedPlugins } from './config';
 
 const configurations = readConfigurations();

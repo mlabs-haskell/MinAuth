@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import passport from 'passport';
 import passportJWT from 'passport-jwt';
 
-import MinAuthStrategy from '../library/server/minauthStrategy'
+import MinAuthStrategy from '@lib/server/minauthStrategy'
 
 const SECRET_KEY: string = 'YOUR_SECRET_KEY';
 

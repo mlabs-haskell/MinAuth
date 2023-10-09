@@ -1,10 +1,10 @@
-import { IMinAuthPlugin, IMinAuthPluginFactory } from '../../../library/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin/pluginType';
 import z from "zod";
 import env from 'env-var';
 import fs from 'fs';
 import yaml from 'yaml';
-import { SimplePreimagePlugin } from "../../../plugins/simplePreimage/server";
-import { MerkleMembershipsPlugin } from "../../../plugins/merkleMemberships/server";
+import { SimplePreimagePlugin } from "@plugins/simplePreimage/server";
+import { MerkleMembershipsPlugin } from "@plugins/merkleMemberships/server";
 
 // TODO: make use of heterogeneous lists
 /**

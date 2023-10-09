@@ -1,5 +1,5 @@
 import { JsonProof } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from '../../../library/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin/pluginType';
 import ProvePreimageProgram, { ProvePreimageProofClass } from '../common/hashPreimageProof';
 import { RequestHandler } from 'express';
 import { z } from 'zod';
