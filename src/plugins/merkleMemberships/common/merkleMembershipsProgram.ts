@@ -1,22 +1,22 @@
 import { Experimental, Field, MerkleWitness, Poseidon, SelfProof, Struct } from "o1js";
 
 // TODO how can this be made dynamic
-export const MERKLE_MEMBERSHIP_TREE_HEIGHT = 10;
+export const TREE_HEIGHT = 10;
 
-export class MerkleMembershipTreeWitness extends
-    MerkleWitness(MERKLE_MEMBERSHIP_TREE_HEIGHT)
+export class TreeWitness extends
+    MerkleWitness(TREE_HEIGHT)
 { }
 
-export class MerkleMembershipsPrivateInputs extends Struct({
-    witness: MerkleMembershipTreeWitness,
+export class PrivateInput extends Struct({
+    witness: TreeWitness,
     secret: Field
 }) { }
 
-export class MerkleRoot extends Struct({
-    root: Field
+export class PublicInput extends Struct({
+    merkleRoot: Field
 }) { }
 
-export class MerkleMembershipsOutput extends Struct({
+export class PublicOutput extends Struct({
     recursiveHash: Field,
 }) { };
 
@@ -25,41 +25,41 @@ export class MerkleMembershipsOutput extends Struct({
 // The output contains a recursive hash of all the roots for which the preimage is known.
 // output = hash(lastRoot + hash(secondLastRoot, ... hash(xLastRoot, lastRoot) ...)
 // Therefore the order of the proofs matters.
-export const MerkleMembershipsProgram = Experimental.ZkProgram({
-    publicInput: MerkleRoot,
-    publicOutput: MerkleMembershipsOutput,
+export const Program = Experimental.ZkProgram({
+    publicInput: PublicInput,
+    publicOutput: PublicOutput,
 
     methods: {
         baseCase: {
-            privateInputs: [MerkleMembershipsPrivateInputs],
-            method(publicInput: MerkleRoot,
-                privateInput: MerkleMembershipsPrivateInputs)
-                : MerkleMembershipsOutput {
+            privateInputs: [PrivateInput],
+            method(publicInput: PublicInput,
+                privateInput: PrivateInput)
+                : PublicOutput {
                 privateInput.witness
                     .calculateRoot(Poseidon.hash([privateInput.secret]))
-                    .assertEquals(publicInput.root);
-                return new MerkleMembershipsOutput({
-                    recursiveHash: publicInput.root
+                    .assertEquals(publicInput.merkleRoot);
+                return new PublicOutput({
+                    recursiveHash: publicInput.merkleRoot
                 });
             }
         },
 
         inductiveCase: {
-            privateInputs: [SelfProof, MerkleMembershipsPrivateInputs],
+            privateInputs: [SelfProof, PrivateInput],
             method(
-                publicInput: MerkleRoot,
-                earlierProof: SelfProof<MerkleRoot, MerkleMembershipsOutput>,
-                privateInput: MerkleMembershipsPrivateInputs
-            ): MerkleMembershipsOutput {
+                publicInput: PublicInput,
+                earlierProof: SelfProof<PublicInput, PublicOutput>,
+                privateInput: PrivateInput
+            ): PublicOutput {
                 earlierProof.verify();
                 privateInput.witness
                     .calculateRoot(Poseidon.hash([privateInput.secret]))
-                    .assertEquals(publicInput.root);
-                return new MerkleMembershipsOutput(
+                    .assertEquals(publicInput.merkleRoot);
+                return new PublicOutput(
                     {
                         recursiveHash:
                             Poseidon.hash([
-                                publicInput.root,
+                                publicInput.merkleRoot,
                                 earlierProof.publicOutput.recursiveHash
                             ])
                     });
@@ -68,4 +68,4 @@ export const MerkleMembershipsProgram = Experimental.ZkProgram({
     }
 });
 
-export default MerkleMembershipsProgram;
+export default Program;

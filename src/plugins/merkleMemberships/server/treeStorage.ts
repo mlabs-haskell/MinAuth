@@ -1,6 +1,6 @@
 import { AccountUpdate, Field, MerkleTree, Mina, PrivateKey } from "o1js";
 import * as O from 'fp-ts/Option';
-import { MERKLE_MEMBERSHIP_TREE_HEIGHT, MerkleMembershipTreeWitness } from "../common/merkleMembershipsProgram";
+import * as Program from "../common/merkleMembershipsProgram";
 import z from 'zod';
 import fs from "fs/promises"
 import { TreeRootStorageContract } from "../common/treeRootStorageContract";
@@ -8,21 +8,21 @@ import * as A from 'fp-ts/Array';
 
 export interface TreeStorage {
   getRoot(): Promise<Field>;
-  getWitness(leafIndex: bigint): Promise<O.Option<MerkleMembershipTreeWitness>>;
+  getWitness(leafIndex: bigint): Promise<O.Option<Program.TreeWitness>>;
   hasLeaf(leafIndex: bigint): Promise<boolean>;
   setLeaf(leafIndex: bigint, leaf: Field): Promise<void>;
 }
 
 export class InMemoryStorage implements TreeStorage {
   occupied: Set<bigint> = new Set();
-  merkleTree: MerkleTree = new MerkleTree(MERKLE_MEMBERSHIP_TREE_HEIGHT);
+  merkleTree: MerkleTree = new MerkleTree(Program.TREE_HEIGHT);
 
   async getRoot() { return this.merkleTree.getRoot(); }
 
-  async getWitness(leafIndex: bigint): Promise<O.Option<MerkleMembershipTreeWitness>> {
+  async getWitness(leafIndex: bigint): Promise<O.Option<Program.TreeWitness>> {
     return this.occupied.has(leafIndex) ?
       O.none :
-      O.some(new MerkleMembershipTreeWitness(this.merkleTree.getWitness(leafIndex)));
+      O.some(new Program.TreeWitness(this.merkleTree.getWitness(leafIndex)));
   }
 
   async hasLeaf(leafIndex: bigint): Promise<boolean> {
@@ -45,7 +45,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
         .reduce((acc: Record<number, string>, idx: bigint) => {
           acc[Number(idx)] =
             this.merkleTree
-              .getNode(MERKLE_MEMBERSHIP_TREE_HEIGHT, idx)
+              .getNode(Program.TREE_HEIGHT, idx)
               .toJSON();
           return acc;
         }
@@ -69,7 +69,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
     const storageObj: Record<number, string> =
       JSON.parse(content);
     const occupied: Set<bigint> = new Set();
-    const merkleTree: MerkleTree = new MerkleTree(MERKLE_MEMBERSHIP_TREE_HEIGHT);
+    const merkleTree: MerkleTree = new MerkleTree(Program.TREE_HEIGHT);
 
     Object
       .entries(storageObj)

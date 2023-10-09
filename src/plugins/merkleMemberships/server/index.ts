@@ -1,21 +1,27 @@
 import { Experimental, Field, JsonProof, Poseidon } from "o1js";
 import * as O from 'fp-ts/Option';
-import MerkleMembershipsProgram from "../common/merkleMembershipsProgram";
 import z from 'zod';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from "../../../library/plugin/pluginType";
-import { MinaTreesProvider, MinaTreesProviderConfiguration, TreesProvider, minaTreesProviderConfigurationSchema } from "./treeStorage";
-import { RequestHandler } from "express";
+import { IMinAuthPlugin, IMinAuthPluginFactory }
+  from '../../../library/plugin/pluginType';
+import {
+  MinaTreesProvider,
+  MinaTreesProviderConfiguration,
+  TreesProvider,
+  minaTreesProviderConfigurationSchema
+} from './treeStorage';
+import { RequestHandler } from 'express';
 import * as A from 'fp-ts/Array';
+import * as ZkProgram from '../common/merkleMembershipsProgram';
 
 const PoseidonHashSchema = z.bigint();
 
 const publicInputArgsSchema = z.array(PoseidonHashSchema);
 
-export type MerkleMembershipsPublicInputArgs =
+export type PublicInputArgs =
   z.infer<typeof publicInputArgsSchema>;
 
 export class MerkleMembershipsPlugin
-  implements IMinAuthPlugin<MerkleMembershipsPublicInputArgs, Field>{
+  implements IMinAuthPlugin<PublicInputArgs, Field>{
   readonly verificationKey: string;
   private readonly storageProvider: TreesProvider
 
@@ -53,7 +59,7 @@ export class MerkleMembershipsPlugin
       }
 
       resp.status(200).json({
-        root: root.toJSON(), 
+        merkleRoot: root.toJSON(),
         witness: witness.toJSON(),
       });
 
@@ -63,11 +69,11 @@ export class MerkleMembershipsPlugin
   readonly publicInputArgsSchema = publicInputArgsSchema;
 
   async verifyAndGetOutput(
-    publicInputArgs: MerkleMembershipsPublicInputArgs,
+    publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof): Promise<Field> {
     const proof =
       Experimental.ZkProgram
-        .Proof(MerkleMembershipsProgram)
+        .Proof(ZkProgram.Program)
         .fromJSON(serializedProof);
 
     const trees = await this.storageProvider.getTrees();
@@ -104,7 +110,7 @@ export class MerkleMembershipsPlugin
   }
 
   static async initialize(cfg: MinaTreesProviderConfiguration): Promise<MerkleMembershipsPlugin> {
-    const { verificationKey } = await MerkleMembershipsProgram.compile();
+    const { verificationKey } = await ZkProgram.Program.compile();
     const storage = await MinaTreesProvider.initialize(cfg);
     return new MerkleMembershipsPlugin(verificationKey, storage);
   }
@@ -114,7 +120,7 @@ export class MerkleMembershipsPlugin
 
 MerkleMembershipsPlugin satisfies
   IMinAuthPluginFactory<
-    IMinAuthPlugin<MerkleMembershipsPublicInputArgs, Field>,
+    IMinAuthPlugin<PublicInputArgs, Field>,
     MinaTreesProviderConfiguration,
-    MerkleMembershipsPublicInputArgs,
+    PublicInputArgs,
     Field>;
