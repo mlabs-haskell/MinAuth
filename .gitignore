@@ -131,3 +131,5 @@ dist
 
 # nix stuff
 .pre-commit-config.yaml
+result
+result-*
