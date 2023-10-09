@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bodyParser from 'body-parser';
 import passport from 'passport';
@@ -51,7 +51,7 @@ app.use(passport.initialize());
 app.use(bodyParser.json());
 
 // Debug Middleware to log errors
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error, _req: Request, res: Response) => {
   console.error('Error:', err.stack);
   res.status(500).send('Something broke!');
 });

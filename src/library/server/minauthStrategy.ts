@@ -57,6 +57,7 @@ class MinAuthStrategy extends Strategy {
     super();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   async authenticate(req: Request, _options?: any): Promise<void> {
     try {
       console.log('authenticating (strategy) with req:', req.body);

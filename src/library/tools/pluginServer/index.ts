@@ -13,7 +13,7 @@ console.log('configuration loaded', configurations);
  * @returns A record of plugin instances.
  */
 async function initializePlugins(): Promise<
-  Record<string, IMinAuthPlugin<any, any>>
+  Record<string, IMinAuthPlugin<unknown, unknown>>
 > {
   console.log('initializing plugins');
   return Object.entries(configurations.plugins).reduce(
@@ -33,12 +33,12 @@ initializePlugins()
     // The type of `POST /verifyProof` requests' body.
     interface VerifyProofData {
       plugin: string;
-      publicInputArgs: any;
+      publicInputArgs: unknown;
       proof: JsonProof;
     }
 
     // Use the appropriate plugin to verify the proof and return the output.
-    async function verifyProof(data: VerifyProofData): Promise<any> {
+    async function verifyProof(data: VerifyProofData): Promise<unknown> {
       const pluginName = data.plugin;
       console.info(`verifying proof using plugin ${pluginName}`);
       const pluginInstance = activePlugins[pluginName];

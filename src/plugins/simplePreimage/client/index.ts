@@ -2,7 +2,9 @@ import { Field, JsonProof } from 'o1js';
 import { IMinAuthProver } from '@lib/plugin/pluginType';
 import ProvePreimageProgram from '../common/hashPreimageProof';
 
-export class SimplePreimageProver implements IMinAuthProver<any, Field, Field> {
+export class SimplePreimageProver
+  implements IMinAuthProver<unknown, Field, Field>
+{
   async prove(publicInput: Field, secretInput: Field): Promise<JsonProof> {
     console.log('simplePreimage proving for', publicInput, secretInput);
     const proof = await ProvePreimageProgram.baseCase(
@@ -12,11 +14,13 @@ export class SimplePreimageProver implements IMinAuthProver<any, Field, Field> {
     return proof.toJSON();
   }
 
-  async fetchPublicInputs(_: any): Promise<Field> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async fetchPublicInputs(_: unknown): Promise<Field> {
     throw 'not implemented, please query the `/roles` endpoint';
   }
 
-  static async initialize(_: any): Promise<SimplePreimageProver> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static async initialize(_: unknown): Promise<SimplePreimageProver> {
     return new SimplePreimageProver();
   }
 }

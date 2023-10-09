@@ -12,7 +12,12 @@ import { MerkleMembershipsPlugin } from '@plugins/merkleMemberships/server';
  */
 export const untypedPlugins: Record<
   string,
-  IMinAuthPluginFactory<IMinAuthPlugin<any, any>, any, any, any>
+  IMinAuthPluginFactory<
+    IMinAuthPlugin<unknown, unknown>,
+    unknown,
+    unknown,
+    unknown
+  >
 > = {
   SimplePreimagePlugin: SimplePreimagePlugin,
   MerkleMembershipsPlugin: MerkleMembershipsPlugin
@@ -66,6 +71,6 @@ export function readConfigurations(): ServerConfigurations {
     return defaultConfiguration;
   }
   const configFileContent = fs.readFileSync(configFile, 'utf8');
-  const untypedConfig: any = yaml.parse(configFileContent);
+  const untypedConfig: unknown = yaml.parse(configFileContent);
   return serverConfigurationsSchema.parse(untypedConfig);
 }

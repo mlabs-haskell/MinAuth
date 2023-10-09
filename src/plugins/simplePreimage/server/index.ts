@@ -13,12 +13,12 @@ const roleMapping: Record<string, string> = {
     'member'
 };
 
-export class SimplePreimagePlugin implements IMinAuthPlugin<any, string> {
+export class SimplePreimagePlugin implements IMinAuthPlugin<unknown, string> {
   readonly verificationKey: string;
   private readonly roles: Record<string, string>;
 
   async verifyAndGetOutput(
-    _: any,
+    _: unknown,
     serializedProof: JsonProof
   ): Promise<string> {
     const proof = ProvePreimageProofClass.fromJSON(serializedProof);
@@ -26,7 +26,7 @@ export class SimplePreimagePlugin implements IMinAuthPlugin<any, string> {
     return role;
   }
 
-  publicInputArgsSchema: z.ZodType<any> = z.any();
+  publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
   customRoutes: Record<string, RequestHandler> = {
     '/roles': (_, res) => {
@@ -65,6 +65,6 @@ export class SimplePreimagePlugin implements IMinAuthPlugin<any, string> {
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
   SimplePreimagePlugin,
   { roles: Record<string, string> },
-  any,
+  unknown,
   string
 >;
