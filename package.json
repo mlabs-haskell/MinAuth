@@ -8,9 +8,10 @@
     "start-plugin-server": "nodemon src/library/tools/pluginServer/index.ts",
     "start-client": "nodemon src/headlessClient/client.ts",
     "build": "tsc",
-    "serve-api": "node ./dist/someServer/apiServer.js",
-    "serve-plugin-server": "node ./dist/library/tools/pluginServer.js",
-    "run-client": "node ./dist/headlessClient/client.js"
+    "serve-api": "node ./dist/src/someServer/apiServer.js",
+    "serve-plugin-server": "node ./dist/src/library/tools/pluginServer.js",
+    "run-client": "node ./dist/src/headlessClient/client.js",
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
   },
   "keywords": [],
   "author": "",

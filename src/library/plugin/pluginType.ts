@@ -1,5 +1,5 @@
-import { RequestHandler } from "express";
-import { JsonProof } from "o1js";
+import { RequestHandler } from 'express';
+import { JsonProof } from 'o1js';
 import z from 'zod';
 
 // Interfaces used on the server side.
@@ -9,7 +9,8 @@ export interface IMinAuthPlugin<PublicInputArgs, Output> {
   // the output.
   verifyAndGetOutput(
     publicInputArgs: PublicInputArgs,
-    serializedProof: JsonProof): Promise<Output>;
+    serializedProof: JsonProof
+  ): Promise<Output>;
 
   // The schema of the arguments for fetching public inputs.
   readonly publicInputArgsSchema: z.ZodType<PublicInputArgs>;
@@ -31,9 +32,11 @@ export interface IMinAuthPlugin<PublicInputArgs, Output> {
 // TODO: generic type inference?
 export interface IMinAuthPluginFactory<
   T extends IMinAuthPlugin<PublicInputArgs, Output>,
-  Configuration, PublicInputArgs, Output> {
-
-  // Initialize the plugin given the configuration. The underlying zk program is 
+  Configuration,
+  PublicInputArgs,
+  Output
+> {
+  // Initialize the plugin given the configuration. The underlying zk program is
   // typically compiled here.
   initialize(cfg: Configuration): Promise<T>;
 
@@ -43,19 +46,20 @@ export interface IMinAuthPluginFactory<
 // Interfaces used on the client side.
 
 export interface IMinAuthProver<PublicInputArgs, PublicInput, PrivateInput> {
-  prove(publicInput: PublicInput, secretInput: PrivateInput): Promise<JsonProof>;
+  prove(
+    publicInput: PublicInput,
+    secretInput: PrivateInput
+  ): Promise<JsonProof>;
 
   fetchPublicInputs(args: PublicInputArgs): Promise<PublicInput>;
 }
 
 export interface IMinAuthProverFactory<
-  T extends IMinAuthProver<
-    PublicInputArgs,
-    PublicInput,
-    PrivateInput>,
+  T extends IMinAuthProver<PublicInputArgs, PublicInput, PrivateInput>,
   Configuration,
   PublicInputArgs,
   PublicInput,
-  PrivateInput> {
+  PrivateInput
+> {
   initialize(cfg: Configuration): Promise<T>;
 }

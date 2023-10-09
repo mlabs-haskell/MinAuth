@@ -1,8 +1,7 @@
-import { Experimental, Field, JsonProof, Poseidon } from "o1js";
+import { Experimental, Field, JsonProof, Poseidon } from 'o1js';
 import * as O from 'fp-ts/Option';
 import z from 'zod';
-import { IMinAuthPlugin, IMinAuthPluginFactory }
-  from '@lib/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin/pluginType';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,
@@ -11,22 +10,22 @@ import {
 } from './treeStorage';
 import { RequestHandler } from 'express';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
-import { pipe } from "fp-ts/lib/function";
+import { pipe } from 'fp-ts/lib/function';
 
 const PoseidonHashSchema = z.bigint();
 
 const publicInputArgsSchema = z.array(PoseidonHashSchema);
 
-export type PublicInputArgs =
-  z.infer<typeof publicInputArgsSchema>;
+export type PublicInputArgs = z.infer<typeof publicInputArgsSchema>;
 
 export class MerkleMembershipsPlugin
-  implements IMinAuthPlugin<PublicInputArgs, Field>{
+  implements IMinAuthPlugin<PublicInputArgs, Field>
+{
   readonly verificationKey: string;
-  private readonly storageProvider: TreesProvider
+  private readonly storageProvider: TreesProvider;
 
   customRoutes: Record<string, RequestHandler> = {
-    "/getWitness/:treeRoot/:leafIndex": async (req, resp) => {
+    '/getWitness/:treeRoot/:leafIndex': async (req, resp) => {
       if (req.method != 'GET') {
         resp.status(400);
         return;
@@ -39,7 +38,7 @@ export class MerkleMembershipsPlugin
 
       if (tree === undefined) {
         resp.status(400).json({
-          error: "tree not exists"
+          error: 'tree not exists'
         });
         return;
       }
@@ -48,26 +47,26 @@ export class MerkleMembershipsPlugin
 
       if (witness == undefined) {
         resp.status(400).json({
-          error: "leaf not exists"
+          error: 'leaf not exists'
         });
         return;
       }
 
       resp.status(200).json({
-        witness: witness.toJSON(),
+        witness: witness.toJSON()
       });
     }
-  }
+  };
 
   readonly publicInputArgsSchema = publicInputArgsSchema;
 
   async verifyAndGetOutput(
     treeRoots: PublicInputArgs,
-    serializedProof: JsonProof): Promise<Field> {
-    const proof =
-      Experimental.ZkProgram
-        .Proof(ZkProgram.Program)
-        .fromJSON(serializedProof);
+    serializedProof: JsonProof
+  ): Promise<Field> {
+    const proof = Experimental.ZkProgram.Proof(ZkProgram.Program).fromJSON(
+      serializedProof
+    );
 
     const computeHash = async () => {
       let hash: O.Option<Field> = O.none;
@@ -75,25 +74,26 @@ export class MerkleMembershipsPlugin
       for (const rawRoot of treeRoots) {
         const root = Field(rawRoot);
         const tree = await this.storageProvider.getTree(root);
-        if (O.isNone(tree)) throw "tree not found";
-        hash =
-          pipe(
-            hash,
-            O.fold
-              (
-                () => root,
-                (current: Field) => Poseidon.hash([current, root])),
-            O.some
-          )
-      };
+        if (O.isNone(tree)) throw 'tree not found';
+        hash = pipe(
+          hash,
+          O.fold(
+            () => root,
+            (current: Field) => Poseidon.hash([current, root])
+          ),
+          O.some
+        );
+      }
       return hash;
-    }
+    };
 
     const expectedHash = O.toUndefined(await computeHash());
 
-    if (expectedHash === undefined ||
-      expectedHash.equals(proof.publicOutput.recursiveHash).not().toBoolean())
-      throw "unexpected recursive hash";
+    if (
+      expectedHash === undefined ||
+      expectedHash.equals(proof.publicOutput.recursiveHash).not().toBoolean()
+    )
+      throw 'unexpected recursive hash';
 
     return expectedHash;
   }
@@ -103,7 +103,9 @@ export class MerkleMembershipsPlugin
     this.storageProvider = storageProvider;
   }
 
-  static async initialize(cfg: MinaTreesProviderConfiguration): Promise<MerkleMembershipsPlugin> {
+  static async initialize(
+    cfg: MinaTreesProviderConfiguration
+  ): Promise<MerkleMembershipsPlugin> {
     const { verificationKey } = await ZkProgram.Program.compile();
     const storage = await MinaTreesProvider.initialize(cfg);
     return new MerkleMembershipsPlugin(verificationKey, storage);
@@ -112,9 +114,9 @@ export class MerkleMembershipsPlugin
   static readonly configurationSchema = minaTreesProviderConfigurationSchema;
 }
 
-MerkleMembershipsPlugin satisfies
-  IMinAuthPluginFactory<
-    IMinAuthPlugin<PublicInputArgs, Field>,
-    MinaTreesProviderConfiguration,
-    PublicInputArgs,
-    Field>;
+MerkleMembershipsPlugin satisfies IMinAuthPluginFactory<
+  IMinAuthPlugin<PublicInputArgs, Field>,
+  MinaTreesProviderConfiguration,
+  PublicInputArgs,
+  Field
+>;

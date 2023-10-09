@@ -1,4 +1,11 @@
-import { Permissions, DeployArgs, Field, SmartContract, State, state}  from "o1js";
+import {
+  Permissions,
+  DeployArgs,
+  Field,
+  SmartContract,
+  State,
+  state
+} from 'o1js';
 
 export class TreeRootStorageContract extends SmartContract {
   @state(Field) treeRoot = State<Field>();
@@ -9,7 +16,7 @@ export class TreeRootStorageContract extends SmartContract {
     this.account.permissions.set({
       ...Permissions.allImpossible(),
       editState: Permissions.signature(),
-      access: Permissions.signature(),
+      access: Permissions.signature()
     });
   }
 }
