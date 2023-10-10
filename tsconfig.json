@@ -2,10 +2,7 @@
   "compilerOptions": {
     "target": "es2016",
     "module": "commonjs",
-    "lib": [
-      "dom",
-      "esnext"
-    ],
+    "lib": ["dom", "esnext"],
     "outDir": "./dist",
     "rootDir": ".",
     "strict": true,
@@ -23,15 +20,9 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./",
     "paths": {
-      "@lib/*": [
-        "src/library/*"
-      ],
-      "@plugins/*": [
-        "src/plugins/*"
-      ]
+      "@lib/*": ["src/library/*"],
+      "@plugins/*": ["src/plugins/*"]
     }
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"]
 }
