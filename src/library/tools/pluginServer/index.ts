@@ -43,7 +43,7 @@ initializePlugins()
       console.info(`verifying proof using plugin ${pluginName}`);
       const pluginInstance = activePlugins[pluginName];
       if (!pluginInstance) throw `plugin ${pluginName} not found`;
-      // Step 1: check that the proof was generated using a certain verification key.
+      // Step 1: check that the proof is valid against the given verification key.
       const proofValid = await verify(
         data.proof,
         pluginInstance.verificationKey

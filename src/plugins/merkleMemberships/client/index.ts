@@ -34,6 +34,7 @@ export class MerkleMembershipsProver
     if (publicInput.length != secretInput.length)
       throw 'unmatched public/secret input list';
 
+    // For each pair of inputs (secret and public) add another layer of the recursive proof
     const proof: O.Option<ZkProof> = await A.reduce(
       Promise.resolve<O.Option<ZkProof>>(O.none),
       (
