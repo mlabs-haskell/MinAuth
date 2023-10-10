@@ -1,4 +1,4 @@
-import { Field, JsonProof, SelfProof } from 'o1js';
+import { Field, JsonProof, MerkleTree, SelfProof } from 'o1js';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
 import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin/pluginType';
 import * as A from 'fp-ts/Array';
@@ -64,24 +64,56 @@ export class MerkleMembershipsProver
     )(proof);
   }
 
+  // async fetchPublicInputs(
+  //   args: PublicInputArgs
+  // ): Promise<Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
+  //   const mkUrl = (treeRoot: Field, leafIndex: bigint) =>
+  //     `${this.cfg.baseUrl}/getWitness/${treeRoot
+  //       .toBigInt()
+  //       .toString()}/${leafIndex.toString()}`;
+  //   const getRootAndWitness = async (
+  //     treeRoot: Field,
+  //     leafIndex: bigint
+  //   ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
+  //     const url = mkUrl(treeRoot, leafIndex);
+  //     const resp = await axios.get(url);
+  //     if (resp.status == 200) {
+  //       const body: {
+  //         witness: string;
+  //       } = resp.data;
+  //       const witness = ZkProgram.TreeWitness.fromJSON(body.witness);
+  //       return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
+  //     } else {
+  //       const body: { error: string } = resp.data;
+  //       throw `error while getting root and witness: ${body.error}`;
+  //     }
+  //   };
+
+  //   return Promise.all(
+  //     A.map((args: { treeRoot: Field; leafIndex: bigint }) =>
+  //       getRootAndWitness(args.treeRoot, args.leafIndex)
+  //     )(args)
+  //   );
+  // }
+
   async fetchPublicInputs(
     args: PublicInputArgs
   ): Promise<Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
-    const mkUrl = (treeRoot: Field, leafIndex: bigint) =>
-      `${this.cfg.baseUrl}/getWitness/${treeRoot
-        .toBigInt()
-        .toString()}/${leafIndex.toString()}`;
     const getRootAndWitness = async (
       treeRoot: Field,
       leafIndex: bigint
     ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-      const url = mkUrl(treeRoot, leafIndex);
+      const mkUrl = (treeRoot: Field) =>
+        `${this.cfg.baseUrl}/getLeaves/${treeRoot.toBigInt()}`;
+      const url = mkUrl(treeRoot);
       const resp = await axios.get(url);
       if (resp.status == 200) {
-        const body: {
-          witness: string;
-        } = resp.data;
-        const witness = ZkProgram.TreeWitness.fromJSON(body.witness);
+        const body: { leaves: Array<string | undefined> } = resp.data;
+        const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
+        body.leaves.forEach((leaf, index) => {
+          if (leaf !== undefined) tree.setLeaf(BigInt(index), Field.from(leaf));
+        });
+        const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
         return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
       } else {
         const body: { error: string } = resp.data;

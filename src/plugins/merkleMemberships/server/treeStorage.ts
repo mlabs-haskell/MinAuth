@@ -12,6 +12,7 @@ export interface TreeStorage {
   getWitness(leafIndex: bigint): Promise<O.Option<Program.TreeWitness>>;
   hasLeaf(leafIndex: bigint): Promise<boolean>;
   setLeaf(leafIndex: bigint, leaf: Field): Promise<void>;
+  getLeaves(): Promise<Array<O.Option<Field>>>;
 }
 
 export class InMemoryStorage implements TreeStorage {
@@ -36,6 +37,19 @@ export class InMemoryStorage implements TreeStorage {
     this.occupied.add(leafIndex);
     this.merkleTree.setLeaf(leafIndex, leaf);
   }
+
+  async getLeaves(): Promise<Array<O.Option<Field>>> {
+    const leaves: Array<O.Option<Field>> = new Array(
+      Number(this.merkleTree.leafCount)
+    );
+
+    for (let i = 0; i < this.merkleTree.leafCount; i++)
+      leaves[i] = this.occupied.has(BigInt(i))
+        ? O.some(this.merkleTree.getNode(0, BigInt(i)))
+        : O.none;
+
+    return leaves;
+  }
 }
 
 export class PersistentInMemoryStorage extends InMemoryStorage {
@@ -44,9 +58,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
   async persist() {
     const storageObj = Array.from(this.occupied.values()).reduce(
       (acc: Record<number, string>, idx: bigint) => {
-        acc[Number(idx)] = this.merkleTree
-          .getNode(Program.TREE_HEIGHT, idx)
-          .toJSON();
+        acc[Number(idx)] = this.merkleTree.getNode(0, idx).toJSON();
         return acc;
       },
       {}
@@ -125,6 +137,10 @@ export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
   async setLeaf(leafIndex: bigint, leaf: Field): Promise<void> {
     this.underlyingStorage.setLeaf(leafIndex, leaf);
     await this.updateTreeRootOnChainIfNecessary();
+  }
+
+  async getLeaves(): Promise<O.Option<Field>[]> {
+    return this.underlyingStorage.getLeaves();
   }
 }
 

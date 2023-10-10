@@ -1,10 +1,12 @@
 import { Experimental, Field, JsonProof, Poseidon } from 'o1js';
 import * as O from 'fp-ts/Option';
+import * as A from 'fp-ts/Array';
 import z from 'zod';
 import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin/pluginType';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,
+  TreeStorage,
   TreesProvider,
   minaTreesProviderConfigurationSchema
 } from './treeStorage';
@@ -25,36 +27,52 @@ export class MerkleMembershipsPlugin
   private readonly storageProvider: TreesProvider;
 
   customRoutes: Record<string, RequestHandler> = {
-    '/getWitness/:treeRoot/:leafIndex': async (req, resp) => {
+    // '/getWitness/:treeRoot/:leafIndex': async (req, resp) => {
+    //   if (req.method != 'GET') {
+    //     resp.status(400);
+    //     return;
+    //   }
+    //   const treeRoot = Field.from(req.params['treeRoot']);
+    //   const leafIndex = BigInt(req.params['leafIndex']);
+    //   const tree = O.toUndefined(await this.storageProvider.getTree(treeRoot));
+    //   if (tree === undefined) {
+    //     resp.status(400).json({
+    //       error: 'tree not exists'
+    //     });
+    //     return;
+    //   }
+    //   const witness = O.toUndefined(await tree.getWitness(leafIndex));
+    //   if (witness == undefined) {
+    //     resp.status(400).json({
+    //       error: 'leaf not exists'
+    //     });
+    //     return;
+    //   }
+    //   resp.status(200).json({
+    //     witness: witness.toJSON()
+    //   });
+    // }
+
+    '/getLeaves/:treeRoot': async (req, resp) => {
       if (req.method != 'GET') {
         resp.status(400);
         return;
       }
 
       const treeRoot = Field.from(req.params['treeRoot']);
-      const leafIndex = BigInt(req.params['leafIndex']);
 
-      const tree = O.toUndefined(await this.storageProvider.getTree(treeRoot));
+      return O.match(
+        () => {
+          resp.status(400).json({
+            error: 'tree not exists'
+          });
+        },
+        async (tree: TreeStorage) => {
+          const leaves = A.map(O.toUndefined)(await tree.getLeaves());
 
-      if (tree === undefined) {
-        resp.status(400).json({
-          error: 'tree not exists'
-        });
-        return;
-      }
-
-      const witness = O.toUndefined(await tree.getWitness(leafIndex));
-
-      if (witness == undefined) {
-        resp.status(400).json({
-          error: 'leaf not exists'
-        });
-        return;
-      }
-
-      resp.status(200).json({
-        witness: witness.toJSON()
-      });
+          resp.status(200).json({ leaves });
+        }
+      )(await this.storageProvider.getTree(treeRoot));
     }
   };
 
