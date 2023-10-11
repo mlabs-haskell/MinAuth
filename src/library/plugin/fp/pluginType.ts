@@ -34,17 +34,6 @@ export interface WithInterfaceTag<IType extends InterfaceKind> {
   readonly __interface_tag: IType;
 }
 
-export function isFpInterface<T extends WithInterfaceTag<FpInterfaceType>>(
-  o: unknown
-): o is T {
-  return (
-    typeof o === 'object' &&
-    o !== null &&
-    '__interface_tag' in o &&
-    o['__interface_tag'] == fpInterfaceTag
-  );
-}
-
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
   PublicInputArgs,
