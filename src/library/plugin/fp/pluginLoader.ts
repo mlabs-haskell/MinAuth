@@ -20,6 +20,11 @@ import env from 'env-var';
 import { existsSync } from 'fs';
 import fs from 'fs/promises';
 import { fromFailablePromise, liftZodParseResult } from '@utils/fp/TaskEither';
+import {
+  IProofCache,
+  IProofCacheProvider,
+  toTsCheckCachedProof
+} from './proofCache';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
@@ -102,7 +107,8 @@ const validatePluginCfg = (
 
 const initializePlugin = (
   pluginModulePath: string,
-  pluginCfg: unknown
+  pluginCfg: unknown,
+  proofCache: IProofCache
 ): TaskEither<string, UntypedPluginInstance> =>
   pipe(
     TE.Do,
@@ -117,11 +123,14 @@ const initializePlugin = (
         typedPluginCfg
       }): TaskEither<string, UntypedPluginInstance> =>
         pluginFactory.__interface_tag === fpInterfaceTag
-          ? pluginFactory.initialize(typedPluginCfg)
+          ? pluginFactory.initialize(typedPluginCfg, proofCache.checkEachProof)
           : pluginFactory.__interface_tag === tsInterfaceTag
           ? pipe(
               fromFailablePromise(() =>
-                pluginFactory.initialize(typedPluginCfg)
+                pluginFactory.initialize(
+                  typedPluginCfg,
+                  toTsCheckCachedProof(proofCache.checkEachProof)
+                )
               ),
               TE.map(
                 (obj): UntypedPluginInstance => ({
@@ -140,7 +149,8 @@ const initializePlugin = (
   );
 
 export const initializePlugins = (
-  cfg: Configuration
+  cfg: Configuration,
+  proofCacheProvider: IProofCacheProvider
 ): TaskEither<string, ActivePlugins> => {
   const resolvePluginModulePath =
     (name: string, optionalPath?: string) => () => {
@@ -162,9 +172,14 @@ export const initializePlugins = (
     }
   ): TaskEither<string, UntypedPluginInstance> =>
     pipe(
-      TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path)),
-      TE.chain((modulePath: string) =>
-        initializePlugin(modulePath, pluginCfg.config ?? {})
+      TE.Do,
+      TE.bind('modulePath', () =>
+        TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
+      ),
+      TE.tap(() => proofCacheProvider.initCacheFor(pluginName)),
+      TE.bind('proofCache', () => proofCacheProvider.getCacheOf(pluginName)),
+      TE.chain(({ modulePath, proofCache }) =>
+        initializePlugin(modulePath, pluginCfg.config ?? {}, proofCache)
       )
     );
 

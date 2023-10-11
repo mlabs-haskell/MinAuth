@@ -2,6 +2,7 @@ import { RequestHandler } from 'express';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import { JsonProof } from 'o1js';
 import z from 'zod';
+import { CachedProof } from './proofCache';
 
 // Interfaces used on the server side.
 
@@ -13,14 +14,21 @@ export const fpInterfaceTag: FpInterfaceType = 'fp';
 export type TsInterfaceType = 'ts';
 export const tsInterfaceTag: TsInterfaceType = 'ts';
 
-export type RetType<
+export type ChooseType<
   InterfaceType extends InterfaceKind,
-  T
+  FpType,
+  TsType
 > = InterfaceType extends FpInterfaceType
-  ? TaskEither<string, T>
+  ? FpType
   : InterfaceType extends TsInterfaceType
-  ? Promise<T>
+  ? TsType
   : never;
+
+export type RetType<InterfaceType extends InterfaceKind, T> = ChooseType<
+  InterfaceType,
+  TaskEither<string, T>,
+  Promise<T>
+>;
 
 export interface WithInterfaceTag<IType extends InterfaceKind> {
   readonly __interface_tag: IType;
@@ -76,7 +84,12 @@ export interface IMinAuthPluginFactory<
 > extends WithInterfaceTag<InterfaceType> {
   // Initialize the plugin given the configuration. The underlying zk program is
   // typically compiled here.
-  initialize(cfg: Configuration): RetType<InterfaceType, PluginType>;
+  initialize(
+    cfg: Configuration,
+    checkCacheProofs: (
+      check: (p: CachedProof) => RetType<InterfaceType, boolean>
+    ) => RetType<InterfaceType, void>
+  ): RetType<InterfaceType, PluginType>;
 
   readonly configurationSchema: z.ZodType<Configuration>;
 }
