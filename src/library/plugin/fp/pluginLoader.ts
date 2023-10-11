@@ -176,10 +176,17 @@ export const initializePlugins = (
       TE.bind('modulePath', () =>
         TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
       ),
+      TE.tapIO(({ modulePath }) => () => {
+        console.info(`loading plugin ${pluginName} from ${modulePath}`);
+        console.log(pluginCfg.config);
+      }),
       TE.tap(() => proofCacheProvider.initCacheFor(pluginName)),
       TE.bind('proofCache', () => proofCacheProvider.getCacheOf(pluginName)),
       TE.chain(({ modulePath, proofCache }) =>
         initializePlugin(modulePath, pluginCfg.config ?? {}, proofCache)
+      ),
+      TE.mapLeft(
+        (err) => `error while initializing plugin ${pluginName}: ${err}`
       )
     );
 
