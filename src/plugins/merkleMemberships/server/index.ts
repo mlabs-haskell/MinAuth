@@ -4,7 +4,6 @@ import * as A from 'fp-ts/Array';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import {
-  FpInterfaceType,
   IMinAuthPlugin,
   IMinAuthPluginFactory
 } from '@lib/plugin/fp/pluginType';
@@ -30,6 +29,7 @@ import {
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
 import * as S from 'fp-ts/Semigroup';
+import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 
 const PoseidonHashSchema = z.bigint();
 
@@ -222,8 +222,8 @@ export class MerkleMembershipsPlugin
 }
 
 MerkleMembershipsPlugin satisfies IMinAuthPluginFactory<
-  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Field>,
   FpInterfaceType,
+  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Field>,
   MinaTreesProviderConfiguration,
   PublicInputArgs,
   Field

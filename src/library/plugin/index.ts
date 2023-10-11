@@ -4,7 +4,6 @@ import * as expressCore from 'express-serve-static-core';
 import * as fpUtils from './fp/utils';
 import { JsonProof } from 'o1js';
 import { launchTE } from '@utils/fp/TaskEither';
-import { IProofCacheProvider } from './fp/proofCache';
 
 export * from './fp/pluginType';
 export {
@@ -13,19 +12,21 @@ export {
   UntypedPluginInstance,
   UntypedPluginFactory,
   UntypedPluginModule,
-  ActivePlugins
+  ActivePlugins,
+  UntypedProofCacheProvider
 } from './fp/pluginLoader';
 export {
   IProofCacheProvider,
   InMemoryProofCacheProvider
 } from './fp/proofCache';
+export * from './fp/interfaceKind';
 
 export const readConfiguration = (cfgPath?: string): Promise<Configuration> =>
   launchTE(fpPluginLoader.readConfiguration(cfgPath));
 
 export const initializePlugins = (
   cfg: Configuration,
-  proofCacheProvider: IProofCacheProvider
+  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider
 ): Promise<ActivePlugins> =>
   launchTE(fpPluginLoader.initializePlugins(cfg, proofCacheProvider));
 

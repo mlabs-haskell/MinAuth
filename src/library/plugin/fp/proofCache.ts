@@ -9,7 +9,17 @@ import * as O from 'fp-ts/Option';
 import * as R from 'fp-ts/Record';
 import { IORef, newIORef } from 'fp-ts/lib/IORef';
 import * as IO from 'fp-ts/IO';
-import { fromFailablePromise } from '@utils/fp/TaskEither';
+import {
+  FpInterfaceType,
+  InterfaceKind,
+  RetType,
+  TsInterfaceType,
+  WithInterfaceTag
+} from './interfaceKind';
+import {
+  fromFailablePromise,
+  fromFailableVoidPromise
+} from '@utils/fp/TaskEither';
 import * as E from 'fp-ts/Either';
 
 export interface CachedProof {
@@ -19,41 +29,75 @@ export interface CachedProof {
 
 export type ProofKey = string;
 
-export type FpCheckCachedProofs = (
-  check: (p: CachedProof) => TaskEither<string, boolean>
-) => TaskEither<string, void>;
+export type CheckCachedProofs<I extends InterfaceKind> = (
+  check: (p: CachedProof) => RetType<I, boolean>
+) => RetType<I, void>;
 
-export type TsCheckCachedProofs = (
-  check: (p: CachedProof) => Promise<boolean>
-) => Promise<void>;
+export interface IProofCache<I extends InterfaceKind>
+  extends WithInterfaceTag<I> {
+  storeProof(p: CachedProof): RetType<I, string>;
+  getProof(k: ProofKey): RetType<I, Option<CachedProof>>;
+  invalidateProof(k: ProofKey): RetType<I, void>;
 
-export interface IProofCache {
-  storeProof(p: CachedProof): TaskEither<string, ProofKey>;
-  getProof(k: ProofKey): TaskEither<string, Option<CachedProof>>;
-  invalidateProof(k: ProofKey): TaskEither<string, void>;
-
-  checkEachProof: FpCheckCachedProofs;
+  checkEachProof: CheckCachedProofs<I>;
 }
 
-export const toTsCheckCachedProof: (
-  _: FpCheckCachedProofs
-) => TsCheckCachedProofs =
-  (f: FpCheckCachedProofs) =>
-  (check: (p: CachedProof) => Promise<boolean>): Promise<void> =>
-    f((p: CachedProof) => fromFailablePromise(() => check(p)))().then(
+export interface IProofCacheProvider<I extends InterfaceKind>
+  extends WithInterfaceTag<I> {
+  getCacheOf(plugin: string): RetType<I, IProofCache<I>>;
+
+  initCacheFor(plugin: string): RetType<I, void>;
+}
+
+export const tsToFpProofCacheProvider = (
+  i: IProofCacheProvider<TsInterfaceType>
+): IProofCacheProvider<FpInterfaceType> => {
+  return {
+    __interface_tag: 'fp',
+    getCacheOf: (plugin) =>
+      fromFailablePromise(() => i.getCacheOf(plugin).then(tsToFpProofCache)),
+    initCacheFor: (plugin) =>
+      fromFailableVoidPromise(() => i.initCacheFor(plugin))
+  };
+};
+
+const tsToFpProofCache = (
+  i: IProofCache<TsInterfaceType>
+): IProofCache<FpInterfaceType> => {
+  return {
+    __interface_tag: 'fp',
+    storeProof: (p) => fromFailablePromise(() => i.storeProof(p)),
+    getProof: (k) => fromFailablePromise(() => i.getProof(k)),
+    invalidateProof: (k) => fromFailableVoidPromise(() => i.invalidateProof(k)),
+    checkEachProof: (f) =>
+      fromFailableVoidPromise(() =>
+        i.checkEachProof((p) =>
+          f(p)().then(
+            E.match(
+              (err) => Promise.reject(err),
+              (v) => Promise.resolve(v)
+            )
+          )
+        )
+      )
+  };
+};
+
+export const fpToTsCheckCachedProofs = (
+  f: CheckCachedProofs<FpInterfaceType>
+): CheckCachedProofs<TsInterfaceType> => {
+  return (check) =>
+    f((p) => fromFailablePromise(() => check(p)))().then(
       E.match(
         (err) => Promise.reject(err),
-        () => Promise.resolve()
+        (v) => Promise.resolve(v)
       )
     );
+};
 
-export interface IProofCacheProvider {
-  getCacheOf(plugin: string): TaskEither<string, IProofCache>;
+class InMemoryProofCache implements IProofCache<FpInterfaceType> {
+  readonly __interface_tag = 'fp';
 
-  initCacheFor(plugin: string): TaskEither<string, void>;
-}
-
-class InMemoryProofCache implements IProofCache {
   private cache: IORef<Record<ProofKey, CachedProof>>;
 
   constructor(cache: IORef<Record<ProofKey, CachedProof>>) {
@@ -98,10 +142,14 @@ class InMemoryProofCache implements IProofCache {
   }
 }
 
-export class InMemoryProofCacheProvider implements IProofCacheProvider {
+export class InMemoryProofCacheProvider
+  implements IProofCacheProvider<FpInterfaceType>
+{
+  readonly __interface_tag = 'fp';
+
   private store: Record<string, Record<ProofKey, CachedProof>> = {};
 
-  getCacheOf(plugin: string): TaskEither<string, IProofCache> {
+  getCacheOf(plugin: string): TaskEither<string, IProofCache<FpInterfaceType>> {
     return pipe(
       TE.fromOption(() => `cache for plugin ${plugin} not initialized`)(
         R.lookup(plugin)(this.store)

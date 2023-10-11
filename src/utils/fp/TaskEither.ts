@@ -23,6 +23,19 @@ export function fromFailablePromise<T>(
     );
 }
 
+export function fromFailableVoidPromise(
+  p: () => Promise<void>,
+  msg?: string
+): TaskEither<string, void> {
+  const errMsg = (err: unknown) =>
+    msg ? `${msg}: ${String(err)}` : String(err);
+  return () =>
+    p().then(
+      () => E.right(undefined),
+      (err) => E.left(errMsg(err))
+    );
+}
+
 export function guardPassthrough<E>(
   cond: boolean,
   err: E

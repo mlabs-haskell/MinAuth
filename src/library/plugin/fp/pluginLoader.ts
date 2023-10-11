@@ -1,11 +1,8 @@
 import * as path from 'path';
 import {
-  FpInterfaceType,
   IMinAuthPlugin,
   IMinAuthPluginFactory,
-  TsInterfaceType,
-  fpInterfaceTag,
-  tsInterfaceTag
+  tsToFpMinAuthPluginFactory
 } from './pluginType';
 import * as R from 'fp-ts/Record';
 import { pipe } from 'fp-ts/function';
@@ -23,8 +20,14 @@ import { fromFailablePromise, liftZodParseResult } from '@utils/fp/TaskEither';
 import {
   IProofCache,
   IProofCacheProvider,
-  toTsCheckCachedProof
+  tsToFpProofCacheProvider
 } from './proofCache';
+import {
+  FpInterfaceType,
+  TsInterfaceType,
+  fpInterfaceTag,
+  tsInterfaceTag
+} from './interfaceKind';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
@@ -76,15 +79,15 @@ export interface UntypedPluginInstance
 
 export type UntypedPluginFactory =
   | IMinAuthPluginFactory<
-      IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
       FpInterfaceType,
+      IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
       unknown,
       unknown,
       unknown
     >
   | IMinAuthPluginFactory<
-      IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
       TsInterfaceType,
+      IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
       unknown,
       unknown,
       unknown
@@ -108,50 +111,49 @@ const validatePluginCfg = (
 const initializePlugin = (
   pluginModulePath: string,
   pluginCfg: unknown,
-  proofCache: IProofCache
+  proofCache: IProofCache<FpInterfaceType>
 ): TaskEither<string, UntypedPluginInstance> =>
   pipe(
     TE.Do,
     TE.bind('pluginModule', () => importPluginModule(pluginModulePath)),
-    TE.let('pluginFactory', ({ pluginModule }) => pluginModule.default),
-    TE.bind('typedPluginCfg', ({ pluginFactory }) =>
-      validatePluginCfg(pluginCfg, pluginFactory)
+    TE.let('rawPluginFactory', ({ pluginModule }) => pluginModule.default),
+    TE.bind('typedPluginCfg', ({ rawPluginFactory }) =>
+      validatePluginCfg(pluginCfg, rawPluginFactory)
+    ),
+    TE.bind('pluginFactory', ({ rawPluginFactory }) =>
+      rawPluginFactory.__interface_tag === fpInterfaceTag
+        ? TE.right(rawPluginFactory)
+        : rawPluginFactory.__interface_tag === tsInterfaceTag
+        ? TE.right(tsToFpMinAuthPluginFactory(rawPluginFactory))
+        : // TODO This check should be moved to `importPluginModule`
+          TE.left('invalid plugin module')
     ),
     TE.chain(
       ({
         pluginFactory,
         typedPluginCfg
       }): TaskEither<string, UntypedPluginInstance> =>
-        pluginFactory.__interface_tag === fpInterfaceTag
-          ? pluginFactory.initialize(typedPluginCfg, proofCache.checkEachProof)
-          : pluginFactory.__interface_tag === tsInterfaceTag
-          ? pipe(
-              fromFailablePromise(() =>
-                pluginFactory.initialize(
-                  typedPluginCfg,
-                  toTsCheckCachedProof(proofCache.checkEachProof)
-                )
-              ),
-              TE.map(
-                (obj): UntypedPluginInstance => ({
-                  __interface_tag: fpInterfaceTag,
-                  verifyAndGetOutput: (pia, sp) =>
-                    fromFailablePromise(() => obj.verifyAndGetOutput(pia, sp)),
-                  publicInputArgsSchema: obj.publicInputArgsSchema,
-                  customRoutes: obj.customRoutes,
-                  verificationKey: obj.verificationKey
-                })
-              )
-            )
-          : // TODO This check should be moved to `importPluginModule`
-            TE.throwError('invalid plugin module')
+        pluginFactory.initialize(typedPluginCfg, proofCache.checkEachProof)
     )
   );
 
+export type UntypedProofCacheProvider =
+  | IProofCacheProvider<FpInterfaceType>
+  | IProofCacheProvider<TsInterfaceType>;
+
 export const initializePlugins = (
   cfg: Configuration,
-  proofCacheProvider: IProofCacheProvider
+  rawProofCacheProvider: UntypedProofCacheProvider
 ): TaskEither<string, ActivePlugins> => {
+  const proofCacheProvider: TaskEither<
+    string,
+    IProofCacheProvider<FpInterfaceType>
+  > = rawProofCacheProvider.__interface_tag == fpInterfaceTag
+    ? TE.right(rawProofCacheProvider)
+    : rawProofCacheProvider.__interface_tag == tsInterfaceTag
+    ? TE.right(tsToFpProofCacheProvider(rawProofCacheProvider))
+    : TE.left('proof cache provider: unknown interface type');
+
   const resolvePluginModulePath =
     (name: string, optionalPath?: string) => () => {
       const dir =
@@ -164,38 +166,45 @@ export const initializePlugins = (
         : path.resolve(optionalPath);
     };
 
-  const resolveModulePathAndInitializePlugin = (
-    pluginName: string,
-    pluginCfg: {
-      path?: string | undefined;
-      config?: unknown;
-    }
-  ): TaskEither<string, UntypedPluginInstance> =>
-    pipe(
-      TE.Do,
-      TE.bind('modulePath', () =>
-        TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
-      ),
-      TE.tapIO(({ modulePath }) => () => {
-        console.info(`loading plugin ${pluginName} from ${modulePath}`);
-        console.log(pluginCfg.config);
-      }),
-      TE.tap(() => proofCacheProvider.initCacheFor(pluginName)),
-      TE.bind('proofCache', () => proofCacheProvider.getCacheOf(pluginName)),
-      TE.chain(({ modulePath, proofCache }) =>
-        initializePlugin(modulePath, pluginCfg.config ?? {}, proofCache)
-      ),
-      TE.mapLeft(
-        (err) => `error while initializing plugin ${pluginName}: ${err}`
-      )
-    );
+  const resolveModulePathAndInitializePlugin =
+    (proofCacheProvider: IProofCacheProvider<FpInterfaceType>) =>
+    (
+      pluginName: string,
+      pluginCfg: {
+        path?: string | undefined;
+        config?: unknown;
+      }
+    ): TaskEither<string, UntypedPluginInstance> =>
+      pipe(
+        TE.Do,
+        TE.bind('modulePath', () =>
+          TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
+        ),
+        TE.tapIO(({ modulePath }) => () => {
+          console.info(`loading plugin ${pluginName} from ${modulePath}`);
+          console.log(pluginCfg.config);
+        }),
+        TE.tap(() => proofCacheProvider.initCacheFor(pluginName)),
+        TE.bind('proofCache', () => proofCacheProvider.getCacheOf(pluginName)),
+        TE.chain(({ modulePath, proofCache }) =>
+          initializePlugin(modulePath, pluginCfg.config ?? {}, proofCache)
+        ),
+        TE.mapLeft(
+          (err) => `error while initializing plugin ${pluginName}: ${err}`
+        )
+      );
 
   const Applicative = TE.getApplicativeTaskValidation(
     T.ApplyPar,
     pipe(Str.Semigroup, S.intercalate(', '))
   );
 
-  return R.traverseWithIndex(Applicative)(resolveModulePathAndInitializePlugin)(
-    cfg.plugins
+  return pipe(
+    proofCacheProvider,
+    TE.chain((pcp) =>
+      R.traverseWithIndex(Applicative)(
+        resolveModulePathAndInitializePlugin(pcp)
+      )(cfg.plugins)
+    )
   );
 };

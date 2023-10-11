@@ -1,38 +1,17 @@
 import { RequestHandler } from 'express';
-import { TaskEither } from 'fp-ts/lib/TaskEither';
 import { JsonProof } from 'o1js';
 import z from 'zod';
-import { CachedProof } from './proofCache';
+import { CachedProof, fpToTsCheckCachedProofs } from './proofCache';
+import {
+  InterfaceKind,
+  WithInterfaceTag,
+  RetType,
+  TsInterfaceType,
+  FpInterfaceType
+} from './interfaceKind';
+import { fromFailablePromise } from '@utils/fp/TaskEither';
 
 // Interfaces used on the server side.
-
-export type InterfaceKind = FpInterfaceType | TsInterfaceType;
-
-export type FpInterfaceType = 'fp';
-export const fpInterfaceTag: FpInterfaceType = 'fp';
-
-export type TsInterfaceType = 'ts';
-export const tsInterfaceTag: TsInterfaceType = 'ts';
-
-export type ChooseType<
-  InterfaceType extends InterfaceKind,
-  FpType,
-  TsType
-> = InterfaceType extends FpInterfaceType
-  ? FpType
-  : InterfaceType extends TsInterfaceType
-  ? TsType
-  : never;
-
-export type RetType<InterfaceType extends InterfaceKind, T> = ChooseType<
-  InterfaceType,
-  TaskEither<string, T>,
-  Promise<T>
->;
-
-export interface WithInterfaceTag<IType extends InterfaceKind> {
-  readonly __interface_tag: IType;
-}
 
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
@@ -65,8 +44,8 @@ export interface IMinAuthPlugin<
 
 // TODO: generic type inference?
 export interface IMinAuthPluginFactory<
-  PluginType extends IMinAuthPlugin<InterfaceType, PublicInputArgs, Output>,
   InterfaceType extends InterfaceKind,
+  PluginType extends IMinAuthPlugin<InterfaceType, PublicInputArgs, Output>,
   Configuration,
   PublicInputArgs,
   Output
@@ -114,3 +93,47 @@ export interface IMinAuthProverFactory<
 > extends WithInterfaceTag<InterfaceType> {
   initialize(cfg: Configuration): RetType<InterfaceType, ProverType>;
 }
+
+// ts -> fp
+
+export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
+  i: IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>
+): IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output> => {
+  return {
+    __interface_tag: 'fp',
+    verifyAndGetOutput: (pia, sp) =>
+      fromFailablePromise(() => i.verifyAndGetOutput(pia, sp)),
+    publicInputArgsSchema: i.publicInputArgsSchema,
+    customRoutes: i.customRoutes,
+    verificationKey: i.verificationKey
+  };
+};
+
+export const tsToFpMinAuthPluginFactory = <
+  Configuration,
+  PublicInputArgs,
+  Output
+>(
+  i: IMinAuthPluginFactory<
+    TsInterfaceType,
+    IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>,
+    Configuration,
+    PublicInputArgs,
+    Output
+  >
+): IMinAuthPluginFactory<
+  FpInterfaceType,
+  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>,
+  Configuration,
+  PublicInputArgs,
+  Output
+> => {
+  return {
+    __interface_tag: 'fp',
+    configurationSchema: i.configurationSchema,
+    initialize: (cfg, c) =>
+      fromFailablePromise(() =>
+        i.initialize(cfg, fpToTsCheckCachedProofs(c)).then(tsToFpMinAuthPlugin)
+      )
+  };
+};

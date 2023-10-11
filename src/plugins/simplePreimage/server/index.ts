@@ -1,9 +1,5 @@
 import { JsonProof } from 'o1js';
-import {
-  IMinAuthPlugin,
-  IMinAuthPluginFactory,
-  TsInterfaceType
-} from '@lib/plugin';
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
@@ -11,6 +7,7 @@ import { RequestHandler } from 'express';
 import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
+import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
 
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
@@ -67,8 +64,8 @@ export class SimplePreimagePlugin
 
 // sanity check
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
-  SimplePreimagePlugin,
   TsInterfaceType,
+  SimplePreimagePlugin,
   { roles: Record<string, string> },
   unknown,
   string

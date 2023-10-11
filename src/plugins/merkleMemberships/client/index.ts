@@ -1,7 +1,6 @@
 import { Field, JsonProof, MerkleTree, SelfProof } from 'o1js';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
 import {
-  FpInterfaceType,
   IMinAuthProver,
   IMinAuthProverFactory
 } from '@lib/plugin/fp/pluginType';
@@ -13,6 +12,7 @@ import * as TE from 'fp-ts/TaskEither';
 import * as NE from 'fp-ts/NonEmptyArray';
 import { fromFailablePromise } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
+import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 
 export type MembershipsProverConfiguration = {
   baseUrl: string;
