@@ -9,6 +9,7 @@ import * as E from 'fp-ts/Either';
 import { installCustomRoutes, verifyProof } from '@lib/plugin/fp/utils';
 import { Either } from 'fp-ts/Either';
 import { readConfigurationFallback } from './config';
+import { InMemoryProofCacheProvider } from '@lib/plugin';
 
 interface VerifyProofData {
   plugin: string;
@@ -19,8 +20,11 @@ interface VerifyProofData {
 const main = pipe(
   TE.Do,
   TE.bind('cfg', () => readConfigurationFallback),
+  TE.let('pcProvider', () => new InMemoryProofCacheProvider()),
   TE.tap(() => TE.fromIO(() => console.info('initializing plugins'))),
-  TE.bind('activePlugins', ({ cfg }) => initializePlugins(cfg)),
+  TE.bind('activePlugins', ({ cfg, pcProvider }) =>
+    initializePlugins(cfg, pcProvider)
+  ),
   TE.bind('app', () => TE.fromIO(express)),
   TE.tap(({ app, activePlugins, cfg }) =>
     pipe(
