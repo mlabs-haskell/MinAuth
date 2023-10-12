@@ -42,8 +42,9 @@ passport.use(
   })
 );
 
+// TODO: not sure why we need both JWTStrategy and MinAuthStrategy
 // with MinAuthStrategy
-passport.use(new MinAuthStrategy());
+passport.use(new MinAuthStrategy(SECRET_KEY));
 
 app.use(passport.initialize());
 
@@ -69,6 +70,7 @@ app.post(
   '/login',
   passport.authenticate(MinAuthStrategy.name, { session: false }),
   (req: Request, res: Response) => {
+    // FIXME: the result of the authentication handler is no longer a StoredUser
     const user = req.user as StoredUser;
 
     // Store the refresh token

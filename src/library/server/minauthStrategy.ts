@@ -5,97 +5,101 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { JsonProof } from 'o1js';
 
-const PROVER_URL: string = 'http://localhost:3001/verifyProof';
-const SECRET_KEY: string = 'YOUR_SECRET_KEY';
-
 interface MinAuthProof {
-  entrypoint: {
-    name: string;
-    config: never;
-  };
+  plugin: string;
+  publicInputArgs: unknown;
   proof: JsonProof;
 }
 
-interface User {
-  id: number;
-  name: string;
-  role: string;
-  token?: string;
-  refreshToken?: string;
-}
-
-type VerificationResult = {
-  role: string;
-  message: string;
-};
+type VerificationResult =
+  | {
+      __tag: 'success';
+      output: unknown;
+      proofKey: string;
+    }
+  | {
+      __tag: 'failed';
+      error: string;
+    };
 
 async function verifyProof(
-  entryName: string,
-  config: never,
-  proof: JsonProof
+  proverUrl: string,
+  data: MinAuthProof
 ): Promise<VerificationResult> {
-  if (!proof) throw 'Proof cannot be empty';
-
-  const data: MinAuthProof = {
-    entrypoint: {
-      name: entryName,
-      config: config
-    },
-    proof: proof
-  };
-
   console.log('Calling for proof verification with:', data);
-  const response = await axios.post(PROVER_URL, data);
-  console.log('Received response:', response);
-  return response.data;
+  const response = await axios.post(proverUrl, data);
+
+  if (response.status == 200) {
+    console.log('Received response:', response);
+    const { output, proofKey } = response.data as {
+      output: unknown;
+      proofKey: string;
+    };
+    return { __tag: 'success', output, proofKey };
+  } else {
+    const { error } = response.data as { error: string };
+    return { __tag: 'failed', error };
+  }
 }
+
+type JWTPayload = {
+  plugin: string;
+  proofKey: string;
+};
+
+type AuthenticationResponse = {
+  output: unknown;
+  jwtToken: string;
+  refreshToken: string;
+};
 
 class MinAuthStrategy extends Strategy {
   name = 'MinAuthStrategy';
 
-  public constructor() {
+  readonly signJWT: (_: JWTPayload) => string;
+  readonly verifyProof: (_: MinAuthProof) => Promise<VerificationResult>;
+
+  public constructor(
+    secretKey: string,
+    proverUrl: string = 'http://localhost:3001/verfiyProof',
+    expiresIn: string = '1h'
+  ) {
     super();
+
+    const jwtOptions = { expiresIn };
+    this.signJWT = (payload) => jwt.sign(payload, secretKey, jwtOptions);
+    this.verifyProof = (data) => verifyProof(proverUrl, data);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   async authenticate(req: Request, _options?: any): Promise<void> {
-    try {
-      console.log('authenticating (strategy) with req:', req.body);
-      const loginData = req.body;
-      const { entrypoint, proof } = loginData as MinAuthProof;
-      const { name, config } = entrypoint;
-      const { role, message } = await verifyProof(name, config, proof);
-      console.log('proof verification return message is:', message);
-      console.log('proof verification return role is:', role);
+    console.log('authenticating (strategy) with req:', req.body);
+    const loginData = req.body as MinAuthProof; // TODO validate the body
+    const result = await this.verifyProof(loginData);
 
-      if (proof && role) {
-        const user: User = {
-          id: 1,
-          name: 'John Doe2',
-          role: role
-        };
+    if (result.__tag == 'success') {
+      const { output, proofKey } = result;
+      console.log('proof verification output is:', output);
 
-        const jwtPayload = {
-          sub: user.id,
-          name: user.name,
-          role: user.role
-        };
-        const jwtOptions = {
-          expiresIn: '1h'
-        };
-        const token = jwt.sign(jwtPayload, SECRET_KEY, jwtOptions);
+      const jwtPayload: JWTPayload = {
+        plugin: loginData.plugin,
+        proofKey
+      };
 
-        user.token = token;
+      const jwtToken = this.signJWT(jwtPayload);
+      const refreshToken = crypto.randomBytes(40).toString('hex');
 
-        const refreshToken = crypto.randomBytes(40).toString('hex');
-        user.refreshToken = refreshToken;
+      const authResp: AuthenticationResponse = {
+        output,
+        jwtToken,
+        refreshToken
+      };
 
-        return this.success(user);
-      } else {
-        return this.fail({ message: 'Invalid serialized proof' }, 401);
-      }
-    } catch (error: unknown) {
-      this.error(error as Error);
+      this.success(authResp);
+    } else {
+      const { error } = result;
+
+      this.error(Error(error));
     }
   }
 }
