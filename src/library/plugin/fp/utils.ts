@@ -1,5 +1,9 @@
 import { TaskEither } from 'fp-ts/lib/TaskEither';
-import { ActivePlugins, UntypedPluginInstance } from './pluginLoader';
+import {
+  ActivePlugins,
+  UntypedPluginInstance,
+  UntypedProofCacheProvider
+} from './pluginLoader';
 import * as expressCore from 'express-serve-static-core';
 import {
   fromFailableIO,
@@ -11,6 +15,7 @@ import * as TE from 'fp-ts/TaskEither';
 import { RequestHandler } from 'express';
 import { pipe } from 'fp-ts/lib/function';
 import { JsonProof, verify } from 'o1js';
+import { ProofKey, tsToFpProofCacheProvider } from './proofCache';
 
 export const installCustomRoutes =
   (activePlugins: ActivePlugins) =>
@@ -30,12 +35,15 @@ export const installCustomRoutes =
     );
 
 export const verifyProof =
-  (activePlugins: ActivePlugins) =>
+  (
+    activePlugins: ActivePlugins,
+    proofCacheProvider: UntypedProofCacheProvider
+  ) =>
   (
     proof: JsonProof,
     publicInputArgs: unknown,
     pluginName: string
-  ): TaskEither<string, unknown> =>
+  ): TaskEither<string, { output: unknown; proofKey: ProofKey }> =>
     pipe(
       TE.Do,
       TE.tap(() =>
@@ -67,9 +75,29 @@ export const verifyProof =
           pluginInstance.publicInputArgsSchema.safeParse(publicInputArgs)
         )
       ),
-      TE.chain(({ typedPublicInputArgs, pluginInstance }) =>
+      TE.bind('output', ({ typedPublicInputArgs, pluginInstance }) =>
         pluginInstance.verifyAndGetOutput(typedPublicInputArgs, proof)
-      )
+      ),
+      TE.bind('proofKey', () =>
+        pipe(
+          proofCacheProvider.__interface_tag == 'fp'
+            ? proofCacheProvider
+            : tsToFpProofCacheProvider(proofCacheProvider),
+          (pcp) => pcp.getCacheOf(pluginName),
+          TE.chain((cache) =>
+            cache.storeProof({
+              publicInputArgs,
+              proof
+            })
+          )
+        )
+      ),
+      TE.map(({ proofKey, output }) => {
+        return {
+          proofKey,
+          output
+        };
+      })
     );
 
 // TODO: utilities to run provers

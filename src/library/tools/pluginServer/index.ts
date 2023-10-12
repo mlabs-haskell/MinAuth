@@ -26,7 +26,7 @@ const main = pipe(
     initializePlugins(cfg, pcProvider)
   ),
   TE.bind('app', () => TE.fromIO(express)),
-  TE.tap(({ app, activePlugins, cfg }) =>
+  TE.tap(({ app, activePlugins, cfg, pcProvider }) =>
     pipe(
       TE.fromIO(() => {
         app.use(bodyParser.json());
@@ -41,7 +41,7 @@ const main = pipe(
               (req: Request, res: Response): Promise<void> => {
                 const body = req.body as VerifyProofData;
                 return pipe(
-                  verifyProof(activePlugins)(
+                  verifyProof(activePlugins, pcProvider)(
                     body.proof,
                     body.publicInputArgs,
                     body.plugin

@@ -61,7 +61,7 @@ export const tsToFpProofCacheProvider = (
   };
 };
 
-const tsToFpProofCache = (
+export const tsToFpProofCache = (
   i: IProofCache<TsInterfaceType>
 ): IProofCache<FpInterfaceType> => {
   return {

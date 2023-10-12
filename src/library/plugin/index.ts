@@ -17,7 +17,8 @@ export {
 } from './fp/pluginLoader';
 export {
   IProofCacheProvider,
-  InMemoryProofCacheProvider
+  InMemoryProofCacheProvider,
+  ProofKey
 } from './fp/proofCache';
 export * from './fp/interfaceKind';
 
@@ -37,10 +38,15 @@ export const installCustomRoutes = (
 
 export const verifyProof = (
   activePlugins: ActivePlugins,
+  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider,
   proof: JsonProof,
   publicInputArgs: unknown,
   pluginName: string
 ) =>
   launchTE(
-    fpUtils.verifyProof(activePlugins)(proof, publicInputArgs, pluginName)
+    fpUtils.verifyProof(activePlugins, proofCacheProvider)(
+      proof,
+      publicInputArgs,
+      pluginName
+    )
   );
