@@ -18,7 +18,12 @@ export const defaultConfiguration: Configuration = configurationSchema.parse({
     SimplePreimagePlugin: {
       path: mkPluginDir('simplePreimage'),
       config: {
-        roles: {}
+        roles: {
+          '7555220006856562833147743033256142154591945963958408607501861037584894828141':
+            'admin',
+          '21565680844461314807147611702860246336805372493508489110556896454939225549736':
+            'member'
+        }
       }
     },
     MerkleMembershipsPlugin: {
