@@ -52,7 +52,7 @@ export class MerkleMembershipsPlugin
       (req, resp): Promise<void> =>
         pipe(
           TE.Do,
-          TE.bind('treeRoot', () => safeGetFieldParam('treRoot', req.params)),
+          TE.bind('treeRoot', () => safeGetFieldParam('treeRoot', req.params)),
           TE.chain(({ treeRoot }) =>
             pipe(
               this.storageProvider.getTree(treeRoot),
