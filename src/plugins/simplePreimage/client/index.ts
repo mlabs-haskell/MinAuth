@@ -21,6 +21,7 @@ export class SimplePreimageProver
   static readonly __interface_tag: 'ts';
 
   static async initialize(): Promise<SimplePreimageProver> {
+    await ProvePreimageProgram.compile();
     return new SimplePreimageProver();
   }
 }

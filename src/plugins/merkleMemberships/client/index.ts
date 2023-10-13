@@ -207,7 +207,10 @@ export class MembershipsProver
   static initialize(
     cfg: MembershipsProverConfiguration
   ): TaskEither<string, MembershipsProver> {
-    return TE.right(new MembershipsProver(cfg));
+    return pipe(
+      fromFailablePromise(() => ZkProgram.Program.compile()),
+      TE.map(() => new MembershipsProver(cfg))
+    );
   }
 }
 
