@@ -1,4 +1,4 @@
-import { RequestHandler } from 'express';
+import { Router } from 'express';
 import { JsonProof } from 'o1js';
 import z from 'zod';
 import { CachedProof, fpToTsCheckCachedProofs } from './proofCache';
@@ -36,7 +36,7 @@ export interface IMinAuthPlugin<
   // checkOutputValidity(output: Output): Promise<boolean>;
 
   // Custom routes and handlers. Will be installed under `/plugins/<plugin name>`
-  readonly customRoutes: Record<string, RequestHandler>;
+  readonly customRoutes: Router;
 
   // The verification key of the underlying zk circuit.
   readonly verificationKey: string;

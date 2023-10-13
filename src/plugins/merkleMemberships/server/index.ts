@@ -13,7 +13,7 @@ import {
   TreesProvider,
   minaTreesProviderConfigurationSchema
 } from './treeStorage';
-import { RequestHandler } from 'express';
+import { Router } from 'express';
 import { TaskEither } from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
@@ -24,7 +24,8 @@ import {
   fromFailableIO,
   fromFailablePromise,
   guardPassthrough,
-  safeGetFieldParam
+  safeGetFieldParam,
+  safeGetNumberParam
 } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
@@ -45,56 +46,45 @@ export class MerkleMembershipsPlugin
   readonly verificationKey: string;
   private readonly storageProvider: TreesProvider;
 
-  customRoutes: Record<string, RequestHandler> = {
-    //   '/getWitness/:treeRoot/:leafIndex': (req, resp): Promise<void> => {
-    //     const getNumberParam = (key: string) =>
-    //       safeGetNumberParam(key, req.params);
-    //     const getFieldParam = (key: string) => safeGetFieldParam(key, req.params);
-
-    //     return pipe(
-    //       TE.Do,
-    //       TE.chain(
-    //         guardPassthrough(
-    //           req.method == 'GET',
-    //           `unsupported request method:${req.method}, please use GET`
-    //         )
-    //       ),
-    //       TE.bind('treeRoot', () => getFieldParam('treeRoot')),
-    //       TE.bind('leafIndex', () => getNumberParam('leafIndex')),
-    //       TE.chain(({ treeRoot, leafIndex }) =>
-    //         pipe(
-    //           this.storageProvider.getTree(treeRoot),
-    //           TE.chain(
-    //             TE.fromOption(
-    //               () => `tree with root ${treeRoot.toString()} missing`
-    //             )
-    //           ),
-    //           TE.chain((tree) => tree.getWitness(BigInt(leafIndex))),
-    //           TE.chain(TE.fromOption(() => 'invalid leaf index'))
-    //         )
-    //       ),
-    //       TE.tapIO((witness) => () => {
-    //         resp.status(200).json({ witness: witness.toJSON() });
-    //       }),
-    //       TE.tapError((err: string) =>
-    //         TE.fromIO(() => {
-    //           resp.status(400).json({ error: err });
-    //         })
-    //       ),
-
-    '/getLeaves/:treeRoot/': (req, resp): Promise<void> => {
+  readonly customRoutes: Router = Router()
+    .get(
+      '/getLeaves/:treeRoot/',
+      (req, resp): Promise<void> =>
+        pipe(
+          TE.Do,
+          TE.bind('treeRoot', () => safeGetFieldParam('treRoot', req.params)),
+          TE.chain(({ treeRoot }) =>
+            pipe(
+              this.storageProvider.getTree(treeRoot),
+              TE.chain(
+                TE.fromOption(
+                  () => `tree with root ${treeRoot.toString()} missing`
+                )
+              ),
+              TE.chain((tree) => tree.getLeaves()),
+              TE.map(A.map(O.toUndefined))
+            )
+          ),
+          TE.tapIO((leaves) => () => {
+            resp.status(200).json({ leaves });
+          }),
+          TE.tapError((err: string) =>
+            TE.fromIO(() => {
+              resp.status(400).json({ error: err });
+            })
+          ),
+          T.asUnit
+        )()
+    )
+    .get('/getWitness/:treeRoot/:leafIndex', (req, resp): Promise<void> => {
+      const getNumberParam = (key: string) =>
+        safeGetNumberParam(key, req.params);
       const getFieldParam = (key: string) => safeGetFieldParam(key, req.params);
-
       return pipe(
         TE.Do,
-        TE.chain(
-          guardPassthrough(
-            req.method == 'GET',
-            `unsupported request method:${req.method}, please use GET`
-          )
-        ),
         TE.bind('treeRoot', () => getFieldParam('treeRoot')),
-        TE.chain(({ treeRoot }) =>
+        TE.bind('leafIndex', () => getNumberParam('leafIndex')),
+        TE.chain(({ treeRoot, leafIndex }) =>
           pipe(
             this.storageProvider.getTree(treeRoot),
             TE.chain(
@@ -102,22 +92,21 @@ export class MerkleMembershipsPlugin
                 () => `tree with root ${treeRoot.toString()} missing`
               )
             ),
-            TE.chain((tree) => tree.getLeaves()),
-            TE.map(A.map(O.toUndefined))
+            TE.chain((tree) => tree.getWitness(BigInt(leafIndex))),
+            TE.chain(TE.fromOption(() => 'invalid leaf index'))
           )
         ),
-        TE.tapIO((leaves) => () => {
-          resp.status(200).json({ leaves });
+        TE.tapIO((witness) => () => {
+          resp.status(200).json({ witness: witness.toJSON() });
         }),
         TE.tapError((err: string) =>
           TE.fromIO(() => {
             resp.status(400).json({ error: err });
           })
         ),
-        T.map(() => {})
+        T.asUnit
       )();
-    }
-  };
+    });
 
   readonly publicInputArgsSchema = publicInputArgsSchema;
 

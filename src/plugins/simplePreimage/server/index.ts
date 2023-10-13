@@ -3,7 +3,7 @@ import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
-import { RequestHandler } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
@@ -29,13 +29,9 @@ export class SimplePreimagePlugin
 
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
-  customRoutes: Record<string, RequestHandler> = {
-    '/roles': (req, res) => {
-      if (req.method != 'GET')
-        res.status(400).json({ error: 'bad request method' });
-      res.status(200).json(this.roles);
-    }
-  };
+  readonly customRoutes = Router().get('/roles', (_, res) =>
+    res.status(200).json(this.roles)
+  );
 
   constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;

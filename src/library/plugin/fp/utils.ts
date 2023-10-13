@@ -12,7 +12,6 @@ import {
 } from '@utils/fp/TaskEither';
 import * as R from 'fp-ts/Record';
 import * as TE from 'fp-ts/TaskEither';
-import { RequestHandler } from 'express';
 import { pipe } from 'fp-ts/lib/function';
 import { JsonProof, verify } from 'o1js';
 import { ProofKey, tsToFpProofCacheProvider } from './proofCache';
@@ -23,13 +22,11 @@ export const installCustomRoutes =
     pipe(
       R.traverseWithIndex(TE.ApplicativeSeq)(
         (pluginName, pluginInstance: UntypedPluginInstance) =>
-          R.traverseWithIndex(TE.ApplicativeSeq)(
-            (path, handler: RequestHandler) =>
-              fromFailableIO(
-                () => app.use(`/plugins/${pluginName}/${path}`, handler),
-                `failed to install custom route ${path} for plugin ${pluginName}`
-              )
-          )(pluginInstance.customRoutes)
+          fromFailableIO(
+            () =>
+              app.use(`/plugins/${pluginName}`, pluginInstance.customRoutes),
+            'failed to install custom route'
+          )
       )(activePlugins),
       TE.map(() => {})
     );
