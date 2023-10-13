@@ -57,6 +57,13 @@ const main = pipe(
                 )();
               }
             )
+            .all('*', (_, resp) =>
+              resp.status(404).json({ error: 'bad route' })
+            )
+            .use((err: unknown, _req: Request, resp: Response) => {
+              console.error(`unhandled express error: ${err}`);
+              resp.status(500).json({ error: 'internal server error' });
+            })
             .listen(cfg.port, cfg.address, () =>
               console.log(
                 `server is running on http://${cfg.address}:${cfg.port}`
