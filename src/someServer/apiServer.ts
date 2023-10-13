@@ -79,12 +79,10 @@ app.post('/token', (req: Request, res: Response) => {
   }
 });
 
-// FIXME: not sure what to do about this route
-// app.get(
-//   '/protected',
-//   passport.authenticate('jwt', { session: false }),
-//   (req: Request, res: Response) => {
-//     const user = req.user as StoredUser;
-//     res.send(`Hello, ${user.name}. You are accessing a protected route.`);
-//   }
-// );
+app.get(
+  '/protected',
+  passport.authenticate('jwt', { session: false }),
+  (req: Request, res: Response) => {
+    res.send(`You are accessing a protected route.`);
+  }
+);
