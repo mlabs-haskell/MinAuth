@@ -290,6 +290,7 @@ export class MinaBlockchainTreeStorage extends GenericMinaBlockchainTreeStorage<
 
 export interface TreesProvider {
   getTree(treeRoot: Field): TaskEither<string, O.Option<TreeStorage>>;
+  getTreeRoots(): TaskEither<string, Array<Field>>;
 }
 
 export const minaTreesProviderConfigurationSchema = z.object({
@@ -331,6 +332,12 @@ export class MinaTreesProvider implements TreesProvider {
         TE.map((root) => root.equals(treeRoot).toBoolean())
       )
     )(this.treeStorages);
+  }
+
+  getTreeRoots(): TaskEither<string, Array<Field>> {
+    return A.traverse(TE.ApplicativePar)((t: TreeStorage) => t.getRoot())(
+      this.treeStorages
+    );
   }
 
   constructor(treeStorages: TreeStorage[]) {

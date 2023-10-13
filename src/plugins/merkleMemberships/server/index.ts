@@ -94,6 +94,10 @@ export class MerkleMembershipsPlugin
           )
         );
       })
+    )
+    .get(
+      '/getTreeRoots',
+      wrapTrivialExpressHandler(() => this.storageProvider.getTreeRoots())
     );
 
   readonly publicInputArgsSchema = publicInputArgsSchema;
@@ -102,6 +106,8 @@ export class MerkleMembershipsPlugin
     publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof
   ): TaskEither<string, Field> {
+    console.log(publicInputArgs);
+
     const treeRoots = pipe(
       TE.fromOption(() => 'empty input list')(NE.fromArray(publicInputArgs)),
       TE.chain(
