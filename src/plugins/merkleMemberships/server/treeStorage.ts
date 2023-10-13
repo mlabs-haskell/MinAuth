@@ -80,9 +80,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
   persist(): TaskEither<string, void> {
     const storageObj = Array.from(this.occupied.values()).reduce(
       (acc: Record<number, string>, idx: bigint) => {
-        acc[Number(idx)] = this.merkleTree
-          .getNode(ZkProgram.TREE_HEIGHT, idx)
-          .toJSON();
+        acc[Number(idx)] = this.merkleTree.getNode(0, idx).toJSON();
         return acc;
       },
       {}
@@ -124,7 +122,9 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
         )
       ),
       TE.bind('storageObject', ({ content }) =>
-        liftZodParseResult(z.record(z.string(), z.string()).safeParse(content))
+        liftZodParseResult(
+          z.record(z.string(), z.string()).safeParse(JSON.parse(content))
+        )
       ),
       TE.map(({ handle, storageObject }) => {
         const { occupied, merkleTree } = R.reduceWithIndex(Str.Ord)(
