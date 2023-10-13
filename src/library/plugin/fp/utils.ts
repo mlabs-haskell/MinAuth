@@ -24,11 +24,18 @@ export const installCustomRoutes =
         (pluginName, pluginInstance: UntypedPluginInstance) =>
           fromFailableIO(
             () =>
-              app.use(`/plugins/${pluginName}`, pluginInstance.customRoutes),
+              app.use(
+                `/plugins/${pluginName}`,
+                (req, _, next) => {
+                  console.debug(`${pluginName}: ${req.method} ${req.path}`);
+                  next();
+                },
+                pluginInstance.customRoutes
+              ),
             'failed to install custom route'
           )
       )(activePlugins),
-      TE.map(() => {})
+      TE.asUnit
     );
 
 export const verifyProof =
