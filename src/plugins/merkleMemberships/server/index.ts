@@ -33,7 +33,7 @@ import * as NE from 'fp-ts/NonEmptyArray';
 import * as S from 'fp-ts/Semigroup';
 import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 
-const PoseidonHashSchema = z.bigint();
+const PoseidonHashSchema = z.string();
 
 const publicInputArgsSchema = z.array(PoseidonHashSchema);
 
@@ -105,8 +105,8 @@ export class MerkleMembershipsPlugin
     const treeRoots = pipe(
       TE.fromOption(() => 'empty input list')(NE.fromArray(publicInputArgs)),
       TE.chain(
-        NE.traverse(TE.ApplicativePar)((x: bigint) =>
-          fromFailableIO(() => Field(x))
+        NE.traverse(TE.ApplicativePar)((x: string) =>
+          fromFailableIO(() => Field.from(x))
         )
       )
     );
