@@ -33,7 +33,7 @@ export class InMemoryStorage implements TreeStorage {
   occupied: Set<bigint> = new Set();
   merkleTree: MerkleTree = new MerkleTree(ZkProgram.TREE_HEIGHT);
 
-  getRoot() {
+  getRoot(): TaskEither<string, Field> {
     return TE.of(this.merkleTree.getRoot());
   }
 
@@ -85,6 +85,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
       },
       {}
     );
+
     return dropResult(
       fromFailablePromise(
         () => this.file.write(JSON.stringify(storageObj), 0, 'utf-8'),
@@ -105,13 +106,15 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
   }
 
   static initialize(
-    path: string
+    path: string,
+    initialLeaves?: Record<string, string>
   ): TaskEither<string, PersistentInMemoryStorage> {
+    const { O_CREAT, O_RDWR } = fs.constants;
     return pipe(
       TE.Do,
       TE.bind('handle', () =>
         fromFailablePromise(
-          () => fs.open(path, 'r+'),
+          () => fs.open(path, O_CREAT | O_RDWR),
           `unable to open file ${path} that stores the tree`
         )
       ),
@@ -122,9 +125,11 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
         )
       ),
       TE.bind('storageObject', ({ content }) =>
-        liftZodParseResult(
-          z.record(z.string(), z.string()).safeParse(JSON.parse(content))
-        )
+        Str.isEmpty(content)
+          ? TE.right(initialLeaves ?? {})
+          : liftZodParseResult(
+              z.record(z.string(), z.string()).safeParse(JSON.parse(content))
+            )
       ),
       TE.map(({ handle, storageObject }) => {
         const { occupied, merkleTree } = R.reduceWithIndex(Str.Ord)(
@@ -140,7 +145,9 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
           }
         )(storageObject);
         return new PersistentInMemoryStorage(handle, occupied, merkleTree);
-      })
+      }),
+      // call persist in case the file is newly created
+      TE.tap((s) => s.persist())
     );
   }
 }
@@ -262,11 +269,14 @@ export class MinaBlockchainTreeStorage extends GenericMinaBlockchainTreeStorage<
   static initialize(
     path: string,
     contractPrivateKey: PrivateKey,
-    feePayerPrivateKey: PrivateKey
+    feePayerPrivateKey: PrivateKey,
+    initialLeaves?: Record<string, string>
   ): TaskEither<string, MinaBlockchainTreeStorage> {
     return pipe(
       TE.Do,
-      TE.bind('storage', () => PersistentInMemoryStorage.initialize(path)),
+      TE.bind('storage', () =>
+        PersistentInMemoryStorage.initialize(path, initialLeaves)
+      ),
       TE.chain(({ storage }) =>
         initializeGenericMinaBlockchainTreeStorage(
           storage,
@@ -287,7 +297,8 @@ export const minaTreesProviderConfigurationSchema = z.object({
   trees: z.array(
     z.object({
       contractPrivateKey: z.string().optional(),
-      offchainStoragePath: z.string()
+      offchainStoragePath: z.string(),
+      initialLeaves: z.record(z.string()).optional()
     })
   )
 });
@@ -337,14 +348,19 @@ export class MinaTreesProvider implements TreesProvider {
       (tCfg: {
         offchainStoragePath: string;
         contractPrivateKey?: string | undefined;
+        initialLeaves?: Record<string, string>;
       }): TaskEither<string, TreeStorage> =>
         feePayerPrivateKey && tCfg.contractPrivateKey
           ? MinaBlockchainTreeStorage.initialize(
               tCfg.offchainStoragePath,
               PrivateKey.fromBase58(tCfg.contractPrivateKey),
-              feePayerPrivateKey
+              feePayerPrivateKey,
+              tCfg.initialLeaves
             )
-          : PersistentInMemoryStorage.initialize(tCfg.offchainStoragePath)
+          : PersistentInMemoryStorage.initialize(
+              tCfg.offchainStoragePath,
+              tCfg.initialLeaves
+            )
     )(cfg.trees);
 
     return TE.map(
