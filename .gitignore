@@ -128,3 +128,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# nix stuff
+.pre-commit-config.yaml
+result
+result-*

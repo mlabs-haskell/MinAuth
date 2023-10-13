@@ -18,10 +18,11 @@
     "sourceMap": true,
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "*": [ "src/*", "src/library/*" ]
+      "@lib/*": ["src/library/*"],
+      "@plugins/*": ["src/plugins/*"]
     }
   },
-  "include": ["./src"],
+  "include": ["./src"]
 }
