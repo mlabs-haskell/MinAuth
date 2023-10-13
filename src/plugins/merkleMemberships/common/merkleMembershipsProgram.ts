@@ -71,5 +71,3 @@ export const Program = Experimental.ZkProgram({
     }
   }
 });
-
-export default Program;

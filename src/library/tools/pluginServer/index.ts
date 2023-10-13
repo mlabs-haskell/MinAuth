@@ -1,92 +1,82 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import { JsonProof, verify } from 'o1js';
-import { IMinAuthPlugin } from '@lib/plugin/pluginType';
-import { readConfigurations, untypedPlugins } from './config';
+import { JsonProof } from 'o1js';
+import { pipe } from 'fp-ts/lib/function';
+import { initializePlugins } from '@lib/plugin/fp/pluginLoader';
+import * as TE from 'fp-ts/TaskEither';
+import * as T from 'fp-ts/Task';
+import * as E from 'fp-ts/Either';
+import { installCustomRoutes, verifyProof } from '@lib/plugin/fp/utils';
+import { Either } from 'fp-ts/Either';
+import { readConfigurationFallback } from './config';
+import { InMemoryProofCacheProvider } from '@lib/plugin';
 
-const configurations = readConfigurations();
-
-console.log('configuration loaded', configurations);
-
-/**
- * Construct plugins which are enabled in the configuration.
- * @returns A record of plugin instances.
- */
-async function initializePlugins(): Promise<
-  Record<string, IMinAuthPlugin<unknown, unknown>>
-> {
-  console.log('initializing plugins');
-  return Object.entries(configurations.plugins).reduce(
-    async (o, [name, cfg]) => {
-      console.debug(`initializing ${name}`, cfg);
-      const factory = untypedPlugins[name];
-      const typedCfg = factory.configurationSchema.parse(cfg);
-      const plugin = await factory.initialize(typedCfg);
-      return { ...o, [name]: plugin };
-    },
-    {}
-  );
+interface VerifyProofData {
+  plugin: string;
+  publicInputArgs: unknown;
+  proof: JsonProof;
 }
 
-initializePlugins()
-  .then((activePlugins) => {
-    // The type of `POST /verifyProof` requests' body.
-    interface VerifyProofData {
-      plugin: string;
-      publicInputArgs: unknown;
-      proof: JsonProof;
-    }
-
-    // Use the appropriate plugin to verify the proof and return the output.
-    async function verifyProof(data: VerifyProofData): Promise<unknown> {
-      const pluginName = data.plugin;
-      console.info(`verifying proof using plugin ${pluginName}`);
-      const pluginInstance = activePlugins[pluginName];
-      if (!pluginInstance) throw `plugin ${pluginName} not found`;
-      // Step 1: check that the proof is valid against the given verification key.
-      const proofValid = await verify(
-        data.proof,
-        pluginInstance.verificationKey
-      );
-      if (!proofValid) throw `invalid proof`;
-      // Step 2: use the plugin to extract the output. The plugin is also responsible
-      // for checking the legitimacy of the public inputs.
-      const typedPublicInputArgs = pluginInstance.publicInputArgsSchema.parse(
-        data.publicInputArgs
-      );
-      const output = await pluginInstance.verifyAndGetOutput(
-        typedPublicInputArgs,
-        data.proof
-      );
-      return output;
-    }
-
-    const app = express().use(bodyParser.json());
-
-    // Register all custom routes of active plugins under `/plugins/${pluginName}`.
-    Object.entries(activePlugins).map(([name, plugin]) =>
-      Object.entries(plugin.customRoutes).map(([path, handler]) =>
-        app.use(`/plugins/${name}/${path}`, handler)
+const main = pipe(
+  TE.Do,
+  TE.bind('cfg', () => readConfigurationFallback),
+  TE.let('pcProvider', () => new InMemoryProofCacheProvider()),
+  TE.tap(() => TE.fromIO(() => console.info('initializing plugins'))),
+  TE.bind('activePlugins', ({ cfg, pcProvider }) =>
+    initializePlugins(cfg, pcProvider)
+  ),
+  TE.bind('app', () => TE.fromIO(express)),
+  TE.tap(({ app, activePlugins, cfg, pcProvider }) =>
+    pipe(
+      TE.fromIO(() => {
+        app.use(bodyParser.json());
+        TE.fromIO(() => console.info('installing custom routes for plugins'));
+      }),
+      TE.chain(() => installCustomRoutes(activePlugins)(app)),
+      TE.chain(() =>
+        TE.fromIO(() => {
+          app
+            .post(
+              '/verifyProof',
+              (req: Request, res: Response): Promise<void> => {
+                const body = req.body as VerifyProofData;
+                return pipe(
+                  verifyProof(activePlugins, pcProvider)(
+                    body.proof,
+                    body.publicInputArgs,
+                    body.plugin
+                  ),
+                  T.chain(
+                    E.match(
+                      (error: string) =>
+                        T.fromIO(() => res.status(400).json({ error })),
+                      (r) => T.fromIO(() => res.status(200).json(r))
+                    )
+                  ),
+                  T.map(() => {})
+                )();
+              }
+            )
+            .all('*', (_, resp) =>
+              resp.status(404).json({ error: 'bad route' })
+            )
+            .use((err: unknown, _req: Request, resp: Response) => {
+              console.error(`unhandled express error: ${err}`);
+              resp.status(500).json({ error: 'internal server error' });
+            })
+            .listen(cfg.port, cfg.address, () =>
+              console.log(
+                `server is running on http://${cfg.address}:${cfg.port}`
+              )
+            );
+        })
       )
-    );
-
-    app
-      .post('/verifyProof', async (req: Request, res: Response) => {
-        try {
-          const result = await verifyProof(req.body);
-          res.json({ result });
-        } catch (error) {
-          console.error('Error:', error);
-          res.status(500).json({ error: 'Internal Server Error' });
-        }
-      })
-      .listen(configurations.server.port, () =>
-        console.log(
-          `Server is running on http://localhost:${configurations.server.port}`
-        )
-      );
-  })
-  .catch((error) => {
-    console.error('Error during server initialization:', error);
+    )
+  ),
+  TE.tapError((error) => (): Promise<Either<string, never>> => {
+    console.error(`unhandled error: ${error}`);
     process.exit(1);
-  });
+  })
+);
+
+main();

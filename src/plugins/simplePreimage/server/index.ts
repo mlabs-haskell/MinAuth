@@ -1,19 +1,19 @@
 import { JsonProof } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin/pluginType';
+import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
-import { RequestHandler } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
+import * as R from 'fp-ts/Record';
+import * as O from 'fp-ts/Option';
+import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
 
-const roleMapping: Record<string, string> = {
-  '7555220006856562833147743033256142154591945963958408607501861037584894828141':
-    'admin',
-  '21565680844461314807147611702860246336805372493508489110556896454939225549736':
-    'member'
-};
+export class SimplePreimagePlugin
+  implements IMinAuthPlugin<TsInterfaceType, unknown, string>
+{
+  readonly __interface_tag = 'ts';
 
-export class SimplePreimagePlugin implements IMinAuthPlugin<unknown, string> {
   readonly verificationKey: string;
   private readonly roles: Record<string, string>;
 
@@ -22,26 +22,23 @@ export class SimplePreimagePlugin implements IMinAuthPlugin<unknown, string> {
     serializedProof: JsonProof
   ): Promise<string> {
     const proof = ProvePreimageProofClass.fromJSON(serializedProof);
-    const role = roleMapping[proof.publicOutput.toString()];
-    return role;
+    const ret = R.lookup(proof.publicOutput.toString())(this.roles);
+    if (O.isNone(ret)) throw 'unable to find role';
+    else return ret.value;
   }
 
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
-  customRoutes: Record<string, RequestHandler> = {
-    '/roles': (_, res) => {
-      res.status(200).json(this.roles);
-    }
-  };
-
-  // checkOutputValidity(output: string): Promise<boolean> {
-  //     return Promise.resolve(output in this.roles);
-  // }
+  readonly customRoutes = Router().get('/roles', (_, res) =>
+    res.status(200).json(this.roles)
+  );
 
   constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;
     this.roles = roles;
   }
+
+  static readonly __interface_tag = 'ts';
 
   static async initialize(configuration: {
     roles: Record<string, string>;
@@ -63,8 +60,11 @@ export class SimplePreimagePlugin implements IMinAuthPlugin<unknown, string> {
 
 // sanity check
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
+  TsInterfaceType,
   SimplePreimagePlugin,
   { roles: Record<string, string> },
   unknown,
   string
 >;
+
+export default SimplePreimagePlugin;
