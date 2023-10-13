@@ -83,6 +83,6 @@ app.get(
   '/protected',
   passport.authenticate('jwt', { session: false }),
   (req: Request, res: Response) => {
-    res.send(`You are accessing a protected route.`);
+    res.send({ message: `You are accessing a protected route.` });
   }
 );
