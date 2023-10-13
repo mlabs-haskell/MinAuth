@@ -13,6 +13,7 @@ import * as NE from 'fp-ts/NonEmptyArray';
 import { fromFailablePromise } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import * as z from 'zod';
 
 export type MembershipsProverConfiguration = {
   baseUrl: string;
@@ -170,10 +171,12 @@ export class MembershipsProver
         .toString()}`;
       const resp = await axios.get(url);
       if (resp.status == 200) {
-        const body: { leaves: Array<string | undefined> } = resp.data;
+        const leaves: Array<string | null> = await z
+          .array(z.string().nullable())
+          .parseAsync(resp.data);
         const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
-        body.leaves.forEach((leaf, index) => {
-          if (leaf !== undefined) tree.setLeaf(BigInt(index), Field.from(leaf));
+        leaves.forEach((leaf, index) => {
+          if (leaf !== null) tree.setLeaf(BigInt(index), Field.from(leaf));
         });
         const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
         return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
