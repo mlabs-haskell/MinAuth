@@ -9,6 +9,8 @@ import * as R from 'fp-ts/Record';
 import * as IOE from 'fp-ts/IOEither';
 import { Either } from 'fp-ts/Either';
 import { Field } from 'o1js';
+import * as Express from 'express';
+import * as T from 'fp-ts/Task';
 
 export function fromFailablePromise<T>(
   p: () => Promise<T | undefined>,
@@ -115,3 +117,20 @@ export const launchTE = <T>(t: TaskEither<string, T>): Promise<T> =>
       ? Promise.reject(result.left)
       : Promise.resolve(result.right)
   );
+
+export const wrapTrivialExpressHandler =
+  <R>(f: (req: Express.Request) => TaskEither<string, R>) =>
+  (req: Express.Request, resp: Express.Response): Promise<void> =>
+    pipe(
+      f(req),
+      TE.tapIO((result) => () => resp.status(200).json(result)),
+      TE.tapError((error: string) =>
+        TE.fromIO(() => {
+          console.log(
+            `error occurred while handling ${req.method} ${req.path}: ${error}`
+          );
+          resp.status(400).json({ error });
+        })
+      ),
+      T.asUnit
+    )();

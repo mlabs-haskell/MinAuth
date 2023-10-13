@@ -25,7 +25,8 @@ import {
   fromFailablePromise,
   guardPassthrough,
   safeGetFieldParam,
-  safeGetNumberParam
+  safeGetNumberParam,
+  wrapTrivialExpressHandler
 } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
@@ -49,7 +50,7 @@ export class MerkleMembershipsPlugin
   readonly customRoutes: Router = Router()
     .get(
       '/getLeaves/:treeRoot/',
-      (req, resp): Promise<void> =>
+      wrapTrivialExpressHandler((req) =>
         pipe(
           TE.Do,
           TE.bind('treeRoot', () => safeGetFieldParam('treeRoot', req.params)),
@@ -64,49 +65,36 @@ export class MerkleMembershipsPlugin
               TE.chain((tree) => tree.getLeaves()),
               TE.map(A.map(O.toUndefined))
             )
-          ),
-          TE.tapIO((leaves) => () => {
-            resp.status(200).json({ leaves });
-          }),
-          TE.tapError((err: string) =>
-            TE.fromIO(() => {
-              resp.status(400).json({ error: err });
-            })
-          ),
-          T.asUnit
-        )()
-    )
-    .get('/getWitness/:treeRoot/:leafIndex', (req, resp): Promise<void> => {
-      const getNumberParam = (key: string) =>
-        safeGetNumberParam(key, req.params);
-      const getFieldParam = (key: string) => safeGetFieldParam(key, req.params);
-      return pipe(
-        TE.Do,
-        TE.bind('treeRoot', () => getFieldParam('treeRoot')),
-        TE.bind('leafIndex', () => getNumberParam('leafIndex')),
-        TE.chain(({ treeRoot, leafIndex }) =>
-          pipe(
-            this.storageProvider.getTree(treeRoot),
-            TE.chain(
-              TE.fromOption(
-                () => `tree with root ${treeRoot.toString()} missing`
-              )
-            ),
-            TE.chain((tree) => tree.getWitness(BigInt(leafIndex))),
-            TE.chain(TE.fromOption(() => 'invalid leaf index'))
           )
-        ),
-        TE.tapIO((witness) => () => {
-          resp.status(200).json({ witness: witness.toJSON() });
-        }),
-        TE.tapError((err: string) =>
-          TE.fromIO(() => {
-            resp.status(400).json({ error: err });
-          })
-        ),
-        T.asUnit
-      )();
-    });
+        )
+      )
+    )
+    .get(
+      '/getWitness/:treeRoot/:leafIndex',
+      wrapTrivialExpressHandler((req) => {
+        const getNumberParam = (key: string) =>
+          safeGetNumberParam(key, req.params);
+        const getFieldParam = (key: string) =>
+          safeGetFieldParam(key, req.params);
+        return pipe(
+          TE.Do,
+          TE.bind('treeRoot', () => getFieldParam('treeRoot')),
+          TE.bind('leafIndex', () => getNumberParam('leafIndex')),
+          TE.chain(({ treeRoot, leafIndex }) =>
+            pipe(
+              this.storageProvider.getTree(treeRoot),
+              TE.chain(
+                TE.fromOption(
+                  () => `tree with root ${treeRoot.toString()} missing`
+                )
+              ),
+              TE.chain((tree) => tree.getWitness(BigInt(leafIndex))),
+              TE.chain(TE.fromOption(() => 'invalid leaf index'))
+            )
+          )
+        );
+      })
+    );
 
   readonly publicInputArgsSchema = publicInputArgsSchema;
 
