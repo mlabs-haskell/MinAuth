@@ -12,6 +12,11 @@ import { Field } from 'o1js';
 import * as Express from 'express';
 import * as T from 'fp-ts/Task';
 
+/**
+ * Converts a promise that may resolve into an empty value into
+ * a TaskEither object that fails with a message if the promise resolves into an empty value
+ * or is rejected, or throws an exception.
+ */
 export function fromFailablePromise<T>(
   p: () => Promise<T | undefined>,
   msg?: string
@@ -25,6 +30,11 @@ export function fromFailablePromise<T>(
     );
 }
 
+/**
+ * Converts a promise that resolves into an empty value into
+ * a TaskEither object that returns `left` with a message on the promise rejection
+ * and succeeds with `right` when resolved.
+ */
 export function fromFailableVoidPromise(
   p: () => Promise<void>,
   msg?: string
@@ -38,6 +48,11 @@ export function fromFailableVoidPromise(
     );
 }
 
+/**
+ * Given an assertion and error it will give function that either
+ * stops the execution with the error on failed assertion or acts as identity function.
+ * All that within TaskEither monad.
+ */
 export function guardPassthrough<E>(
   cond: boolean,
   err: E
@@ -49,12 +64,19 @@ export function dropResult<E, T>(t: TaskEither<E, T>): TaskEither<E, void> {
   return TE.map(() => undefined)(t);
 }
 
+/**
+ * Lifts zod parsing results into the TaskEither monad.
+ */
 export function liftZodParseResult<I, O>(
   r: z.SafeParseReturnType<I, O>
 ): TaskEither<string, O> {
   return TE.fromEither(r.success ? E.right(r.data) : E.left(String(r.error)));
 }
 
+/**
+ * Having found a kv pair in a record by its key it applies given function on the value
+ * and returns the results.
+ */
 export function getParam<T>(
   onSome: (param: string) => TaskEither<string, T>
 ): (key: string, params: { [key: string]: string }) => TaskEither<string, T> {
@@ -68,6 +90,9 @@ export function getParam<T>(
     );
 }
 
+/**
+ * Safely construct a value from string.
+ */
 export function safeFromString<T>(
   ctor: (s: string) => T
 ): (s: string) => TaskEither<string, T> {
@@ -80,6 +105,9 @@ export function safeFromString<T>(
     );
 }
 
+/**
+ * Safely retrieve a number from a record.
+ */
 export function safeGetNumberParam(
   key: string,
   params: { [key: string]: string }
@@ -87,6 +115,9 @@ export function safeGetNumberParam(
   return getParam(safeFromString(Number))(key, params);
 }
 
+/**
+ * Safely retrieve a o1js Field value from a record.
+ */
 export function safeGetFieldParam(
   key: string,
   params: { [key: string]: string }
@@ -94,6 +125,11 @@ export function safeGetFieldParam(
   return getParam(safeFromString(Field))(key, params);
 }
 
+/**
+ * Converts a promise that may resolve into an empty value into
+ * a TaskEither object that fails with a message if the promise resolves into an empty value
+ * or is rejected, or throws an exception.
+ */
 export function fromFailableIO<A>(
   f: () => A | undefined,
   msg?: string
@@ -111,6 +147,10 @@ export function fromFailableIO<A>(
   };
 }
 
+/**
+ * Converts a TaskEither to a Promise treating its left value as an promise rejection argument.
+ * and its right value as a promise resolution argument.
+ */
 export const launchTE = <T>(t: TaskEither<string, T>): Promise<T> =>
   t().then((result: Either<string, T>) =>
     E.isLeft(result)
@@ -118,6 +158,12 @@ export const launchTE = <T>(t: TaskEither<string, T>): Promise<T> =>
       : Promise.resolve(result.right)
   );
 
+/**
+ * Converts a simple request handler from a functional-style definition
+ * into a form expected by express.js
+ * If the handler returns a value, it is returned as json with code 200
+ * If the handler throws an error, it is logged and the code 400 is returned
+ */
 export const wrapTrivialExpressHandler =
   <R>(f: (req: Express.Request) => TaskEither<string, R>) =>
   (req: Express.Request, resp: Express.Response): Promise<void> =>
