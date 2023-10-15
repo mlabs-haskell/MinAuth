@@ -9,11 +9,11 @@ export * from './fp/pluginType';
 export {
   configurationSchema,
   Configuration,
-  UntypedPluginInstance,
+  UntypedPlugin,
   UntypedPluginFactory,
   UntypedPluginModule,
   ActivePlugins,
-  UntypedProofCacheProvider
+  ProofCacheProvider
 } from './fp/pluginLoader';
 export {
   IProofCacheProvider,
@@ -27,7 +27,7 @@ export const readConfiguration = (cfgPath?: string): Promise<Configuration> =>
 
 export const initializePlugins = (
   cfg: Configuration,
-  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider
+  proofCacheProvider: fpPluginLoader.ProofCacheProvider
 ): Promise<ActivePlugins> =>
   launchTE(fpPluginLoader.initializePlugins(cfg, proofCacheProvider));
 
@@ -38,7 +38,7 @@ export const installCustomRoutes = (
 
 export const verifyProof = (
   activePlugins: ActivePlugins,
-  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider,
+  proofCacheProvider: fpPluginLoader.ProofCacheProvider,
   proof: JsonProof,
   publicInputArgs: unknown,
   pluginName: string

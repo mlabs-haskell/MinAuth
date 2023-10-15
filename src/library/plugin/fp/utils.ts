@@ -1,8 +1,8 @@
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import {
   ActivePlugins,
-  UntypedPluginInstance,
-  UntypedProofCacheProvider
+  UntypedPlugin,
+  ProofCacheProvider
 } from './pluginLoader';
 import * as expressCore from 'express-serve-static-core';
 import {
@@ -21,7 +21,7 @@ export const installCustomRoutes =
   (app: expressCore.Express): TaskEither<string, void> =>
     pipe(
       R.traverseWithIndex(TE.ApplicativeSeq)(
-        (pluginName, pluginInstance: UntypedPluginInstance) =>
+        (pluginName, pluginInstance: UntypedPlugin) =>
           fromFailableIO(
             () =>
               app.use(
@@ -41,7 +41,7 @@ export const installCustomRoutes =
 export const verifyProof =
   (
     activePlugins: ActivePlugins,
-    proofCacheProvider: UntypedProofCacheProvider
+    proofCacheProvider: ProofCacheProvider
   ) =>
   (
     proof: JsonProof,
