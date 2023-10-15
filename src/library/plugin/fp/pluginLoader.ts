@@ -29,7 +29,6 @@ import {
   tsInterfaceTag
 } from '@lib/common/interfaceKind';
 
-
 /**
  * Configuration schema for the plugin loader
  */

@@ -15,7 +15,7 @@ import {
 
 /**
  * MinAuth plugin must implement this interface.
- * The interface type is parameterized by the interface kind:
+ * The interface type is parameterized by an interface kind:
  * - `TsInterfaceType` for idiomatic typescript interface
  * - `FpInterfaceType` for functional style interface
  * that is usd by the library to provide safety and composability.
