@@ -9,7 +9,7 @@ import * as TE from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import {
   dropResult,
-  fromFailablePromise,
+  fromPromise,
   liftZodParseResult
 } from '@utils/fp/TaskEither';
 import * as R from 'fp-ts/Record';
@@ -86,7 +86,7 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
       {}
     );
     return dropResult(
-      fromFailablePromise(
+      fromPromise(
         () => this.file.write(JSON.stringify(storageObj), 0, 'utf-8'),
         ''
       )
@@ -110,13 +110,13 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
     return pipe(
       TE.Do,
       TE.bind('handle', () =>
-        fromFailablePromise(
+        fromPromise(
           () => fs.open(path, 'r+'),
           `unable to open file ${path} that stores the tree`
         )
       ),
       TE.bind('content', ({ handle }) =>
-        fromFailablePromise(
+        fromPromise(
           () => handle.readFile('utf-8'),
           `unable to read the content of the tree file`
         )
@@ -163,7 +163,7 @@ export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
   }
 
   private fetchOnChainRoot(): TaskEither<string, Field> {
-    return fromFailablePromise(
+    return fromPromise(
       this.contract.treeRoot.fetch,
       'unable to fetch root stored on chain, did you deploy the contract?'
     );
@@ -216,7 +216,7 @@ function initializeGenericMinaBlockchainTreeStorage<T extends TreeStorage>(
   const feePayerPublicKey = feePayerPrivateKey.toPublicKey();
 
   const mkTx = (txFn: () => void): TaskEither<string, void> =>
-    fromFailablePromise(async () => {
+    fromPromise(async () => {
       const txn = await Mina.transaction(feePayerPublicKey, txFn);
       await txn.prove();
       await txn.sign([feePayerPrivateKey, contractPrivateKey]).send();
@@ -228,7 +228,7 @@ function initializeGenericMinaBlockchainTreeStorage<T extends TreeStorage>(
     mkTx
   );
 
-  const compileContract = fromFailablePromise(
+  const compileContract = fromPromise(
     TreeRootStorageContract.compile,
     'cannot compile tree root storage contract, this is a bug'
   );

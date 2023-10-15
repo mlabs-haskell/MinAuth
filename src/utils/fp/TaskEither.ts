@@ -17,7 +17,7 @@ import * as T from 'fp-ts/Task';
  * a TaskEither object that fails with a message if the promise resolves into an empty value
  * or is rejected, or throws an exception.
  */
-export function fromFailablePromise<T>(
+export function fromPromise<T>(
   p: () => Promise<T | undefined>,
   msg?: string
 ): TaskEither<string, T> {
@@ -35,7 +35,7 @@ export function fromFailablePromise<T>(
  * a TaskEither object that returns `left` with a message on the promise rejection
  * and succeeds with `right` when resolved.
  */
-export function fromFailableVoidPromise(
+export function fromVoidPromise(
   p: () => Promise<void>,
   msg?: string
 ): TaskEither<string, void> {

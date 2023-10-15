@@ -7,7 +7,7 @@ import { TaskEither } from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as NE from 'fp-ts/NonEmptyArray';
-import { fromFailablePromise } from '@utils/fp/TaskEither';
+import { fromPromise } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as z from 'zod';
 import { FpInterfaceType } from '@lib/common/interfaceKind';
@@ -45,7 +45,7 @@ export class MembershipsProver
       [ZkProgram.PublicInput, ZkProgram.TreeWitness],
       Field
     ]): TaskEither<string, ZkProof> =>
-      fromFailablePromise(
+      fromPromise(
         () =>
           ZkProgram.Program.baseCase(
             root,
@@ -69,7 +69,7 @@ export class MembershipsProver
             tail
           ) =>
             pipe(
-              fromFailablePromise(
+              fromPromise(
                 () =>
                   ZkProgram.Program.inductiveCase(
                     root,
@@ -141,7 +141,7 @@ export class MembershipsProver
   //     }
   //   };
 
-  //   return fromFailablePromise(
+  //   return fromPromise(
   //     () =>
   //       Promise.all(
   //         A.map(
@@ -183,7 +183,7 @@ export class MembershipsProver
       }
     };
 
-    return fromFailablePromise(
+    return fromPromise(
       () =>
         Promise.all(
           A.map(
@@ -208,7 +208,7 @@ export class MembershipsProver
     cfg: MembershipsProverConfiguration
   ): TaskEither<string, MembershipsProver> {
     return pipe(
-      fromFailablePromise(() => ZkProgram.Program.compile()),
+      fromPromise(() => ZkProgram.Program.compile()),
       TE.map(() => new MembershipsProver(cfg))
     );
   }

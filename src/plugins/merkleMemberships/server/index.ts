@@ -22,7 +22,7 @@ import * as Str from 'fp-ts/string';
 import * as IOE from 'fp-ts/IOEither';
 import {
   fromFailableIO,
-  fromFailablePromise,
+  fromPromise,
   guardPassthrough,
   safeGetFieldParam,
   safeGetNumberParam,
@@ -179,7 +179,7 @@ export class MerkleMembershipsPlugin
     return pipe(
       TE.Do,
       TE.bind('compilationResult', () =>
-        fromFailablePromise(
+        fromPromise(
           ZkProgram.Program.compile,
           'bug: unable to compile MerkleMembershipsProgram'
         )

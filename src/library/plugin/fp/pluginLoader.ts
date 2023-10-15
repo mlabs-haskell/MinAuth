@@ -16,7 +16,7 @@ import { z } from 'zod';
 import env from 'env-var';
 import { existsSync } from 'fs';
 import fs from 'fs/promises';
-import { fromFailablePromise, liftZodParseResult } from '@utils/fp/TaskEither';
+import { fromPromise, liftZodParseResult } from '@utils/fp/TaskEither';
 import {
   IProofCache,
   IProofCacheProvider,
@@ -173,7 +173,7 @@ export const _readConfiguration =
       ),
       // read the configuration file
       TE.bind('cfgFileContent', ({ finalCfgPath }) =>
-        fromFailablePromise<string>(() => fs.readFile(finalCfgPath, 'utf-8'))
+        fromPromise<string>(() => fs.readFile(finalCfgPath, 'utf-8'))
       ),
       // parse the configuration file according to the schema
       TE.chain(({ cfgFileContent }) =>
@@ -261,7 +261,7 @@ const initializePlugin = (
 const importPluginModule = (
   pluginModulePath: string
 ): TaskEither<string, UntypedPluginModule> =>
-  fromFailablePromise(() => import(pluginModulePath));
+  fromPromise(() => import(pluginModulePath));
 
 const validatePluginCfg = (
   cfg: unknown,

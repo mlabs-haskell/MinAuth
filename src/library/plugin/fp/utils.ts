@@ -7,7 +7,7 @@ import {
 import * as expressCore from 'express-serve-static-core';
 import {
   fromFailableIO,
-  fromFailablePromise,
+  fromPromise,
   liftZodParseResult
 } from '@utils/fp/TaskEither';
 import * as R from 'fp-ts/Record';
@@ -63,7 +63,7 @@ export const verifyProof =
       // Step 1: check that the proof was generated using a certain verification key.
       TE.tap(({ pluginInstance }) =>
         pipe(
-          fromFailablePromise(
+          fromPromise(
             () => verify(proof, pluginInstance.verificationKey),
             'unable to verify proof'
           ),

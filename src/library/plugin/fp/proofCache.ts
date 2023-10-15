@@ -16,32 +16,75 @@ import {
   TsInterfaceType,
   WithInterfaceTag
 } from '@lib/common/interfaceKind';
-import {
-  fromFailablePromise,
-  fromFailableVoidPromise
-} from '@utils/fp/TaskEither';
+import { fromPromise, fromVoidPromise } from '@utils/fp/TaskEither';
 import * as E from 'fp-ts/Either';
 
+/**
+ * Proof should be stored along with all the information required to re-verify
+ * it in any point in time.
+ * In general ZKP required public inputs and a proof.
+ * NOTE. Is there a case where some other information is required?
+ */
 export interface CachedProof {
+  /**
+   * Meant to store information required to access up-to-date public inputs.
+   */
   publicInputArgs: unknown;
+  /**
+   * The cached proof itself.
+   */
   proof: JsonProof;
 }
 
+/**
+ * A key that cache uses to efficiently identify stored proofs.
+ */
 export type ProofKey = string;
 
+// TODO: is my understanding correct that:
+// checkEachProof: CheckCachedProofs<I>;
+// is meant to validate the entire cache given a validator for proofs?
+// And all proofs that are left after this operation should be regarded as valid?
+// If so such an operation would be potentially computationally very expensive.
+
+// TODO 2: I think that ProofCache should be redesigned
+// Basically it should be meant as a helper for plugins to allow for their output validation.
+// If we require that each plugin output is uniquely identifiable this can be enough to
+// unlock this possibility.
+/**
+ * A type alias for a callback that takes a cached proof verifier and
+ * verifies entire cache.
+ */
 export type CheckCachedProofs<I extends InterfaceKind> = (
   check: (p: CachedProof) => RetType<I, boolean>
 ) => RetType<I, void>;
 
 export interface IProofCache<I extends InterfaceKind>
   extends WithInterfaceTag<I> {
-  storeProof(p: CachedProof): RetType<I, string>;
+  /**
+   * Stores a proof and gives out its key for later retrieval.
+   */
+  storeProof(p: CachedProof): RetType<I, ProofKey>;
+
+  /**
+   * Retrieves a cached proof given its key
+   */
   getProof(k: ProofKey): RetType<I, Option<CachedProof>>;
+
+  /**
+   * Invalidates a cached proof given its key
+   */
   invalidateProof(k: ProofKey): RetType<I, void>;
 
+  /**
+   * Given a validator for a proof it validates the entire cache.
+   */
   checkEachProof: CheckCachedProofs<I>;
 }
 
+/**
+ *  Interface for types that realize the proof cache for plugins.
+ */
 export interface IProofCacheProvider<I extends InterfaceKind>
   extends WithInterfaceTag<I> {
   getCacheOf(plugin: string): RetType<I, IProofCache<I>>;
@@ -49,28 +92,35 @@ export interface IProofCacheProvider<I extends InterfaceKind>
   initCacheFor(plugin: string): RetType<I, void>;
 }
 
+/**
+ * Converts a cache provider from typescript interface kind
+ * into the functional fp-ts interface style
+ */
 export const tsToFpProofCacheProvider = (
   i: IProofCacheProvider<TsInterfaceType>
 ): IProofCacheProvider<FpInterfaceType> => {
   return {
     __interface_tag: 'fp',
     getCacheOf: (plugin) =>
-      fromFailablePromise(() => i.getCacheOf(plugin).then(tsToFpProofCache)),
-    initCacheFor: (plugin) =>
-      fromFailableVoidPromise(() => i.initCacheFor(plugin))
+      fromPromise(() => i.getCacheOf(plugin).then(tsToFpProofCache)),
+    initCacheFor: (plugin) => fromVoidPromise(() => i.initCacheFor(plugin))
   };
 };
 
+/**
+ * Converts a proof cache from typescript interface kind
+ * into the functional fp-ts interface style
+ */
 export const tsToFpProofCache = (
   i: IProofCache<TsInterfaceType>
 ): IProofCache<FpInterfaceType> => {
   return {
     __interface_tag: 'fp',
-    storeProof: (p) => fromFailablePromise(() => i.storeProof(p)),
-    getProof: (k) => fromFailablePromise(() => i.getProof(k)),
-    invalidateProof: (k) => fromFailableVoidPromise(() => i.invalidateProof(k)),
+    storeProof: (p) => fromPromise(() => i.storeProof(p)),
+    getProof: (k) => fromPromise(() => i.getProof(k)),
+    invalidateProof: (k) => fromVoidPromise(() => i.invalidateProof(k)),
     checkEachProof: (f) =>
-      fromFailableVoidPromise(() =>
+      fromVoidPromise(() =>
         i.checkEachProof((p) =>
           f(p)().then(
             E.match(
@@ -83,11 +133,15 @@ export const tsToFpProofCache = (
   };
 };
 
+/**
+ * Converts a check proof callback from typescript interface kind
+ * into the functional fp-ts interface style
+ */
 export const fpToTsCheckCachedProofs = (
   f: CheckCachedProofs<FpInterfaceType>
 ): CheckCachedProofs<TsInterfaceType> => {
   return (check) =>
-    f((p) => fromFailablePromise(() => check(p)))().then(
+    f((p) => fromPromise(() => check(p)))().then(
       E.match(
         (err) => Promise.reject(err),
         (v) => Promise.resolve(v)
@@ -95,6 +149,9 @@ export const fpToTsCheckCachedProofs = (
     );
 };
 
+/**
+ * An implementation of IProofCache that stores proofs in in-memory record.
+ */
 class InMemoryProofCache implements IProofCache<FpInterfaceType> {
   readonly __interface_tag = 'fp';
 
@@ -104,6 +161,9 @@ class InMemoryProofCache implements IProofCache<FpInterfaceType> {
     this.cache = cache;
   }
 
+  /**
+   * Hashes the given proof and upserts it into the cache record.
+   */
   storeProof(proof: CachedProof): TaskEither<string, ProofKey> {
     return TE.fromIOEither(
       pipe(
@@ -121,10 +181,18 @@ class InMemoryProofCache implements IProofCache<FpInterfaceType> {
     return TE.fromIO(pipe(this.cache.read, IO.map(R.lookup(k))));
   }
 
+  /**
+   * If a proof is matched by the given key it is removed from the cache.
+   */
   invalidateProof(k: ProofKey): TaskEither<string, void> {
     return TE.fromIO(this.cache.modify(R.deleteAt(k)));
   }
 
+  /**
+   * For each proof in the cache it runs the given validator.
+   * in parallel.
+   * Then it leaves only those proofs that were validated to be true.
+   */
   checkEachProof(
     f: (p: CachedProof) => TaskEither<string, boolean>
   ): TaskEither<string, void> {
@@ -142,6 +210,10 @@ class InMemoryProofCache implements IProofCache<FpInterfaceType> {
   }
 }
 
+/**
+ * An implementation of IProofCacheProvider that uses in-memory caches
+ * and similarly stores them in a in-memory record.
+ */
 export class InMemoryProofCacheProvider
   implements IProofCacheProvider<FpInterfaceType>
 {

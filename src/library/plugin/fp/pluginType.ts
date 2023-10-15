@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { JsonProof } from 'o1js';
 import z from 'zod';
 import { CachedProof, fpToTsCheckCachedProofs } from './proofCache';
-import { fromFailablePromise } from '@utils/fp/TaskEither';
+import { fromPromise } from '@utils/fp/TaskEither';
 import {
   InterfaceKind,
   WithInterfaceTag,
@@ -119,11 +119,11 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
   return {
     __interface_tag: 'fp',
     verifyAndGetOutput: (pia, sp) =>
-      fromFailablePromise(() => i.verifyAndGetOutput(pia, sp)),
+      fromPromise(() => i.verifyAndGetOutput(pia, sp)),
     publicInputArgsSchema: i.publicInputArgsSchema,
     customRoutes: i.customRoutes
     // checkOutputValidity: (o) =>
-    //   fromFailablePromise(() => i.checkOutputValidity(o))
+    //   fromPromise(() => i.checkOutputValidity(o))
   };
 };
 
@@ -153,7 +153,7 @@ export const tsToFpMinAuthPluginFactory = <
     __interface_tag: 'fp',
     configurationSchema: i.configurationSchema,
     initialize: (cfg, c) =>
-      fromFailablePromise(() =>
+      fromPromise(() =>
         i.initialize(cfg, fpToTsCheckCachedProofs(c)).then(tsToFpMinAuthPlugin)
       )
   };
