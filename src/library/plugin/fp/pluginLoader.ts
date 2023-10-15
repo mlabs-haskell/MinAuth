@@ -27,7 +27,8 @@ import {
   TsInterfaceType,
   fpInterfaceTag,
   tsInterfaceTag
-} from './interfaceKind';
+} from '@lib/common/interfaceKind';
+
 
 /**
  * Configuration schema for the plugin loader

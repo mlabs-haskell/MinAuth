@@ -31,7 +31,7 @@ import {
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
 import * as S from 'fp-ts/Semigroup';
-import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { FpInterfaceType } from '@lib/common/interfaceKind';
 
 const PoseidonHashSchema = z.string();
 

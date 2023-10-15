@@ -20,7 +20,6 @@ export {
   InMemoryProofCacheProvider,
   ProofKey
 } from './fp/proofCache';
-export * from './fp/interfaceKind';
 
 export const readConfiguration = (cfgPath?: string): Promise<Configuration> =>
   launchTE(fpPluginLoader.readConfiguration(cfgPath));

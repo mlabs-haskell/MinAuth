@@ -1,7 +1,7 @@
 import { Field, JsonProof } from 'o1js';
-import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin';
 import ProvePreimageProgram from '../common/hashPreimageProof';
-import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { IMinAuthProver, IMinAuthProverFactory } from '@lib/client/prover';
+import { TsInterfaceType } from '@lib/common/interfaceKind';
 
 export class SimplePreimageProver
   implements IMinAuthProver<TsInterfaceType, unknown, Field, Field>

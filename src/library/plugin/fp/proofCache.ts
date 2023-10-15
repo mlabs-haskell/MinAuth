@@ -15,7 +15,7 @@ import {
   RetType,
   TsInterfaceType,
   WithInterfaceTag
-} from './interfaceKind';
+} from '@lib/common/interfaceKind';
 import {
   fromFailablePromise,
   fromFailableVoidPromise

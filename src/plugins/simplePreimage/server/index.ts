@@ -22,6 +22,7 @@ export class SimplePreimagePlugin
     serializedProof: JsonProof
   ): Promise<string> {
     const proof = ProvePreimageProofClass.fromJSON(serializedProof);
+
     const ret = R.lookup(proof.publicOutput.toString())(this.roles);
     if (O.isNone(ret)) throw 'unable to find role';
     else return ret.value;
