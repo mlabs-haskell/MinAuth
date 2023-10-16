@@ -10,6 +10,7 @@ import { installCustomRoutes, verifyProof } from '@lib/plugin/fp/utils';
 import { Either } from 'fp-ts/Either';
 import { readConfigurationFallback } from './config';
 import { InMemoryProofCacheProvider } from '@lib/plugin';
+import { fromFailableIO } from '@utils/fp/TaskEither';
 
 interface VerifyProofData {
   plugin: string;
@@ -63,13 +64,17 @@ const main = pipe(
             .use((err: unknown, _req: Request, resp: Response) => {
               console.error(`unhandled express error: ${err}`);
               resp.status(500).json({ error: 'internal server error' });
-            })
-            .listen(cfg.port, cfg.address, () =>
-              console.log(
-                `server is running on http://${cfg.address}:${cfg.port}`
-              )
-            );
+            });
         })
+      ),
+      TE.chain(() =>
+        fromFailableIO(() =>
+          app.listen(cfg.port, cfg.address, () =>
+            console.log(
+              `server is running on http://${cfg.address}:${cfg.port}`
+            )
+          )
+        )
       )
     )
   ),
