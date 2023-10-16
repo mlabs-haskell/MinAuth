@@ -57,12 +57,19 @@ const Factory: ProofGeneratorFactory<Conf> = {
         prover.prove(publicInputs, secretInputs)
       )
     )().then(
-      E.match(Promise.reject, ({ proof, publicInputArgs }) =>
-        Promise.resolve({
-          plugin: 'MerkleMembershipsPlugin',
-          proof,
-          publicInputArgs
-        })
+      E.match(
+        (err) => Promise.reject(err),
+        ({ proof, publicInputArgs }) =>
+          Promise.resolve({
+            plugin: 'MerkleMembershipsPlugin',
+            proof,
+            // NOTE: Public input arguments have a different meaning from the
+            // server's point of view. In particular, the server don't need to
+            // know which leaf was used.
+            publicInputArgs: publicInputArgs.map((args) =>
+              args.treeRoot.toString()
+            )
+          })
       )
     )
 };
