@@ -1,6 +1,7 @@
 import * as cmd from 'cmd-ts';
 import { commonOptions } from './common';
 import { Client } from '../client';
+import * as fs from 'fs/promises';
 
 export const args = {
   ...commonOptions,
@@ -17,7 +18,9 @@ export const handler = async (cfg: {
   protectedPath: string;
 }) => {
   const client = new Client(cfg.serverUrl);
-  await client.accessProtected(cfg.jwtFile, cfg.protectedPath);
+  const jwtToken: string = await fs.readFile(cfg.jwtFile, 'utf-8');
+  const resp = await client.accessProtected(jwtToken, cfg.protectedPath);
+  console.log(resp);
 };
 
 export const command = cmd.command({
