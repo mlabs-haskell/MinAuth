@@ -8,6 +8,23 @@ import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
 import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import * as fs from 'fs/promises';
+
+const configurationSchema = z
+  .object({
+    roles: z.record(
+      // FIXME: the key should be a valid poseidon hash
+      z.string(),
+      z.string()
+    )
+  })
+  .or(
+    z.object({
+      loadRolesFrom: z.string()
+    })
+  );
+
+type Configuration = z.infer<typeof configurationSchema>;
 
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
@@ -40,29 +57,28 @@ export class SimplePreimagePlugin
 
   static readonly __interface_tag = 'ts';
 
-  static async initialize(configuration: {
-    roles: Record<string, string>;
-  }): Promise<SimplePreimagePlugin> {
+  static async initialize(
+    configuration: Configuration
+  ): Promise<SimplePreimagePlugin> {
     const { verificationKey } = await ProvePreimageProgram.compile();
-    return new SimplePreimagePlugin(verificationKey, configuration.roles);
+    const roles =
+      'roles' in configuration
+        ? configuration.roles
+        : await fs
+            .readFile(configuration.loadRolesFrom, 'utf-8')
+            .then(JSON.parse);
+    return new SimplePreimagePlugin(verificationKey, roles);
   }
 
-  static readonly configurationSchema: z.ZodType<{
-    roles: Record<string, string>;
-  }> = z.object({
-    roles: z.record(
-      // FIXME: the key should be a valid poseidon hash
-      z.string(),
-      z.string()
-    )
-  });
+  static readonly configurationSchema: z.ZodType<Configuration> =
+    configurationSchema;
 }
 
 // sanity check
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
   SimplePreimagePlugin,
-  { roles: Record<string, string> },
+  Configuration,
   unknown,
   string
 >;
