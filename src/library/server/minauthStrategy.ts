@@ -1,3 +1,12 @@
+// TODO this module is very provisional
+// and should be redesigned and reimplemented
+// in particular:
+// - MinAuthStrategy should be a base class used to implement
+//   authorization strategies such as JWT strategy.
+// - It should not make anm assumption about the "user model"
+// - It should make it possible to use different and combined
+//   proof verification / MinAuth plugins
+
 import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
