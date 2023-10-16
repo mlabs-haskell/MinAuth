@@ -11,12 +11,12 @@ export const commonOptions = {
     long: 'jwt-file',
     short: 'j',
     type: cmd.string,
-    defaultValue: () => './.jwt'
+    defaultValue: () => './.fixtures/jwt'
   }),
   refreshTokenFile: cmd.option({
     long: 'refresh-token-file',
     short: 's',
     type: cmd.string,
-    defaultValue: () => './.refreshToken'
+    defaultValue: () => './.fixtures/refreshToken'
   })
 };

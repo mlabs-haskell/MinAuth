@@ -40,10 +40,10 @@ export const handler = async (cfg: {
     R.lookup(cfg.proofGeneratorName)(proofGenerators),
     O.match(
       () => Promise.reject(`unknown generator ${cfg.proofGeneratorName}`),
-      Promise.resolve<UntypedProofGeneratorFactory>
+      (o) => Promise.resolve(o)
     )
   );
-  const generatorConf = fs
+  const generatorConf = await fs
     .readFile(cfg.proofGeneratorConfFile, 'utf-8')
     .then(JSON.parse)
     .then(generatorFactory.confSchema.parse);
