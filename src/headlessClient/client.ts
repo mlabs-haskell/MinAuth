@@ -39,7 +39,7 @@ export class Client {
   }
 
   async refresh(refreshToken: string): Promise<RefreshResponse> {
-    const resp = await axios.post(`${this.serverUrl}/refresh`, {
+    const resp = await axios.post(`${this.serverUrl}/token`, {
       refreshToken
     });
     if (resp.status !== 200) throw 'failed to refresh jwt token';
