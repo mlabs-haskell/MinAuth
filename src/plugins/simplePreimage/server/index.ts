@@ -7,40 +7,73 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
-import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { TsInterfaceType } from '@lib/common/interfaceKind';
 
+/**
+ * Somewhat trivial example of a plugin.
+ * The plugin keeps a fixed set of hashes.
+ * Each hash is associated with a role in the system.
+ * One can prove that they have the role by providing the secret
+ * preimage of the hash.
+ *
+ * NOTE. Although one can always generate valid zkproof its output must
+ *       match the list kept by the server.
+ */
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
 {
+  // This plugin uses an idiomatic Typescript interface
   readonly __interface_tag = 'ts';
+  static readonly __interface_tag = 'ts';
 
+  /**
+   *  A memoized zk-circuit verification key
+   */
   readonly verificationKey: string;
+
+  /**
+   *  The mapping between hashes and role
+   */
   private readonly roles: Record<string, string>;
 
+  /**
+   * Verify a proof and return the role.
+   */
   async verifyAndGetOutput(
     _: unknown,
     serializedProof: JsonProof
   ): Promise<string> {
     const proof = ProvePreimageProofClass.fromJSON(serializedProof);
 
+    // TODO actually call verify..
     const ret = R.lookup(proof.publicOutput.toString())(this.roles);
     if (O.isNone(ret)) throw 'unable to find role';
     else return ret.value;
   }
 
+  /**
+   * Trivial - no public inputs.
+   */
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
+  /**
+   * Provide an endpoint returning a list of roles recognized by the plugin.
+   */
   readonly customRoutes = Router().get('/roles', (_, res) =>
     res.status(200).json(this.roles)
   );
 
-  constructor(verificationKey: string, roles: Record<string, string>) {
+  /**
+   * This ctor is meant ot be called by the `initialize` function.
+   */
+  private constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;
     this.roles = roles;
   }
 
-  static readonly __interface_tag = 'ts';
-
+  /**
+   * Initialize the plugin with a configuration.
+   */
   static async initialize(configuration: {
     roles: Record<string, string>;
   }): Promise<SimplePreimagePlugin> {
@@ -48,6 +81,9 @@ export class SimplePreimagePlugin
     return new SimplePreimagePlugin(verificationKey, configuration.roles);
   }
 
+  /**
+   * The plugin configuration schema for
+   */
   static readonly configurationSchema: z.ZodType<{
     roles: Record<string, string>;
   }> = z.object({
@@ -59,7 +95,6 @@ export class SimplePreimagePlugin
   });
 }
 
-// sanity check
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
   SimplePreimagePlugin,
