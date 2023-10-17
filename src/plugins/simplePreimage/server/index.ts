@@ -7,19 +7,26 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
-import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { TsInterfaceType } from '@lib/common/interfaceKind';
 import * as fs from 'fs/promises';
 
+/**
+ * The plugin configuration schema.
+ */
 const configurationSchema = z
   .object({
     roles: z.record(
       // FIXME: the key should be a valid poseidon hash
+      /** Hash preimage of which is used to authorize operations */
       z.string(),
+      /** An auxilliary name for the hash - for example
+       *  a name of a role in the system */
       z.string()
     )
   })
   .or(
     z.object({
+      /** Alternatively, the "roles" can be loaded from a file */
       loadRolesFrom: z.string()
     })
   );
@@ -90,7 +97,7 @@ export class SimplePreimagePlugin
 
   static readonly __interface_tag = 'ts';
 
-   /**
+  /**
    * Initialize the plugin with a configuration.
    */
   static async initialize(
@@ -106,7 +113,7 @@ export class SimplePreimagePlugin
     return new SimplePreimagePlugin(verificationKey, roles);
   }
 
-    /**
+  /**
    * The plugin configuration schema for
    */
   static readonly configurationSchema: z.ZodType<Configuration> =
