@@ -1,101 +1,90 @@
 import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { JsonProof } from 'o1js';
 
-const PROVER_URL: string = 'http://localhost:3001/verifyProof';
-const SECRET_KEY: string = 'YOUR_SECRET_KEY';
-
-interface MinAuthProof {
-  entrypoint: {
-    name: string;
-    config: never;
-  };
+export interface MinAuthProof {
+  plugin: string;
+  publicInputArgs: unknown;
   proof: JsonProof;
 }
 
-interface User {
-  id: number;
-  name: string;
-  role: string;
-  token?: string;
-  refreshToken?: string;
-}
+type VerificationResult =
+  | {
+      __tag: 'success';
+      output: unknown;
+      proofKey: string;
+    }
+  | {
+      __tag: 'failed';
+      error: string;
+    };
 
-type VerificationResult = {
-  role: string;
-  message: string;
+const verifyProof = (
+  proverUrl: string,
+  data: MinAuthProof
+): Promise<VerificationResult> => {
+  console.log('Calling for proof verification with:', data);
+  return axios.post(proverUrl, data).then(
+    (resp) => {
+      if (resp.status == 200) {
+        console.log('Received response:', resp);
+        const { output, proofKey } = resp.data as {
+          output: unknown;
+          proofKey: string;
+        };
+        return { __tag: 'success', output, proofKey };
+      }
+
+      const { error } = resp.data as { error: string };
+      return { __tag: 'failed', error };
+    },
+    (error) => {
+      return { __tag: 'failed', error: String(error) };
+    }
+  );
 };
 
-async function verifyProof(
-  entryName: string,
-  config: never,
-  proof: JsonProof
-): Promise<VerificationResult> {
-  if (!proof) throw 'Proof cannot be empty';
-
-  const data: MinAuthProof = {
-    entrypoint: {
-      name: entryName,
-      config: config
-    },
-    proof: proof
-  };
-
-  console.log('Calling for proof verification with:', data);
-  const response = await axios.post(PROVER_URL, data);
-  console.log('Received response:', response);
-  return response.data;
-}
+export type AuthenticationResponse = {
+  plugin: string;
+  output: unknown;
+  proofKey: string;
+};
 
 class MinAuthStrategy extends Strategy {
   name = 'MinAuthStrategy';
 
-  public constructor() {
+  readonly verifyProof: (_: MinAuthProof) => Promise<VerificationResult>;
+
+  public constructor(proverUrl: string = 'http://127.0.0.1:3001/verifyProof') {
     super();
+
+    this.verifyProof = (data) => verifyProof(proverUrl, data);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  async authenticate(req: Request, _options?: any): Promise<void> {
-    try {
-      console.log('authenticating (strategy) with req:', req.body);
-      const loginData = req.body;
-      const { entrypoint, proof } = loginData as MinAuthProof;
-      const { name, config } = entrypoint;
-      const { role, message } = await verifyProof(name, config, proof);
-      console.log('proof verification return message is:', message);
-      console.log('proof verification return role is:', role);
+  async authenticate(req: Request): Promise<void> {
+    console.log('authenticating (strategy) with req:', req.body);
+    const loginData = req.body as MinAuthProof; // TODO validate the body
+    const result = await this.verifyProof(loginData);
 
-      if (proof && role) {
-        const user: User = {
-          id: 1,
-          name: 'John Doe2',
-          role: role
-        };
+    if (result.__tag == 'success') {
+      const { output, proofKey } = result;
 
-        const jwtPayload = {
-          sub: user.id,
-          name: user.name,
-          role: user.role
-        };
-        const jwtOptions = {
-          expiresIn: '1h'
-        };
-        const token = jwt.sign(jwtPayload, SECRET_KEY, jwtOptions);
+      console.debug('proof verification output:', output);
 
-        user.token = token;
+      const authResp: AuthenticationResponse = {
+        plugin: loginData.plugin,
+        output,
+        proofKey
+      };
 
-        const refreshToken = crypto.randomBytes(40).toString('hex');
-        user.refreshToken = refreshToken;
+      this.success(authResp);
+    } else {
+      const { error } = result;
 
-        return this.success(user);
-      } else {
-        return this.fail({ message: 'Invalid serialized proof' }, 401);
-      }
-    } catch (error: unknown) {
-      this.error(error as Error);
+      console.log(`unable to authenticate using minAuth: ${error}`);
+
+      this.fail(400);
     }
   }
 }

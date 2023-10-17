@@ -18,13 +18,20 @@ export const defaultConfiguration: Configuration = configurationSchema.parse({
     SimplePreimagePlugin: {
       path: mkPluginDir('simplePreimage'),
       config: {
-        roles: {}
+        loadRolesFrom: './.fixtures/roles.json'
       }
     },
     MerkleMembershipsPlugin: {
       path: mkPluginDir('merkleMemberships'),
       config: {
-        trees: []
+        trees: [
+          {
+            offchainStoragePath: './.fixtures/tree1.json'
+          },
+          {
+            offchainStoragePath: './.fixtures/tree2.json'
+          }
+        ]
       }
     }
   }

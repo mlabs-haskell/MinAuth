@@ -133,3 +133,6 @@ dist
 .pre-commit-config.yaml
 result
 result-*
+
+# tmp files
+.fixtures
