@@ -20,12 +20,6 @@ export type AccessProtectedResponse = z.infer<
   typeof accessProtectedResponseSchema
 >;
 
-export interface ProofGeneratorFactory<Conf> {
-  mkGenerator(conf: Conf): () => Promise<MinAuthProof>;
-
-  readonly confSchema: z.Schema<Conf>;
-}
-
 export class Client {
   readonly serverUrl: string;
 

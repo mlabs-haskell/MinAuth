@@ -1,5 +1,4 @@
 import * as z from 'zod';
-import { ProofGeneratorFactory } from '../client';
 import MembershipsProver from '@plugins/merkleMemberships/client';
 import { safeFromString } from '@utils/fp/TaskEither';
 import { pipe } from 'fp-ts/function';
@@ -7,6 +6,7 @@ import { Field } from 'o1js';
 import * as TE from 'fp-ts/TaskEither';
 import * as A from 'fp-ts/Array';
 import * as E from 'fp-ts/Either';
+import { ProofGeneratorFactory } from '../ProofGenerator';
 
 const publicAndPrivateInputsSchema = z.object({
   treeRoot: z.string(),

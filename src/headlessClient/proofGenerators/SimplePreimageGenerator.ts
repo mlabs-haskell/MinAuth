@@ -1,7 +1,7 @@
 import { SimplePreimageProver } from '@plugins/simplePreimage/client';
 import { Field, Poseidon } from 'o1js';
 import { z } from 'zod';
-import { ProofGeneratorFactory } from '../client';
+import { ProofGeneratorFactory } from '../ProofGenerator';
 
 const confSchema = z.object({
   password: z.string()
