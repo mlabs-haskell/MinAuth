@@ -33,7 +33,7 @@ type JWTPayload = {
   proofKey: string;
 };
 
-const generateRefershToken = () => crypto.randomBytes(40).toString('hex');
+const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 
 const signJWTPayload = (payload: object) =>
   jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
@@ -50,7 +50,7 @@ app.post(
     };
 
     const token = signJWTPayload(jwtPayload);
-    const refreshToken = generateRefershToken();
+    const refreshToken = generateRefreshToken();
 
     // Store the refresh token
     refreshTokenStore[refreshToken] = authResp;
