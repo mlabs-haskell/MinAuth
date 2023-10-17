@@ -55,7 +55,10 @@ export const verifyProof = (
   proof: JsonProof,
   publicInputArgs: unknown,
   pluginName: string
-) =>
+): Promise<{
+  output: unknown;
+  proofKey: string;
+}> =>
   launchTE(
     fpUtils.verifyProof(activePlugins, proofCacheProvider)(
       proof,

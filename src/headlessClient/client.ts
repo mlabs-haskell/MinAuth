@@ -1,129 +1,60 @@
+import { MinAuthProof } from '@lib/server/minauthStrategy';
 import axios from 'axios';
+import path from 'path';
+import * as z from 'zod';
 
-const SERVER_URL: string = 'http://localhost:3000';
-const PROVER_URL: string = 'http://localhost:3001/buildProof';
+export const loginResponseSchema = z.object({
+  token: z.string(),
+  refreshToken: z.string()
+});
 
-interface RoleMapping {
-  [key: string]: [string, string];
-}
+export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
-const generateMockProof = async (role: string) => {
-  const roleMapping: RoleMapping = {
-    member: [
-      '2',
-      '21565680844461314807147611702860246336805372493508489110556896454939225549736'
-    ],
-    admin: [
-      '1',
-      '7555220006856562833147743033256142154591945963958408607501861037584894828141'
-    ],
-    invalid_role: [
-      '3',
-      '27942348051329088894852777850568290047473460593152551617852488829426742444656'
-    ],
-    invalid_proof: [
-      '1',
-      '21565680844461314807147611702860246336805372493508489110556896454939225549736'
-    ]
-  };
+export const refreshResponseSchema = z.object({ token: z.string() });
 
-  const rm = roleMapping[role];
-  const [preimage, hash]: [string, string] = rm || [
-    0,
-    '00000000000000000000000000000000000000000000000000000000000000000000000000000'
-  ];
+export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
 
-  console.log(
-    `building proof: For ${role}, public_inp ${hash}, private_inp ${preimage}`
-  );
+export const accessProtectedResponseSchema = z.object({ message: z.string() });
 
-  const data: BuildProofData = {
-    entrypoint: {
-      name: 'SimplePreimage',
-      config: {}
-    },
-    arguments: [hash, preimage]
-  };
+export type AccessProtectedResponse = z.infer<
+  typeof accessProtectedResponseSchema
+>;
 
-  const response = await axios.post(PROVER_URL, data);
-  console.log('Received response:', response);
-  return response.data;
-};
+export class Client {
+  readonly serverUrl: string;
 
-interface BuildProofData {
-  entrypoint: {
-    name: string;
-    config: unknown;
-  };
-  arguments: [string, string];
-}
-
-const mockLoginData = async (role: string) => {
-  return {
-    entrypoint: {
-      name: 'SimplePreimage',
-      config: {}
-    },
-    proof: await generateMockProof(role)
-  };
-};
-
-interface LoginResponse {
-  jwt: string;
-  refreshToken: string;
-}
-
-async function login(role: string): Promise<LoginResponse | null> {
-  try {
-    const loginData = await mockLoginData(role);
-    console.log('Login with login data:', loginData);
-    const response = await axios.post(`${SERVER_URL}/login`, loginData);
-    return {
-      jwt: response.data.token,
-      refreshToken: response.data.refreshToken
-    };
-  } catch (error: unknown) {
-    console.error('Login failed:', error);
-    return null;
+  constructor(serverUrl: string) {
+    this.serverUrl = serverUrl;
   }
-}
 
-async function accessProtected(jwt: string): Promise<void> {
-  try {
-    const response = await axios.get(`${SERVER_URL}/protected`, {
-      headers: {
-        Authorization: `Bearer ${jwt}`
-      }
-    });
-    console.log('Protected response:', response.data);
-  } catch (error) {
-    console.error('Accessing protected route failed:', error);
+  mkUrl(...pathComponents: string[]): string {
+    return new URL(path.join(...pathComponents), this.serverUrl).href;
   }
-}
 
-async function refreshToken(refreshToken: string): Promise<string | null> {
-  try {
-    const response = await axios.post(`${SERVER_URL}/token`, {
+  async login(proof: MinAuthProof): Promise<LoginResponse> {
+    const resp = await axios.post(this.mkUrl('login'), proof);
+    if (resp.status !== 200) throw 'failed to login';
+    return loginResponseSchema.parse(resp.data);
+  }
+
+  async refresh(refreshToken: string): Promise<RefreshResponse> {
+    const resp = await axios.post(this.mkUrl('token'), {
       refreshToken
     });
-    return response.data.token;
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-    return null;
+    if (resp.status !== 200) throw 'failed to refresh jwt token';
+    return refreshResponseSchema.parse(resp.data);
+  }
+
+  async accessProtected(
+    jwtToken: string,
+    protectedPath: string = '/protected'
+  ): Promise<AccessProtectedResponse> {
+    const resp = await axios.get(this.mkUrl(protectedPath), {
+      headers: {
+        Authorization: `Bearer ${jwtToken}`
+      }
+    });
+    if (resp.status !== 200) throw 'failed to access protected route';
+    return accessProtectedResponseSchema.parse(resp.data);
   }
 }
-
-// Main Execution
-(async () => {
-  // provisional tests for the backend
-  const tokens = await login('admin');
-  if (tokens) {
-    await accessProtected(tokens.jwt);
-
-    const newJWT = await refreshToken(tokens.refreshToken);
-    if (newJWT) {
-      console.log('Successfully refreshed JWT.');
-      await accessProtected(newJWT);
-    }
-  }
-})();
