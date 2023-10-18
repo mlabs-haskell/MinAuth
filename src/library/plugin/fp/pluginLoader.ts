@@ -73,16 +73,12 @@ export const readConfiguration = _readConfiguration(
 export type UntypedFpPluginFactory = IMinAuthPluginFactory<
   FpInterfaceType,
   IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
-  unknown,
-  unknown,
   unknown
 >;
 
 export type UntypedTsPluginFactory = IMinAuthPluginFactory<
   TsInterfaceType,
   IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
-  unknown,
-  unknown,
   unknown
 >;
 
