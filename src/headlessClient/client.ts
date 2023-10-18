@@ -37,10 +37,21 @@ export class Client {
     return loginResponseSchema.parse(resp.data);
   }
 
-  async refresh(refreshToken: string): Promise<RefreshResponse> {
-    const resp = await axios.post(this.mkUrl('token'), {
-      refreshToken
-    });
+  async refresh(
+    jwtToken: string,
+    refreshToken: string
+  ): Promise<RefreshResponse> {
+    const resp = await axios.post(
+      this.mkUrl('token'),
+      {
+        refreshToken
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${jwtToken}`
+        }
+      }
+    );
     if (resp.status !== 200) throw 'failed to refresh jwt token';
     return refreshResponseSchema.parse(resp.data);
   }

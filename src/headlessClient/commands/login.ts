@@ -8,6 +8,7 @@ import { pipe } from 'fp-ts/lib/function';
 import * as fs from 'fs/promises';
 import { commonOptions } from './common';
 import { Client } from '../client';
+import * as jwt from 'jsonwebtoken';
 
 export const args = {
   ...commonOptions,
@@ -50,6 +51,10 @@ export const handler = async (cfg: {
   const generate = generatorFactory.mkGenerator(generatorConf);
   const proof = await generate();
   const loginResult = await client.login(proof);
+
+  const jwtPayload = jwt.decode(loginResult.token);
+  console.log(jwtPayload);
+
   await fs.writeFile(cfg.jwtFile, loginResult.token);
   await fs.writeFile(cfg.refreshTokenFile, loginResult.refreshToken);
 };

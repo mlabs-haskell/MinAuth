@@ -87,7 +87,7 @@ export const validateOutput =
     pipe(
       TE.Do,
       TE.tapIO(
-        () => () => console.info(`verifying proof using plugin ${pluginName}`)
+        () => () => console.info(`validating output using plugin ${pluginName}`)
       ),
       TE.bind('pluginInstance', () =>
         TE.fromOption(() => `plugin ${pluginName} not found`)(

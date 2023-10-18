@@ -13,6 +13,7 @@ import { Either } from 'fp-ts/Either';
 import { readConfigurationFallback } from './config';
 import {
   fromFailableIO,
+  launchTE,
   liftZodParseResult,
   wrapTrivialExpressHandler
 } from '@utils/fp/TaskEither';
@@ -65,22 +66,26 @@ const main = pipe(
             )
             .post(
               '/validateOutput',
-              wrapTrivialExpressHandler((req) =>
-                pipe(
-                  liftZodParseResult(
-                    validateOutputDataSchema.safeParse(req.body)
-                  ),
-                  TE.chain((body: ValidateOutputData) =>
-                    validateOutput(activePlugins)(body.plugin, body.output)
-                  ),
-                  TE.chain((val) =>
-                    val.__validity == 'valid'
-                      ? TE.right({})
-                      : TE.left(val.reason)
+              async (req, resp): Promise<void> =>
+                launchTE(
+                  pipe(
+                    liftZodParseResult(
+                      validateOutputDataSchema.safeParse(req.body)
+                    ),
+                    TE.chain((body: ValidateOutputData) =>
+                      validateOutput(activePlugins)(body.plugin, body.output)
+                    ),
+                    TE.tapIO(
+                      (val) => () =>
+                        val.__validity == 'valid'
+                          ? resp.status(200).json({})
+                          : resp.status(400).json({ message: val.reason })
+                    ),
+                    TE.asUnit
                   )
                 )
-              )
             )
+
             .all('*', (_, resp) =>
               resp.status(404).json({ error: 'bad route' })
             )

@@ -11,8 +11,9 @@ export const handler = async (cfg: {
   jwtFile: string;
 }) => {
   const client = new Client(cfg.serverUrl);
+  const jwtToken: string = await fs.readFile(cfg.jwtFile, 'utf-8');
   const refreshToken = await fs.readFile(cfg.refreshTokenFile, 'utf-8');
-  const refreshResult = await client.refresh(refreshToken);
+  const refreshResult = await client.refresh(jwtToken, refreshToken);
   await fs.writeFile(cfg.jwtFile, refreshResult.token);
 };
 

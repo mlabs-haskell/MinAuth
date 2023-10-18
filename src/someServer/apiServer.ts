@@ -33,13 +33,19 @@ const signJWTPayload = (payload: JWTPayload) =>
   jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
 
 const hashAuthResp = (a: AuthenticationResponse): string =>
-  crypto.createHash('sha256').update(JSON.stringify(a)).digest().toString();
+  crypto
+    .createHash('sha256')
+    .update(JSON.stringify(a))
+    .digest()
+    .toString('hex');
 
 app.post(
   '/login',
   passport.authenticate(MinAuthStrategy.name, { session: false }),
   (req: Request, res: Response) => {
     const authResp = req.user as AuthenticationResponse;
+
+    console.log(authResp);
 
     const jwtPayload: JWTPayload = { authRespHash: hashAuthResp(authResp) };
 
@@ -57,10 +63,7 @@ app.post(
   }
 );
 
-const validateOutput = async (
-  plugin: string,
-  output: unknown
-): Promise<boolean> =>
+const validateOutput = (plugin: string, output: unknown): Promise<boolean> =>
   axios
     .post('http://127.0.0.1:3001/validateOutput', {
       plugin,
@@ -76,23 +79,35 @@ app.post(
   async (req: Request, res: Response) => {
     const refreshToken = req.body.refreshToken;
 
-    if (!(refreshToken && refreshToken in refreshTokenStore))
+    if (!(refreshToken && refreshToken in refreshTokenStore)) {
       res.status(401).json({ message: 'invalid refresh token' });
+      return;
+    }
 
     const authResp = refreshTokenStore[refreshToken];
 
-    const jwtPayload = req.user as JWTPayload;
+    const { authRespHash } = req.user as JWTPayload;
 
-    if (hashAuthResp(authResp) !== jwtPayload.authRespHash)
+    console.log(JSON.stringify(authResp));
+
+    if (hashAuthResp(authResp) !== authRespHash) {
       res.status(401).json({ message: 'invalid refresh token' });
-
-    if (!(await validateOutput(authResp.plugin, authResp.output))) {
-      delete refreshTokenStore[refreshToken];
-      res.status(401).json({ message: 'output no longer valid' });
+      return;
     }
 
-    const token = signJWTPayload(jwtPayload);
-    res.json({ token });
+    const validationResult = await validateOutput(
+      authResp.plugin,
+      authResp.output
+    );
+
+    if (!validationResult) {
+      delete refreshTokenStore[refreshToken];
+      res.status(401).json({ message: 'output no longer valid' });
+      return;
+    }
+
+    const token = signJWTPayload({ authRespHash });
+    res.status(200).json({ token });
   }
 );
 
