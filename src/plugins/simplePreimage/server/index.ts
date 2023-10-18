@@ -3,10 +3,7 @@ import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
   OutputValidity,
-  combineEncDec,
-  outputValid,
-  wrapTrivialEnc,
-  wrapZodDec
+  outputValid
 } from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
@@ -17,6 +14,11 @@ import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
 import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
 import * as fs from 'fs/promises';
+import {
+  wrapZodDec,
+  combineEncDec,
+  wrapTrivialEnc
+} from '@lib/plugin/fp/EncodeDecoder';
 
 const configurationSchema = z
   .object({

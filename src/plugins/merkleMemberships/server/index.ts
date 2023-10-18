@@ -2,14 +2,11 @@ import { Experimental, Field, JsonProof, Poseidon } from 'o1js';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import {
-  Decoder,
-  EncodeDecoder,
   IMinAuthPlugin,
   IMinAuthPluginFactory,
   OutputValidity,
   outputInvalid,
-  outputValid,
-  wrapZodDec
+  outputValid
 } from '@lib/plugin/fp/pluginType';
 import {
   MinaTreesProvider,
@@ -38,6 +35,11 @@ import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 import * as E from 'fp-ts/Either';
 import * as O from 'fp-ts/Option';
 import * as A from 'fp-ts/Array';
+import {
+  Decoder,
+  EncodeDecoder,
+  wrapZodDec
+} from '@lib/plugin/fp/EncodeDecoder';
 
 export type PublicInputArgs = NonEmptyArray<Field>;
 

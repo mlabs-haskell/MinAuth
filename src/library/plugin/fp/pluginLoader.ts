@@ -1,7 +1,5 @@
 import * as path from 'path';
 import {
-  Decoder,
-  EncodeDecoder,
   IMinAuthPlugin,
   IMinAuthPluginFactory,
   tsToFpMinAuthPluginFactory
@@ -25,6 +23,7 @@ import {
   fpInterfaceTag,
   tsInterfaceTag
 } from './interfaceKind';
+import { Decoder, EncodeDecoder } from './EncodeDecoder';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
