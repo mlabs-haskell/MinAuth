@@ -6,6 +6,7 @@ import MinAuthStrategy, {
   AuthenticationResponse
 } from '@lib/server/minauthStrategy';
 import { setupPassport } from './passport';
+import axios from 'axios';
 
 const SECRET_KEY: string = 'YOUR_SECRET_KEY';
 
@@ -18,25 +19,21 @@ const passport = setupPassport(SECRET_KEY);
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
 
-app.get('/', (_req, res) => {
-  res.send('Hello, World!');
-});
-
 const PORT: number = 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-type JWTPayload = {
-  plugin: string;
-  proofKey: string;
-};
+type JWTPayload = { authRespHash: string };
 
 const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 
-const signJWTPayload = (payload: object) =>
+const signJWTPayload = (payload: JWTPayload) =>
   jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
+
+const hashAuthResp = (a: AuthenticationResponse): string =>
+  crypto.createHash('sha256').update(JSON.stringify(a)).digest().toString();
 
 app.post(
   '/login',
@@ -44,10 +41,7 @@ app.post(
   (req: Request, res: Response) => {
     const authResp = req.user as AuthenticationResponse;
 
-    const jwtPayload: JWTPayload = {
-      plugin: authResp.plugin,
-      proofKey: authResp.proofKey
-    };
+    const jwtPayload: JWTPayload = { authRespHash: hashAuthResp(authResp) };
 
     const token = signJWTPayload(jwtPayload);
     const refreshToken = generateRefreshToken();
@@ -63,21 +57,44 @@ app.post(
   }
 );
 
-// TODO: invalidate a refresh token once the latest jwt expires. This can be easily implemented with redis.
-// TODO: communicate with the plugin server to make sure that the proof is still valid
-app.post('/token', (req: Request, res: Response) => {
-  const refreshToken = req.body.refreshToken;
+const validateOutput = async (
+  plugin: string,
+  output: unknown
+): Promise<boolean> =>
+  axios
+    .post('http://127.0.0.1:3001/validateOutput', {
+      plugin,
+      output
+    })
+    .then(({ status }) => status == 200);
 
-  if (refreshToken && refreshToken in refreshTokenStore) {
+// TODO: Prevent the reuse of jwt.
+// TODO: invalidate a refresh token once the latest jwt expires. This can be easily implemented with redis
+app.post(
+  '/token',
+  passport.authenticate('jwt', { session: false }),
+  async (req: Request, res: Response) => {
+    const refreshToken = req.body.refreshToken;
+
+    if (!(refreshToken && refreshToken in refreshTokenStore))
+      res.status(401).json({ message: 'invalid refresh token' });
+
     const authResp = refreshTokenStore[refreshToken];
 
-    const token = signJWTPayload(authResp);
+    const jwtPayload = req.user as JWTPayload;
 
+    if (hashAuthResp(authResp) !== jwtPayload.authRespHash)
+      res.status(401).json({ message: 'invalid refresh token' });
+
+    if (!(await validateOutput(authResp.plugin, authResp.output))) {
+      delete refreshTokenStore[refreshToken];
+      res.status(401).json({ message: 'output no longer valid' });
+    }
+
+    const token = signJWTPayload(jwtPayload);
     res.json({ token });
-  } else {
-    res.status(401).json({ message: 'Invalid refresh token' });
   }
-});
+);
 
 app.get(
   '/protected',

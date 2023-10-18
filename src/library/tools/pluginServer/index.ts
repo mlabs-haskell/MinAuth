@@ -56,7 +56,10 @@ const main = pipe(
                     body.proof,
                     body.publicInputArgs,
                     body.plugin
-                  )
+                  ),
+                  TE.map((output) => {
+                    return { output };
+                  })
                 );
               })
             )
