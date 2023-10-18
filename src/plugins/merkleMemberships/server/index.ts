@@ -40,7 +40,6 @@ import {
   EncodeDecoder,
   wrapZodDec
 } from '@lib/plugin/fp/EncodeDecoder';
-import { traceId } from '@utils/fp/debug';
 
 export type PublicInputArgs = NonEmptyArray<Field>;
 
@@ -130,7 +129,7 @@ const computeExpectedHash =
         )
       )((root: Field) =>
         pipe(
-          traceId(forest).getTree(root),
+          forest.getTree(root),
           TE.chain(
             TE.fromOption(
               () => `unable to find tree with root ${root.toString()}`

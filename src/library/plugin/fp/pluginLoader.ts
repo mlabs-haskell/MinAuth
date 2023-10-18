@@ -24,7 +24,6 @@ import {
   tsInterfaceTag
 } from './interfaceKind';
 import { Decoder, EncodeDecoder } from './EncodeDecoder';
-import { traceId } from '@utils/fp/debug';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
@@ -144,7 +143,7 @@ const initializePlugin = (
       pluginFactory.initialize(typedPluginCfg)
     ),
     TE.map(({ pluginFactory, pluginInstance }) => {
-      return traceId({
+      return {
         __interface_tag: 'fp',
         // NOTE: non-properties are not getting copied using `...pluginInstance`
         // So we do it manually.
@@ -154,7 +153,7 @@ const initializePlugin = (
         verificationKey: pluginInstance.verificationKey,
         publicInputArgsDec: pluginFactory.publicInputArgsDec,
         outputEncDec: pluginFactory.outputEncDec
-      });
+      };
     })
   );
 
