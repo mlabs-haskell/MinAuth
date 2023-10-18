@@ -134,3 +134,6 @@ export const wrapTrivialExpressHandler =
       ),
       T.asUnit
     )();
+
+export const guard = (cond: boolean, msg: string): TaskEither<string, void> =>
+  cond ? TE.right(undefined) : TE.left(msg);

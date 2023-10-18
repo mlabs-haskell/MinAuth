@@ -1,5 +1,13 @@
 import { JsonProof } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin';
+import {
+  IMinAuthPlugin,
+  IMinAuthPluginFactory,
+  OutputValidity,
+  combineEncDec,
+  outputValid,
+  wrapTrivialEnc,
+  wrapZodDec
+} from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
@@ -50,6 +58,10 @@ export class SimplePreimagePlugin
     res.status(200).json(this.roles)
   );
 
+  async checkOutputValidity(): Promise<OutputValidity> {
+    return outputValid;
+  }
+
   constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;
     this.roles = roles;
@@ -70,8 +82,14 @@ export class SimplePreimagePlugin
     return new SimplePreimagePlugin(verificationKey, roles);
   }
 
-  static readonly configurationSchema: z.ZodType<Configuration> =
-    configurationSchema;
+  static readonly configurationDec = wrapZodDec('ts', configurationSchema);
+
+  static readonly publicInputArgsDec = wrapZodDec('ts', z.unknown());
+
+  static readonly outputEncDec = combineEncDec(
+    wrapTrivialEnc('ts'),
+    wrapZodDec('ts', z.string())
+  );
 }
 
 // sanity check

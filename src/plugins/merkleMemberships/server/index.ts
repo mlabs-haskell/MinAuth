@@ -1,11 +1,15 @@
 import { Experimental, Field, JsonProof, Poseidon } from 'o1js';
-import * as O from 'fp-ts/Option';
-import * as A from 'fp-ts/Array';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import {
+  Decoder,
+  EncodeDecoder,
   IMinAuthPlugin,
-  IMinAuthPluginFactory
+  IMinAuthPluginFactory,
+  OutputValidity,
+  outputInvalid,
+  outputValid,
+  wrapZodDec
 } from '@lib/plugin/fp/pluginType';
 import {
   MinaTreesProvider,
@@ -21,9 +25,8 @@ import * as T from 'fp-ts/Task';
 import * as Str from 'fp-ts/string';
 import * as IOE from 'fp-ts/IOEither';
 import {
-  fromFailableIO,
   fromFailablePromise,
-  guardPassthrough,
+  guard,
   safeGetFieldParam,
   safeGetNumberParam,
   wrapTrivialExpressHandler
@@ -32,15 +35,116 @@ import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
 import * as S from 'fp-ts/Semigroup';
 import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import * as E from 'fp-ts/Either';
+import * as O from 'fp-ts/Option';
+import * as A from 'fp-ts/Array';
 
-const PoseidonHashSchema = z.string();
+export type PublicInputArgs = NonEmptyArray<Field>;
 
-const publicInputArgsSchema = z.array(PoseidonHashSchema);
+const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
+  __interface_tag: 'fp',
 
-export type PublicInputArgs = z.infer<typeof publicInputArgsSchema>;
+  decode: (i: unknown) =>
+    pipe(
+      wrapZodDec('fp', z.string()).decode(i),
+      E.chain((str) => {
+        try {
+          return E.right(Field.from(str));
+        } catch (err) {
+          return E.left('unable to construct field');
+        }
+      })
+    ),
+
+  encode: (i: Field) => i.toString()
+};
+
+const publicInputArgsEncDec: EncodeDecoder<FpInterfaceType, PublicInputArgs> = {
+  __interface_tag: 'fp',
+
+  decode: (i: unknown) =>
+    pipe(
+      wrapZodDec('fp', z.array(z.unknown())).decode(i),
+      E.chain(A.traverse(E.Applicative)(fieldEncDec.decode)),
+      E.chain((arr: Array<Field>) =>
+        E.fromOption(() => 'empty public input')(NE.fromArray(arr))
+      )
+    ),
+
+  encode: NE.map(fieldEncDec.encode)
+};
+
+export type Output = {
+  publicInputArgs: PublicInputArgs;
+  recursiveHash: Field;
+};
+
+const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
+  __interface_tag: 'fp',
+
+  decode: (i: unknown) =>
+    pipe(
+      E.Do,
+      E.bind('rawObj', () =>
+        wrapZodDec(
+          'fp',
+          z.object({
+            publicInputArgs: z.unknown(),
+            recursiveHash: z.string()
+          })
+        ).decode(i)
+      ),
+      E.bind('publicInputArgs', ({ rawObj }) =>
+        publicInputArgsEncDec.decode(rawObj.publicInputArgs)
+      ),
+      E.bind('recursiveHash', ({ rawObj }) =>
+        fieldEncDec.decode(rawObj.recursiveHash)
+      ),
+      E.map(({ publicInputArgs, recursiveHash }) => {
+        return {
+          publicInputArgs,
+          recursiveHash
+        };
+      })
+    ),
+
+  encode: ({ publicInputArgs, recursiveHash }) => {
+    return {
+      publicInputArgs: publicInputArgsEncDec.encode(publicInputArgs),
+      recursiveHash: fieldEncDec.encode(recursiveHash)
+    };
+  }
+};
+
+const computeExpectedHash =
+  (forest: TreesProvider) =>
+  (roots: NonEmptyArray<Field>): TaskEither<string, Field> =>
+    pipe(
+      NE.traverse(
+        TE.getApplicativeTaskValidation(
+          T.ApplySeq,
+          pipe(Str.Semigroup, S.intercalate(', '))
+        )
+      )((root: Field) =>
+        pipe(
+          forest.getTree(root),
+          TE.chain(
+            TE.fromOption(
+              () => `unable to find tree with root ${root.toString()}`
+            )
+          ),
+          TE.chain(() => TE.right(root))
+        )
+      )(roots),
+      TE.map((roots: NonEmptyArray<Field>) =>
+        A.reduce(NE.head(roots), (acc, x: Field) => Poseidon.hash([x, acc]))(
+          NE.tail(roots)
+        )
+      )
+    );
 
 export class MerkleMembershipsPlugin
-  implements IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Field>
+  implements IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>
 {
   readonly __interface_tag = 'fp';
 
@@ -100,21 +204,14 @@ export class MerkleMembershipsPlugin
       wrapTrivialExpressHandler(() => this.storageProvider.getTreeRoots())
     );
 
-  readonly publicInputArgsSchema = publicInputArgsSchema;
-
   verifyAndGetOutput(
     publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof
-  ): TaskEither<string, Field> {
+  ): TaskEither<string, Output> {
     console.log(publicInputArgs);
 
-    const treeRoots = pipe(
-      TE.fromOption(() => 'empty input list')(NE.fromArray(publicInputArgs)),
-      TE.chain(
-        NE.traverse(TE.ApplicativePar)((x: string) =>
-          fromFailableIO(() => Field.from(x))
-        )
-      )
+    const treeRoots = TE.fromOption(() => 'empty input list')(
+      NE.fromArray(publicInputArgs)
     );
 
     const deserializedProof = TE.fromIOEither(
@@ -127,47 +224,39 @@ export class MerkleMembershipsPlugin
       )
     );
 
-    const computeExpectedHash = (
-      roots: NonEmptyArray<Field>
-    ): TaskEither<string, Field> =>
-      pipe(
-        NE.traverse(
-          TE.getApplicativeTaskValidation(
-            T.ApplySeq,
-            pipe(Str.Semigroup, S.intercalate(', '))
-          )
-        )((root: Field) =>
-          pipe(
-            this.storageProvider.getTree(root),
-            TE.chain(
-              TE.fromOption(
-                () => `unable to find tree with root ${root.toString()}`
-              )
-            ),
-            TE.chain(() => TE.right(root))
-          )
-        )(roots),
-        TE.map((roots: NonEmptyArray<Field>) =>
-          A.reduce(NE.head(roots), (acc, x: Field) => Poseidon.hash([x, acc]))(
-            NE.tail(roots)
-          )
-        )
-      );
-
     return pipe(
       TE.Do,
       TE.bind('treeRoots', () => treeRoots),
       TE.bind('deserializedProof', () => deserializedProof),
       TE.bind('expectedHash', ({ treeRoots }) =>
-        computeExpectedHash(treeRoots)
+        computeExpectedHash(this.storageProvider)(treeRoots)
       ),
-      TE.chain(({ expectedHash, deserializedProof }) =>
-        guardPassthrough(
+      TE.tap(({ expectedHash, deserializedProof }) =>
+        guard(
           expectedHash
             .equals(deserializedProof.publicOutput.recursiveHash)
             .toBoolean(),
           'unexpected recursive hash'
-        )(expectedHash)
+        )
+      ),
+      TE.map(({ expectedHash }) => {
+        return {
+          publicInputArgs,
+          recursiveHash: expectedHash
+        };
+      })
+    );
+  }
+
+  checkOutputValidity(o: Output): TaskEither<string, OutputValidity> {
+    return pipe(
+      // FIXME: tree not found should not be an error
+      computeExpectedHash(this.storageProvider)(o.publicInputArgs),
+      TE.map(
+        (expectedHash): OutputValidity =>
+          expectedHash.equals(o.recursiveHash).toBoolean()
+            ? outputValid
+            : outputInvalid('invalid revursive hash')
       )
     );
   }
@@ -201,15 +290,25 @@ export class MerkleMembershipsPlugin
     );
   }
 
-  static readonly configurationSchema = minaTreesProviderConfigurationSchema;
+  static readonly configurationDec = wrapZodDec(
+    'fp',
+    minaTreesProviderConfigurationSchema
+  );
+
+  static readonly publicInputArgsDec: Decoder<
+    FpInterfaceType,
+    PublicInputArgs
+  > = publicInputArgsEncDec;
+
+  static readonly outputEncDec = outputEncDec;
 }
 
 MerkleMembershipsPlugin satisfies IMinAuthPluginFactory<
   FpInterfaceType,
-  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Field>,
+  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>,
   MinaTreesProviderConfiguration,
   PublicInputArgs,
-  Field
+  Output
 >;
 
 export default MerkleMembershipsPlugin;

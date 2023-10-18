@@ -1,17 +1,142 @@
 import { Router } from 'express';
 import { JsonProof } from 'o1js';
-import z from 'zod';
-import { CachedProof, fpToTsCheckCachedProofs } from './proofCache';
 import {
   InterfaceKind,
   WithInterfaceTag,
   RetType,
   TsInterfaceType,
-  FpInterfaceType
+  FpInterfaceType,
+  ChooseType
 } from './interfaceKind';
 import { fromFailablePromise } from '@utils/fp/TaskEither';
+import { Either } from 'fp-ts/Either';
+import * as E from 'fp-ts/Either';
+import * as z from 'zod';
+
+// TODO: Should probably move all these to `utils`
+export interface Decoder<InterfaceType extends InterfaceKind, T>
+  extends WithInterfaceTag<InterfaceType> {
+  decode: (
+    _: unknown
+  ) => ChooseType<InterfaceType, Either<string, T>, T | undefined>;
+}
+
+const tsToFpDecoder = <T>(
+  tsDec: Decoder<TsInterfaceType, T>
+): Decoder<FpInterfaceType, T> => {
+  return {
+    __interface_tag: 'fp',
+    decode: (i) => E.fromNullable('unable to parse')(tsDec.decode(i))
+  };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export interface Encoder<InterfaceType extends InterfaceKind, T>
+  extends WithInterfaceTag<InterfaceType> {
+  // Encoding should never failed. The returned value should be able to
+  // serialize using `JSON.stringify`.
+  encode: (_: T) => unknown;
+}
+
+const tsToFpEncoder = <T>(
+  tsEnc: Encoder<TsInterfaceType, T>
+): Encoder<FpInterfaceType, T> => {
+  return {
+    __interface_tag: 'fp',
+    encode: tsEnc.encode
+  };
+};
+
+export type EncodeDecoder<InterfaceType extends InterfaceKind, T> = Encoder<
+  InterfaceType,
+  T
+> &
+  Decoder<InterfaceType, T>;
+
+export const __encDecLaw = <T>(
+  input: T,
+  enc: Encoder<FpInterfaceType, T>,
+  dec: Decoder<FpInterfaceType, T>
+): boolean =>
+  E.match(
+    () => false,
+    (decoded) => decoded === input
+  )(dec.decode(enc.encode(input)));
+
+export const wrapTrivialEnc = <InterfaceType extends InterfaceKind, T>(
+  i: InterfaceType
+): Encoder<InterfaceType, T> => {
+  return {
+    __interface_tag: i,
+    encode: (inp: T) => inp as unknown
+  };
+};
+
+export const wrapZodDec = <InterfaceType extends InterfaceKind, T>(
+  i: InterfaceType,
+  s: z.Schema<T>
+): Decoder<InterfaceType, T> => {
+  const mkDecoder =
+    <R>(
+      onFailure: (_: z.SafeParseError<T>) => R,
+      onSuccess: (_: z.SafeParseSuccess<T>) => R
+    ) =>
+    (o: unknown): R => {
+      const parseResult = s.safeParse(o);
+      return parseResult.success
+        ? onSuccess(parseResult)
+        : onFailure(parseResult);
+    };
+
+  const fpDec = {
+    __interface_tag: 'fp',
+    decode: mkDecoder(
+      ({ error }) => E.left(String(error)),
+      ({ data }) => E.right(data)
+    )
+  };
+
+  const tsDec = {
+    __interface_tag: 'ts',
+    decode: mkDecoder(
+      () => undefined,
+      ({ data }) => data
+    )
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (i === 'fp' ? fpDec : tsDec) as any;
+};
+
+export const combineEncDec = <InterfaceType extends InterfaceKind, T>(
+  enc: Encoder<InterfaceType, T>,
+  dec: Decoder<InterfaceType, T>
+): EncodeDecoder<InterfaceType, T> => {
+  return {
+    ...enc,
+    ...dec
+  };
+};
 
 // Interfaces used on the server side.
+
+export type OutputValidity =
+  | {
+      __validity: 'valid';
+    }
+  | {
+      __validity: 'invalid';
+      reason: string;
+    };
+
+export const outputValid: OutputValidity = { __validity: 'valid' };
+
+export const outputInvalid = (reason: string): OutputValidity => {
+  return {
+    __validity: 'invalid',
+    reason
+  };
+};
 
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
@@ -25,15 +150,15 @@ export interface IMinAuthPlugin<
     serializedProof: JsonProof
   ): RetType<InterfaceType, Output>;
 
-  // The schema of the arguments for fetching public inputs.
-  readonly publicInputArgsSchema: z.ZodType<PublicInputArgs>;
-
-  // TODO: enable plugins to invalidate a proof.
-  // FIXME(Connor): I still have some questions regarding the validation functionality.
-  // In particular, what if a plugin want to invalidate the proof once the public inputs change?
-  // We have to at least pass PublicInputArgs.
-  //
-  // checkOutputValidity(output: Output): Promise<boolean>;
+  /**
+   * Plugins should be able to confirm the validity produced outputs.
+   * Most outputs along with underlying proofs can get outdated by
+   * changes to the data that the proof is based on.
+   *
+   * This function shouldn't error out unless an internal error occurred during
+   * validation.
+   */
+  checkOutputValidity(output: Output): RetType<InterfaceType, OutputValidity>;
 
   // Custom routes and handlers. Will be installed under `/plugins/<plugin name>`
   readonly customRoutes: Router;
@@ -52,14 +177,13 @@ export interface IMinAuthPluginFactory<
 > extends WithInterfaceTag<InterfaceType> {
   // Initialize the plugin given the configuration. The underlying zk program is
   // typically compiled here.
-  initialize(
-    cfg: Configuration,
-    checkCacheProofs: (
-      check: (p: CachedProof) => RetType<InterfaceType, boolean>
-    ) => RetType<InterfaceType, void>
-  ): RetType<InterfaceType, PluginType>;
+  initialize(cfg: Configuration): RetType<InterfaceType, PluginType>;
 
-  readonly configurationSchema: z.ZodType<Configuration>;
+  readonly configurationDec: Decoder<InterfaceType, Configuration>;
+
+  readonly publicInputArgsDec: Decoder<InterfaceType, PublicInputArgs>;
+
+  readonly outputEncDec: EncodeDecoder<InterfaceType, Output>;
 }
 
 // Interfaces used on the client side.
@@ -103,7 +227,8 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
     __interface_tag: 'fp',
     verifyAndGetOutput: (pia, sp) =>
       fromFailablePromise(() => i.verifyAndGetOutput(pia, sp)),
-    publicInputArgsSchema: i.publicInputArgsSchema,
+    checkOutputValidity: (o) =>
+      fromFailablePromise(() => i.checkOutputValidity(o)),
     customRoutes: i.customRoutes,
     verificationKey: i.verificationKey
   };
@@ -130,10 +255,13 @@ export const tsToFpMinAuthPluginFactory = <
 > => {
   return {
     __interface_tag: 'fp',
-    configurationSchema: i.configurationSchema,
-    initialize: (cfg, c) =>
-      fromFailablePromise(() =>
-        i.initialize(cfg, fpToTsCheckCachedProofs(c)).then(tsToFpMinAuthPlugin)
-      )
+    configurationDec: tsToFpDecoder(i.configurationDec),
+    publicInputArgsDec: tsToFpDecoder(i.publicInputArgsDec),
+    outputEncDec: combineEncDec(
+      tsToFpEncoder(i.outputEncDec),
+      tsToFpDecoder(i.outputEncDec)
+    ),
+    initialize: (cfg) =>
+      fromFailablePromise(() => i.initialize(cfg).then(tsToFpMinAuthPlugin))
   };
 };

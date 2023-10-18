@@ -1,27 +1,19 @@
 import { TaskEither } from 'fp-ts/lib/TaskEither';
-import {
-  ActivePlugins,
-  UntypedPluginInstance,
-  UntypedProofCacheProvider
-} from './pluginLoader';
+import { ActivePlugins, RuntimePluginInstance } from './pluginLoader';
 import * as expressCore from 'express-serve-static-core';
-import {
-  fromFailableIO,
-  fromFailablePromise,
-  liftZodParseResult
-} from '@utils/fp/TaskEither';
+import { fromFailableIO, fromFailablePromise } from '@utils/fp/TaskEither';
 import * as R from 'fp-ts/Record';
 import * as TE from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/lib/function';
 import { JsonProof, verify } from 'o1js';
-import { ProofKey, tsToFpProofCacheProvider } from './proofCache';
+import { OutputValidity } from './pluginType';
 
 export const installCustomRoutes =
   (activePlugins: ActivePlugins) =>
   (app: expressCore.Express): TaskEither<string, void> =>
     pipe(
       R.traverseWithIndex(TE.ApplicativeSeq)(
-        (pluginName, pluginInstance: UntypedPluginInstance) =>
+        (pluginName, pluginInstance: RuntimePluginInstance) =>
           fromFailableIO(
             () =>
               app.use(
@@ -39,21 +31,21 @@ export const installCustomRoutes =
     );
 
 export const verifyProof =
-  (
-    activePlugins: ActivePlugins,
-    proofCacheProvider: UntypedProofCacheProvider
-  ) =>
+  (activePlugins: ActivePlugins) =>
   (
     proof: JsonProof,
+    // The encoded public input arguments.
     publicInputArgs: unknown,
     pluginName: string
-  ): TaskEither<string, { output: unknown; proofKey: ProofKey }> =>
+  ): TaskEither<
+    string,
+    // The encoded plugin output
+    unknown
+  > =>
     pipe(
       TE.Do,
-      TE.tap(() =>
-        TE.fromIO(() =>
-          console.info(`verifying proof using plugin ${pluginName}`)
-        )
+      TE.tapIO(
+        () => () => console.info(`verifying proof using plugin ${pluginName}`)
       ),
       TE.bind('pluginInstance', () =>
         TE.fromOption(() => `plugin ${pluginName} not found`)(
@@ -75,33 +67,39 @@ export const verifyProof =
       // Step 2: use the plugin to extract the output. The plugin is also responsible
       // for checking the legitimacy of the public inputs.
       TE.bind('typedPublicInputArgs', ({ pluginInstance }) =>
-        liftZodParseResult(
-          pluginInstance.publicInputArgsSchema.safeParse(publicInputArgs)
-        )
+        TE.fromEither(pluginInstance.publicInputArgsDec.decode(publicInputArgs))
       ),
       TE.bind('output', ({ typedPublicInputArgs, pluginInstance }) =>
         pluginInstance.verifyAndGetOutput(typedPublicInputArgs, proof)
       ),
-      TE.bind('proofKey', () =>
-        pipe(
-          proofCacheProvider.__interface_tag == 'fp'
-            ? proofCacheProvider
-            : tsToFpProofCacheProvider(proofCacheProvider),
-          (pcp) => pcp.getCacheOf(pluginName),
-          TE.chain((cache) =>
-            cache.storeProof({
-              publicInputArgs,
-              proof
-            })
-          )
+      TE.map(({ pluginInstance, output }) =>
+        pluginInstance.outputEncDec.encode(output)
+      )
+    );
+
+export const validateOutput =
+  (activePlugins: ActivePlugins) =>
+  (
+    pluginName: string,
+    // The encoded plugin output
+    output: unknown
+  ): TaskEither<string, OutputValidity> =>
+    pipe(
+      TE.Do,
+      TE.tapIO(
+        () => () => console.info(`verifying proof using plugin ${pluginName}`)
+      ),
+      TE.bind('pluginInstance', () =>
+        TE.fromOption(() => `plugin ${pluginName} not found`)(
+          R.lookup(pluginName)(activePlugins)
         )
       ),
-      TE.map(({ proofKey, output }) => {
-        return {
-          proofKey,
-          output
-        };
-      })
+      TE.bind('typedOutput', ({ pluginInstance }) =>
+        TE.fromEither(pluginInstance.outputEncDec.decode(output))
+      ),
+      TE.chain(({ typedOutput, pluginInstance }) =>
+        pluginInstance.checkOutputValidity(typedOutput)
+      )
     );
 
 // TODO: utilities to run provers
