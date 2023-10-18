@@ -77,7 +77,7 @@ const main = pipe(
                     ),
                     TE.tapIO(
                       (val) => () =>
-                        val.__validity == 'valid'
+                        val.isValid
                           ? resp.status(200).json({})
                           : resp.status(400).json({ message: val.reason })
                     ),

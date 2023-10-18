@@ -20,18 +20,18 @@ import {
 
 export type OutputValidity =
   | {
-      __validity: 'valid';
+      isValid: true;
     }
   | {
-      __validity: 'invalid';
+      isValid: false;
       reason: string;
     };
 
-export const outputValid: OutputValidity = { __validity: 'valid' };
+export const outputValid: OutputValidity = { isValid: true };
 
 export const outputInvalid = (reason: string): OutputValidity => {
   return {
-    __validity: 'invalid',
+    isValid: false,
     reason
   };
 };
