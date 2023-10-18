@@ -96,9 +96,7 @@ export class SimplePreimagePlugin
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
   SimplePreimagePlugin,
-  Configuration,
-  unknown,
-  string
+  Configuration
 >;
 
 export default SimplePreimagePlugin;

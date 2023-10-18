@@ -218,12 +218,9 @@ export class MembershipsProver
 }
 
 MembershipsProver satisfies IMinAuthProverFactory<
-  MembershipsProver,
   FpInterfaceType,
-  MembershipsProverConfiguration,
-  MembershipsPublicInputArgs,
-  Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
-  Array<Field>
+  MembershipsProver,
+  MembershipsProverConfiguration
 >;
 
 export default MembershipsProver;

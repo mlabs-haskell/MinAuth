@@ -27,10 +27,7 @@ export class SimplePreimageProver
 }
 
 SimplePreimageProver satisfies IMinAuthProverFactory<
-  SimplePreimageProver,
   TsInterfaceType,
-  unknown,
-  unknown,
-  Field,
-  Field
+  SimplePreimageProver,
+  unknown
 >;

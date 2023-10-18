@@ -167,13 +167,33 @@ export interface IMinAuthPlugin<
   readonly verificationKey: string;
 }
 
-// TODO: generic type inference?
+type ExtractPluginPublicInputArgsType<T> = T extends IMinAuthPlugin<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _1,
+  infer PublicInputArgs,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _2
+>
+  ? PublicInputArgs
+  : never;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ExtractPluginOutputType<T> = T extends IMinAuthPlugin<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _1,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _2,
+  infer Output
+>
+  ? Output
+  : never;
+
 export interface IMinAuthPluginFactory<
   InterfaceType extends InterfaceKind,
   PluginType extends IMinAuthPlugin<InterfaceType, PublicInputArgs, Output>,
   Configuration,
-  PublicInputArgs,
-  Output
+  PublicInputArgs = ExtractPluginPublicInputArgsType<PluginType>,
+  Output = ExtractPluginOutputType<PluginType>
 > extends WithInterfaceTag<InterfaceType> {
   // Initialize the plugin given the configuration. The underlying zk program is
   // typically compiled here.
@@ -202,18 +222,54 @@ export interface IMinAuthProver<
   fetchPublicInputs(args: PublicInputArgs): RetType<InterfaceType, PublicInput>;
 }
 
+type ExtractProverPublicInputArgsType<T> = T extends IMinAuthProver<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _1,
+  infer PublicInputArgs,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _2,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _3
+>
+  ? PublicInputArgs
+  : never;
+
+type ExtractProverPublicInputType<T> = T extends IMinAuthProver<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _1,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _2,
+  infer PublicInput,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _3
+>
+  ? PublicInput
+  : never;
+
+type ExtractProverPrivateInputType<T> = T extends IMinAuthProver<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _1,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _2,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  infer _3,
+  infer PrivateInput
+>
+  ? PrivateInput
+  : never;
+
 export interface IMinAuthProverFactory<
+  InterfaceType extends InterfaceKind,
   ProverType extends IMinAuthProver<
     InterfaceType,
     PublicInputArgs,
     PublicInput,
     PrivateInput
   >,
-  InterfaceType extends InterfaceKind,
   Configuration,
-  PublicInputArgs,
-  PublicInput,
-  PrivateInput
+  PublicInputArgs = ExtractProverPublicInputArgsType<ProverType>,
+  PublicInput = ExtractProverPublicInputType<ProverType>,
+  PrivateInput = ExtractProverPrivateInputType<ProverType>
 > extends WithInterfaceTag<InterfaceType> {
   initialize(cfg: Configuration): RetType<InterfaceType, ProverType>;
 }

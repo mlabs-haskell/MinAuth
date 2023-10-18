@@ -305,10 +305,8 @@ export class MerkleMembershipsPlugin
 
 MerkleMembershipsPlugin satisfies IMinAuthPluginFactory<
   FpInterfaceType,
-  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>,
-  MinaTreesProviderConfiguration,
-  PublicInputArgs,
-  Output
+  MerkleMembershipsPlugin,
+  MinaTreesProviderConfiguration
 >;
 
 export default MerkleMembershipsPlugin;
