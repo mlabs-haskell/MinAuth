@@ -4,8 +4,6 @@ import { JsonProof } from 'o1js';
 import { pipe } from 'fp-ts/lib/function';
 import { initializePlugins } from '@lib/plugin/fp/pluginLoader';
 import * as TE from 'fp-ts/TaskEither';
-import * as T from 'fp-ts/Task';
-import * as E from 'fp-ts/Either';
 import {
   installCustomRoutes,
   validateOutput,
@@ -51,24 +49,16 @@ const main = pipe(
           app
             .post(
               '/verifyProof',
-              (req: Request, res: Response): Promise<void> => {
+              wrapTrivialExpressHandler((req) => {
                 const body = req.body as VerifyProofData;
                 return pipe(
                   verifyProof(activePlugins)(
                     body.proof,
                     body.publicInputArgs,
                     body.plugin
-                  ),
-                  T.chain(
-                    E.match(
-                      (error: string) =>
-                        T.fromIO(() => res.status(400).json({ error })),
-                      (r) => T.fromIO(() => res.status(200).json(r))
-                    )
-                  ),
-                  T.map(() => {})
-                )();
-              }
+                  )
+                );
+              })
             )
             .post(
               '/validateOutput',
