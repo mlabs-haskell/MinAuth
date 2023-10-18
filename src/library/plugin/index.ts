@@ -4,7 +4,6 @@ import * as expressCore from 'express-serve-static-core';
 import * as fpUtils from './fp/utils';
 import { JsonProof } from 'o1js';
 import { launchTE } from '@utils/fp/TaskEither';
-import { OutputValidity } from './fp/pluginType';
 
 export * from './fp/pluginType';
 export {
@@ -42,5 +41,8 @@ export const validateOutput = (
   activePlugins: ActivePlugins,
   output: unknown,
   pluginName: string
-): Promise<OutputValidity> =>
-  launchTE(fpUtils.validateOutput(activePlugins)(pluginName, output));
+): Promise<boolean> =>
+  launchTE(fpUtils.validateOutput(activePlugins)(pluginName, output)).then(
+    () => true,
+    () => false
+  );

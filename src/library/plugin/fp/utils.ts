@@ -6,7 +6,6 @@ import * as R from 'fp-ts/Record';
 import * as TE from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/lib/function';
 import { JsonProof, verify } from 'o1js';
-import { OutputValidity } from './pluginType';
 
 export const installCustomRoutes =
   (activePlugins: ActivePlugins) =>
@@ -83,7 +82,7 @@ export const validateOutput =
     pluginName: string,
     // The encoded plugin output
     output: unknown
-  ): TaskEither<string, OutputValidity> =>
+  ): TaskEither<string, void> =>
     pipe(
       TE.Do,
       TE.tapIO(

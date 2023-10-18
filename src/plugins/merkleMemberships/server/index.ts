@@ -6,9 +6,6 @@ import {
   EncodeDecoder,
   IMinAuthPlugin,
   IMinAuthPluginFactory,
-  OutputValidity,
-  outputInvalid,
-  outputValid,
   wrapZodDec
 } from '@lib/plugin/fp/pluginType';
 import {
@@ -248,15 +245,14 @@ export class MerkleMembershipsPlugin
     );
   }
 
-  checkOutputValidity(o: Output): TaskEither<string, OutputValidity> {
+  checkOutputValidity(o: Output): TaskEither<string, void> {
     return pipe(
-      // FIXME: tree not found should not be an error
       computeExpectedHash(this.storageProvider)(o.publicInputArgs),
-      TE.map(
-        (expectedHash): OutputValidity =>
-          expectedHash.equals(o.recursiveHash).toBoolean()
-            ? outputValid
-            : outputInvalid('invalid revursive hash')
+      TE.chain((expectedHash) =>
+        guard(
+          expectedHash.equals(o.recursiveHash).toBoolean(),
+          'invalid revursive hash'
+        )
       )
     );
   }

@@ -120,24 +120,6 @@ export const combineEncDec = <InterfaceType extends InterfaceKind, T>(
 
 // Interfaces used on the server side.
 
-export type OutputValidity =
-  | {
-      __validity: 'valid';
-    }
-  | {
-      __validity: 'invalid';
-      reason: string;
-    };
-
-export const outputValid: OutputValidity = { __validity: 'valid' };
-
-export const outputInvalid = (reason: string): OutputValidity => {
-  return {
-    __validity: 'invalid',
-    reason
-  };
-};
-
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
   PublicInputArgs,
@@ -154,11 +136,8 @@ export interface IMinAuthPlugin<
    * Plugins should be able to confirm the validity produced outputs.
    * Most outputs along with underlying proofs can get outdated by
    * changes to the data that the proof is based on.
-   *
-   * This function shouldn't error out unless an internal error occurred during
-   * validation.
    */
-  checkOutputValidity(output: Output): RetType<InterfaceType, OutputValidity>;
+  checkOutputValidity(output: Output): RetType<InterfaceType, void>;
 
   // Custom routes and handlers. Will be installed under `/plugins/<plugin name>`
   readonly customRoutes: Router;

@@ -2,9 +2,7 @@ import { JsonProof } from 'o1js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
-  OutputValidity,
   combineEncDec,
-  outputValid,
   wrapTrivialEnc,
   wrapZodDec
 } from '@lib/plugin';
@@ -58,8 +56,8 @@ export class SimplePreimagePlugin
     res.status(200).json(this.roles)
   );
 
-  async checkOutputValidity(): Promise<OutputValidity> {
-    return outputValid;
+  async checkOutputValidity(): Promise<void> {
+    return;
   }
 
   constructor(verificationKey: string, roles: Record<string, string>) {
