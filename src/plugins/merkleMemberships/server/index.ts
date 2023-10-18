@@ -18,8 +18,6 @@ import { Router } from 'express';
 import { TaskEither } from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
-import * as T from 'fp-ts/Task';
-import * as Str from 'fp-ts/string';
 import * as IOE from 'fp-ts/IOEither';
 import {
   fromFailablePromise,
@@ -30,7 +28,6 @@ import {
 } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
-import * as S from 'fp-ts/Semigroup';
 import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 import * as E from 'fp-ts/Either';
 import * as O from 'fp-ts/Option';
@@ -118,24 +115,47 @@ const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
   }
 };
 
+type ComputeExpectedHashError =
+  | {
+      __kind: 'tree_missing';
+      root: Field;
+    }
+  | {
+      __kind: 'other';
+      error: string;
+    };
+
+const treeMissingError = (root: Field): ComputeExpectedHashError => {
+  return {
+    __kind: 'tree_missing',
+    root
+  };
+};
+
+const otherError = (error: string): ComputeExpectedHashError => {
+  return {
+    __kind: 'other',
+    error
+  };
+};
+
+const computeExpectedHashErrorToString = (
+  e: ComputeExpectedHashError
+): string =>
+  e.__kind == 'tree_missing'
+    ? `tree with root ${e.root.toString()} not found`
+    : e.error;
+
 const computeExpectedHash =
   (forest: TreesProvider) =>
-  (roots: NonEmptyArray<Field>): TaskEither<string, Field> =>
+  (roots: NonEmptyArray<Field>): TaskEither<ComputeExpectedHashError, Field> =>
     pipe(
-      NE.traverse(
-        TE.getApplicativeTaskValidation(
-          T.ApplySeq,
-          pipe(Str.Semigroup, S.intercalate(', '))
-        )
-      )((root: Field) =>
+      NE.traverse(TE.ApplicativeSeq)((root: Field) =>
         pipe(
           forest.getTree(root),
-          TE.chain(
-            TE.fromOption(
-              () => `unable to find tree with root ${root.toString()}`
-            )
-          ),
-          TE.chain(() => TE.right(root))
+          TE.mapLeft(otherError),
+          TE.tap(TE.fromOption(() => treeMissingError(root))),
+          TE.map(() => root)
         )
       )(roots),
       TE.map((roots: NonEmptyArray<Field>) =>
@@ -231,7 +251,10 @@ export class MerkleMembershipsPlugin
       TE.bind('treeRoots', () => treeRoots),
       TE.bind('deserializedProof', () => deserializedProof),
       TE.bind('expectedHash', ({ treeRoots }) =>
-        computeExpectedHash(this.storageProvider)(treeRoots)
+        pipe(
+          computeExpectedHash(this.storageProvider)(treeRoots),
+          TE.mapLeft(computeExpectedHashErrorToString)
+        )
       ),
       TE.tap(({ expectedHash, deserializedProof }) =>
         guard(
@@ -252,13 +275,17 @@ export class MerkleMembershipsPlugin
 
   checkOutputValidity(o: Output): TaskEither<string, OutputValidity> {
     return pipe(
-      // FIXME: tree not found should not be an error
       computeExpectedHash(this.storageProvider)(o.publicInputArgs),
       TE.map(
         (expectedHash): OutputValidity =>
           expectedHash.equals(o.recursiveHash).toBoolean()
             ? outputValid
             : outputInvalid('invalid revursive hash')
+      ),
+      TE.orElse((err) =>
+        err.__kind == 'other'
+          ? TE.left(err.error)
+          : TE.right(outputInvalid(`tree missing: ${err.root.toString()}`))
       )
     );
   }
