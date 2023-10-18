@@ -72,6 +72,11 @@ const main = pipe(
                   ),
                   TE.chain((body: ValidateOutputData) =>
                     validateOutput(activePlugins)(body.plugin, body.output)
+                  ),
+                  TE.chain((val) =>
+                    val.__validity == 'valid'
+                      ? TE.right({})
+                      : TE.left(val.reason)
                   )
                 )
               )
