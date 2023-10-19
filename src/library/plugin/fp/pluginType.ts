@@ -196,16 +196,12 @@ export const tsToFpMinAuthPluginFactory = <
   i: IMinAuthPluginFactory<
     TsInterfaceType,
     IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>,
-    Configuration,
-    PublicInputArgs,
-    Output
+    Configuration
   >
 ): IMinAuthPluginFactory<
   FpInterfaceType,
   IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>,
-  Configuration,
-  PublicInputArgs,
-  Output
+  Configuration
 > => {
   return {
     __interface_tag: 'fp',

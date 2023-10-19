@@ -109,8 +109,6 @@ const validatePluginCfg = (
   factory: IMinAuthPluginFactory<
     FpInterfaceType,
     IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
-    unknown,
-    unknown,
     unknown
   >
 ): TaskEither<string, unknown> =>
