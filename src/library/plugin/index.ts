@@ -4,32 +4,24 @@ import * as expressCore from 'express-serve-static-core';
 import * as fpUtils from './fp/utils';
 import { JsonProof } from 'o1js';
 import { launchTE } from '@utils/fp/TaskEither';
+import { OutputValidity } from './fp/pluginType';
 
 export * from './fp/pluginType';
 export {
   configurationSchema,
   Configuration,
-  UntypedPluginInstance,
+  RuntimePluginInstance,
   UntypedPluginFactory,
   UntypedPluginModule,
-  ActivePlugins,
-  UntypedProofCacheProvider
+  ActivePlugins
 } from './fp/pluginLoader';
-export {
-  IProofCacheProvider,
-  InMemoryProofCacheProvider,
-  ProofKey
-} from './fp/proofCache';
 export * from './fp/interfaceKind';
 
 export const readConfiguration = (cfgPath?: string): Promise<Configuration> =>
   launchTE(fpPluginLoader.readConfiguration(cfgPath));
 
-export const initializePlugins = (
-  cfg: Configuration,
-  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider
-): Promise<ActivePlugins> =>
-  launchTE(fpPluginLoader.initializePlugins(cfg, proofCacheProvider));
+export const initializePlugins = (cfg: Configuration): Promise<ActivePlugins> =>
+  launchTE(fpPluginLoader.initializePlugins(cfg));
 
 export const installCustomRoutes = (
   activePlugins: ActivePlugins,
@@ -38,18 +30,17 @@ export const installCustomRoutes = (
 
 export const verifyProof = (
   activePlugins: ActivePlugins,
-  proofCacheProvider: fpPluginLoader.UntypedProofCacheProvider,
   proof: JsonProof,
   publicInputArgs: unknown,
   pluginName: string
-): Promise<{
-  output: unknown;
-  proofKey: string;
-}> =>
+): Promise<unknown> =>
   launchTE(
-    fpUtils.verifyProof(activePlugins, proofCacheProvider)(
-      proof,
-      publicInputArgs,
-      pluginName
-    )
+    fpUtils.verifyProof(activePlugins)(proof, publicInputArgs, pluginName)
   );
+
+export const validateOutput = (
+  activePlugins: ActivePlugins,
+  output: unknown,
+  pluginName: string
+): Promise<OutputValidity> =>
+  launchTE(fpUtils.validateOutput(activePlugins)(pluginName, output));

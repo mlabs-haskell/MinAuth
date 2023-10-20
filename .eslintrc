@@ -6,10 +6,14 @@
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
+    "plugin:deprecation/recommended",
     "prettier"
   ],
   "rules": {
-    // "no-console": 1,       // Means warning
-    "prettier/prettier": 2 // Means error
+    "prettier/prettier": "error",
+    "deprecation/deprecation": "error"
+  },
+  "parserOptions": {
+    "project": "./tsconfig.json"
   }
 }

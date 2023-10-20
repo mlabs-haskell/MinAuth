@@ -18,16 +18,12 @@ import { existsSync } from 'fs';
 import fs from 'fs/promises';
 import { fromFailablePromise, liftZodParseResult } from '@utils/fp/TaskEither';
 import {
-  IProofCache,
-  IProofCacheProvider,
-  tsToFpProofCacheProvider
-} from './proofCache';
-import {
   FpInterfaceType,
   TsInterfaceType,
   fpInterfaceTag,
   tsInterfaceTag
 } from './interfaceKind';
+import { Decoder, EncodeDecoder } from './EncodeDecoder';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
@@ -74,28 +70,34 @@ export const readConfiguration = _readConfiguration(
 
 //
 
-export interface UntypedPluginInstance
-  extends IMinAuthPlugin<FpInterfaceType, unknown, unknown> {}
+export type UntypedFpPluginFactory = IMinAuthPluginFactory<
+  FpInterfaceType,
+  IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
+  unknown
+>;
+
+export type UntypedTsPluginFactory = IMinAuthPluginFactory<
+  TsInterfaceType,
+  IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
+  unknown
+>;
 
 export type UntypedPluginFactory =
-  | IMinAuthPluginFactory<
-      FpInterfaceType,
-      IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
-      unknown,
-      unknown,
-      unknown
-    >
-  | IMinAuthPluginFactory<
-      TsInterfaceType,
-      IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
-      unknown,
-      unknown,
-      unknown
-    >;
+  | UntypedFpPluginFactory
+  | UntypedTsPluginFactory;
 
 export type UntypedPluginModule = { default: UntypedPluginFactory };
 
-export type ActivePlugins = Record<string, UntypedPluginInstance>;
+export type RuntimePluginInstance = IMinAuthPlugin<
+  FpInterfaceType,
+  unknown,
+  unknown
+> & {
+  publicInputArgsDec: Decoder<FpInterfaceType, unknown>;
+  outputEncDec: EncodeDecoder<FpInterfaceType, unknown>;
+};
+
+export type ActivePlugins = Record<string, RuntimePluginInstance>;
 
 const importPluginModule = (
   pluginModulePath: string
@@ -104,22 +106,22 @@ const importPluginModule = (
 
 const validatePluginCfg = (
   cfg: unknown,
-  factory: UntypedPluginFactory
+  factory: IMinAuthPluginFactory<
+    FpInterfaceType,
+    IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
+    unknown
+  >
 ): TaskEither<string, unknown> =>
-  liftZodParseResult(factory.configurationSchema.safeParse(cfg));
+  TE.fromEither(factory.configurationDec.decode(cfg));
 
 const initializePlugin = (
   pluginModulePath: string,
-  pluginCfg: unknown,
-  proofCache: IProofCache<FpInterfaceType>
-): TaskEither<string, UntypedPluginInstance> =>
+  pluginCfg: unknown
+): TaskEither<string, RuntimePluginInstance> =>
   pipe(
     TE.Do,
     TE.bind('pluginModule', () => importPluginModule(pluginModulePath)),
     TE.let('rawPluginFactory', ({ pluginModule }) => pluginModule.default),
-    TE.bind('typedPluginCfg', ({ rawPluginFactory }) =>
-      validatePluginCfg(pluginCfg, rawPluginFactory)
-    ),
     TE.bind('pluginFactory', ({ rawPluginFactory }) =>
       rawPluginFactory.__interface_tag === fpInterfaceTag
         ? TE.right(rawPluginFactory)
@@ -128,32 +130,30 @@ const initializePlugin = (
         : // TODO This check should be moved to `importPluginModule`
           TE.left('invalid plugin module')
     ),
-    TE.chain(
-      ({
-        pluginFactory,
-        typedPluginCfg
-      }): TaskEither<string, UntypedPluginInstance> =>
-        pluginFactory.initialize(typedPluginCfg, proofCache.checkEachProof)
-    )
+    TE.bind('typedPluginCfg', ({ pluginFactory }) =>
+      validatePluginCfg(pluginCfg, pluginFactory)
+    ),
+    TE.bind('pluginInstance', ({ pluginFactory, typedPluginCfg }) =>
+      pluginFactory.initialize(typedPluginCfg)
+    ),
+    TE.map(({ pluginFactory, pluginInstance }) => {
+      return {
+        __interface_tag: 'fp',
+        // NOTE: non-properties are not getting copied using `...pluginInstance`
+        // So we do it manually.
+        verifyAndGetOutput: (p, s) => pluginInstance.verifyAndGetOutput(p, s),
+        checkOutputValidity: (o) => pluginInstance.checkOutputValidity(o),
+        customRoutes: pluginInstance.customRoutes,
+        verificationKey: pluginInstance.verificationKey,
+        publicInputArgsDec: pluginFactory.publicInputArgsDec,
+        outputEncDec: pluginFactory.outputEncDec
+      };
+    })
   );
 
-export type UntypedProofCacheProvider =
-  | IProofCacheProvider<FpInterfaceType>
-  | IProofCacheProvider<TsInterfaceType>;
-
 export const initializePlugins = (
-  cfg: Configuration,
-  rawProofCacheProvider: UntypedProofCacheProvider
+  cfg: Configuration
 ): TaskEither<string, ActivePlugins> => {
-  const proofCacheProvider: TaskEither<
-    string,
-    IProofCacheProvider<FpInterfaceType>
-  > = rawProofCacheProvider.__interface_tag == fpInterfaceTag
-    ? TE.right(rawProofCacheProvider)
-    : rawProofCacheProvider.__interface_tag == tsInterfaceTag
-    ? TE.right(tsToFpProofCacheProvider(rawProofCacheProvider))
-    : TE.left('proof cache provider: unknown interface type');
-
   const resolvePluginModulePath =
     (name: string, optionalPath?: string) => () => {
       const dir =
@@ -166,45 +166,36 @@ export const initializePlugins = (
         : path.resolve(optionalPath);
     };
 
-  const resolveModulePathAndInitializePlugin =
-    (proofCacheProvider: IProofCacheProvider<FpInterfaceType>) =>
-    (
-      pluginName: string,
-      pluginCfg: {
-        path?: string | undefined;
-        config?: unknown;
-      }
-    ): TaskEither<string, UntypedPluginInstance> =>
-      pipe(
-        TE.Do,
-        TE.bind('modulePath', () =>
-          TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
-        ),
-        TE.tapIO(({ modulePath }) => () => {
-          console.info(`loading plugin ${pluginName} from ${modulePath}`);
-          console.log(pluginCfg.config);
-        }),
-        TE.tap(() => proofCacheProvider.initCacheFor(pluginName)),
-        TE.bind('proofCache', () => proofCacheProvider.getCacheOf(pluginName)),
-        TE.chain(({ modulePath, proofCache }) =>
-          initializePlugin(modulePath, pluginCfg.config ?? {}, proofCache)
-        ),
-        TE.mapLeft(
-          (err) => `error while initializing plugin ${pluginName}: ${err}`
-        )
-      );
+  const resolveModulePathAndInitializePlugin = (
+    pluginName: string,
+    pluginCfg: {
+      path?: string | undefined;
+      config?: unknown;
+    }
+  ): TaskEither<string, RuntimePluginInstance> =>
+    pipe(
+      TE.Do,
+      TE.bind('modulePath', () =>
+        TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
+      ),
+      TE.tapIO(({ modulePath }) => () => {
+        console.info(`loading plugin ${pluginName} from ${modulePath}`);
+        console.log(pluginCfg.config);
+      }),
+      TE.chain(({ modulePath }) =>
+        initializePlugin(modulePath, pluginCfg.config ?? {})
+      ),
+      TE.mapLeft(
+        (err) => `error while initializing plugin ${pluginName}: ${err}`
+      )
+    );
 
   const Applicative = TE.getApplicativeTaskValidation(
     T.ApplyPar,
     pipe(Str.Semigroup, S.intercalate(', '))
   );
 
-  return pipe(
-    proofCacheProvider,
-    TE.chain((pcp) =>
-      R.traverseWithIndex(Applicative)(
-        resolveModulePathAndInitializePlugin(pcp)
-      )(cfg.plugins)
-    )
+  return R.traverseWithIndex(Applicative)(resolveModulePathAndInitializePlugin)(
+    cfg.plugins
   );
 };

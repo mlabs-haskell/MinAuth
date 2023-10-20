@@ -360,13 +360,13 @@
         sha512 = "DAbgDXwtX+pDkAHwiGhqP3zWUGpW49B7eqmgpPtg+BKJXwdct79ut9+ifqOFPJGClGKSHXn2PTBatCnldJRUoA==";
       };
     };
-    "@typescript-eslint/parser-6.7.4" = {
+    "@typescript-eslint/parser-6.8.0" = {
       name = "_at_typescript-eslint_slash_parser";
       packageName = "@typescript-eslint/parser";
-      version = "6.7.4";
+      version = "6.8.0";
       src = fetchurl {
-        url = "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-6.7.4.tgz";
-        sha512 = "I5zVZFY+cw4IMZUeNCU7Sh2PO5O57F7Lr0uyhgCJmhN/BuTlnc55KxPonR4+EM3GBdfiCyGZye6DgMjtubQkmA==";
+        url = "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-6.8.0.tgz";
+        sha512 = "5tNs6Bw0j6BdWuP8Fx+VH4G9fEPDxnVI7yH1IAPkQH5RUtvKwRoqdecAPdQXv4rSOADAaz1LFBZvZG7VbXivSg==";
       };
     };
     "@typescript-eslint/scope-manager-6.7.4" = {
@@ -376,6 +376,15 @@
       src = fetchurl {
         url = "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-6.7.4.tgz";
         sha512 = "SdGqSLUPTXAXi7c3Ob7peAGVnmMoGzZ361VswK2Mqf8UOYcODiYvs8rs5ILqEdfvX1lE7wEZbLyELCW+Yrql1A==";
+      };
+    };
+    "@typescript-eslint/scope-manager-6.8.0" = {
+      name = "_at_typescript-eslint_slash_scope-manager";
+      packageName = "@typescript-eslint/scope-manager";
+      version = "6.8.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-6.8.0.tgz";
+        sha512 = "xe0HNBVwCph7rak+ZHcFD6A+q50SMsFwcmfdjs9Kz4qDh5hWhaPhFjRs/SODEhroBI5Ruyvyz9LfwUJ624O40g==";
       };
     };
     "@typescript-eslint/type-utils-6.7.4" = {
@@ -396,6 +405,15 @@
         sha512 = "o9XWK2FLW6eSS/0r/tgjAGsYasLAnOWg7hvZ/dGYSSNjCh+49k5ocPN8OmG5aZcSJ8pclSOyVKP2x03Sj+RrCA==";
       };
     };
+    "@typescript-eslint/types-6.8.0" = {
+      name = "_at_typescript-eslint_slash_types";
+      packageName = "@typescript-eslint/types";
+      version = "6.8.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/@typescript-eslint/types/-/types-6.8.0.tgz";
+        sha512 = "p5qOxSum7W3k+llc7owEStXlGmSl8FcGvhYt8Vjy7FqEnmkCVlM3P57XQEGj58oqaBWDQXbJDZxwUWMS/EAPNQ==";
+      };
+    };
     "@typescript-eslint/typescript-estree-6.7.4" = {
       name = "_at_typescript-eslint_slash_typescript-estree";
       packageName = "@typescript-eslint/typescript-estree";
@@ -403,6 +421,15 @@
       src = fetchurl {
         url = "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-6.7.4.tgz";
         sha512 = "ty8b5qHKatlNYd9vmpHooQz3Vki3gG+3PchmtsA4TgrZBKWHNjWfkQid7K7xQogBqqc7/BhGazxMD5vr6Ha+iQ==";
+      };
+    };
+    "@typescript-eslint/typescript-estree-6.8.0" = {
+      name = "_at_typescript-eslint_slash_typescript-estree";
+      packageName = "@typescript-eslint/typescript-estree";
+      version = "6.8.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-6.8.0.tgz";
+        sha512 = "ISgV0lQ8XgW+mvv5My/+iTUdRmGspducmQcDw5JxznasXNnZn3SKNrTRuMsEXv+V/O+Lw9AGcQCfVaOPCAk/Zg==";
       };
     };
     "@typescript-eslint/utils-6.7.4" = {
@@ -421,6 +448,15 @@
       src = fetchurl {
         url = "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-6.7.4.tgz";
         sha512 = "pOW37DUhlTZbvph50x5zZCkFn3xzwkGtNoJHzIM3svpiSkJzwOYr/kVBaXmf+RAQiUDs1AHEZVNPg6UJCJpwRA==";
+      };
+    };
+    "@typescript-eslint/visitor-keys-6.8.0" = {
+      name = "_at_typescript-eslint_slash_visitor-keys";
+      packageName = "@typescript-eslint/visitor-keys";
+      version = "6.8.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-6.8.0.tgz";
+        sha512 = "oqAnbA7c+pgOhW2OhGvxm0t1BULX5peQI/rLsNDpGM78EebV3C9IGbX5HNZabuZ6UQrYveCLjKo8Iy/lLlBkkg==";
       };
     };
     "abbrev-1.1.1" = {
@@ -1015,6 +1051,15 @@
       src = fetchurl {
         url = "https://registry.npmjs.org/eslint-config-prettier/-/eslint-config-prettier-9.0.0.tgz";
         sha512 = "IcJsTkJae2S35pRsRAwoCE+925rJJStOdkKnLVgtE+tEpqU0EVVM7OqrwxqgptKdX29NUwC82I5pXsGFIgSevw==";
+      };
+    };
+    "eslint-plugin-deprecation-2.0.0" = {
+      name = "eslint-plugin-deprecation";
+      packageName = "eslint-plugin-deprecation";
+      version = "2.0.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/eslint-plugin-deprecation/-/eslint-plugin-deprecation-2.0.0.tgz";
+        sha512 = "OAm9Ohzbj11/ZFyICyR5N6LbOIvQMp7ZU2zI7Ej0jIc8kiGUERXPNMfw2QqqHD1ZHtjMub3yPZILovYEYucgoQ==";
       };
     };
     "eslint-plugin-prettier-5.0.0" = {
@@ -2736,6 +2781,15 @@
         sha512 = "NoZ4roiN7LnbKn9QqE1amc9DJfzvZXxF4xDavcOWt1BPkdx+m+0gJuPM+S0vCe7zTJMYUP0R8pO2XMr+Y8oLIg==";
       };
     };
+    "tslib-1.14.1" = {
+      name = "tslib";
+      packageName = "tslib";
+      version = "1.14.1";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz";
+        sha512 = "Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==";
+      };
+    };
     "tslib-2.6.2" = {
       name = "tslib";
       packageName = "tslib";
@@ -2743,6 +2797,15 @@
       src = fetchurl {
         url = "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz";
         sha512 = "AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==";
+      };
+    };
+    "tsutils-3.21.0" = {
+      name = "tsutils";
+      packageName = "tsutils";
+      version = "3.21.0";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/tsutils/-/tsutils-3.21.0.tgz";
+        sha512 = "mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==";
       };
     };
     "type-check-0.4.0" = {
@@ -3016,9 +3079,13 @@
             sources."ms-2.1.2"
           ];
         })
-      (sources."@typescript-eslint/parser-6.7.4"
+      (sources."@typescript-eslint/parser-6.8.0"
         // {
           dependencies = [
+            sources."@typescript-eslint/scope-manager-6.8.0"
+            sources."@typescript-eslint/types-6.8.0"
+            sources."@typescript-eslint/typescript-estree-6.8.0"
+            sources."@typescript-eslint/visitor-keys-6.8.0"
             sources."debug-4.3.4"
             sources."ms-2.1.2"
           ];
@@ -3123,6 +3190,7 @@
           ];
         })
       sources."eslint-config-prettier-9.0.0"
+      sources."eslint-plugin-deprecation-2.0.0"
       sources."eslint-plugin-prettier-5.0.0"
       sources."eslint-scope-7.2.2"
       sources."eslint-visitor-keys-3.4.3"
@@ -3342,6 +3410,12 @@
       sources."ts-node-10.9.1"
       sources."tsconfig-paths-4.2.0"
       sources."tslib-2.6.2"
+      (sources."tsutils-3.21.0"
+        // {
+          dependencies = [
+            sources."tslib-1.14.1"
+          ];
+        })
       sources."type-check-0.4.0"
       sources."type-fest-0.20.2"
       sources."type-is-1.6.18"

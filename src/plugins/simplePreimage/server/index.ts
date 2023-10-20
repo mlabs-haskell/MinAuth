@@ -1,5 +1,10 @@
 import { JsonProof } from 'o1js';
-import { IMinAuthPlugin, IMinAuthPluginFactory } from '@lib/plugin';
+import {
+  IMinAuthPlugin,
+  IMinAuthPluginFactory,
+  OutputValidity,
+  outputValid
+} from '@lib/plugin';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
@@ -9,6 +14,11 @@ import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
 import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
 import * as fs from 'fs/promises';
+import {
+  wrapZodDec,
+  combineEncDec,
+  wrapTrivialEnc
+} from '@lib/plugin/fp/EncodeDecoder';
 
 const configurationSchema = z
   .object({
@@ -50,6 +60,10 @@ export class SimplePreimagePlugin
     res.status(200).json(this.roles)
   );
 
+  async checkOutputValidity(): Promise<OutputValidity> {
+    return outputValid;
+  }
+
   constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;
     this.roles = roles;
@@ -70,17 +84,21 @@ export class SimplePreimagePlugin
     return new SimplePreimagePlugin(verificationKey, roles);
   }
 
-  static readonly configurationSchema: z.ZodType<Configuration> =
-    configurationSchema;
+  static readonly configurationDec = wrapZodDec('ts', configurationSchema);
+
+  static readonly publicInputArgsDec = wrapZodDec('ts', z.unknown());
+
+  static readonly outputEncDec = combineEncDec(
+    wrapTrivialEnc('ts'),
+    wrapZodDec('ts', z.string())
+  );
 }
 
 // sanity check
 SimplePreimagePlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
   SimplePreimagePlugin,
-  Configuration,
-  unknown,
-  string
+  Configuration
 >;
 
 export default SimplePreimagePlugin;

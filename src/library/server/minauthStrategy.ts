@@ -13,7 +13,6 @@ type VerificationResult =
   | {
       __tag: 'success';
       output: unknown;
-      proofKey: string;
     }
   | {
       __tag: 'failed';
@@ -29,11 +28,10 @@ const verifyProof = (
     (resp) => {
       if (resp.status == 200) {
         console.log('Received response:', resp);
-        const { output, proofKey } = resp.data as {
+        const { output } = resp.data as {
           output: unknown;
-          proofKey: string;
         };
-        return { __tag: 'success', output, proofKey };
+        return { __tag: 'success', output };
       }
 
       const { error } = resp.data as { error: string };
@@ -48,7 +46,6 @@ const verifyProof = (
 export type AuthenticationResponse = {
   plugin: string;
   output: unknown;
-  proofKey: string;
 };
 
 class MinAuthStrategy extends Strategy {
@@ -68,14 +65,13 @@ class MinAuthStrategy extends Strategy {
     const result = await this.verifyProof(loginData);
 
     if (result.__tag == 'success') {
-      const { output, proofKey } = result;
+      const { output } = result;
 
       console.debug('proof verification output:', output);
 
       const authResp: AuthenticationResponse = {
         plugin: loginData.plugin,
-        output,
-        proofKey
+        output
       };
 
       this.success(authResp);
