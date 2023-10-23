@@ -12,6 +12,7 @@
   "rules": {
     "prettier/prettier": "error",
     "deprecation/deprecation": "error"
+    // "no-console": "warn"
   },
   "parserOptions": {
     "project": "./tsconfig.json"

@@ -1,46 +1,68 @@
-import { ActivePlugins, Configuration } from './fp/pluginLoader';
+import { Configuration } from './fp/pluginLoader';
 import * as fpPluginLoader from './fp/pluginLoader';
 import * as expressCore from 'express-serve-static-core';
 import * as fpUtils from './fp/utils';
 import { JsonProof } from 'o1js';
 import { launchTE } from '@utils/fp/TaskEither';
 import { OutputValidity } from './fp/pluginType';
+import { Logger } from 'tslog';
 
 export * from './fp/pluginType';
 export {
   configurationSchema,
   Configuration,
-  RuntimePluginInstance,
   UntypedPluginFactory,
-  UntypedPluginModule,
-  ActivePlugins
+  UntypedPluginModule
 } from './fp/pluginLoader';
 export * from './fp/interfaceKind';
+import * as log from 'tslog';
+import { PluginRuntimeEnv, launchPluginRuntime } from './fp/pluginRuntime';
+export {
+  RuntimePluginInstance,
+  PluginRuntimeEnv,
+  ActivePlugins
+} from './fp/pluginRuntime';
 
-export const readConfiguration = (cfgPath?: string): Promise<Configuration> =>
-  launchTE(fpPluginLoader.readConfiguration(cfgPath));
+const defaultRootLoggerConfiguration: log.ISettingsParam<log.ILogObj> = {
+  name: 'minauth-plugin-system',
+  type: 'pretty',
+  minLevel: 2 // debug
+};
 
-export const initializePlugins = (cfg: Configuration): Promise<ActivePlugins> =>
-  launchTE(fpPluginLoader.initializePlugins(cfg));
+const defaultRootLogger: Logger<log.ILogObj> = new Logger(
+  defaultRootLoggerConfiguration
+);
+
+export const readConfiguration = (
+  cfgPath?: string,
+  logger: Logger<log.ILogObj> = defaultRootLogger
+): Promise<Configuration> =>
+  launchTE(fpPluginLoader.readConfiguration(logger)(cfgPath));
+
+export const initializePlugins = (
+  cfg: Configuration,
+  logger: Logger<log.ILogObj> = defaultRootLogger
+): Promise<PluginRuntimeEnv> =>
+  launchTE(fpPluginLoader.initializePlugins(logger)(cfg));
 
 export const installCustomRoutes = (
-  activePlugins: ActivePlugins,
+  env: PluginRuntimeEnv,
   app: expressCore.Express
-): Promise<void> => launchTE(fpUtils.installCustomRoutes(activePlugins)(app));
+): Promise<void> => launchPluginRuntime(env)(fpUtils.installCustomRoutes(app));
 
 export const verifyProof = (
-  activePlugins: ActivePlugins,
+  env: PluginRuntimeEnv,
   proof: JsonProof,
   publicInputArgs: unknown,
   pluginName: string
 ): Promise<unknown> =>
-  launchTE(
-    fpUtils.verifyProof(activePlugins)(proof, publicInputArgs, pluginName)
+  launchPluginRuntime(env)(
+    fpUtils.verifyProof(proof, publicInputArgs, pluginName)
   );
 
 export const validateOutput = (
-  activePlugins: ActivePlugins,
+  env: PluginRuntimeEnv,
   output: unknown,
   pluginName: string
 ): Promise<OutputValidity> =>
-  launchTE(fpUtils.validateOutput(activePlugins)(pluginName, output));
+  launchPluginRuntime(env)(fpUtils.validateOutput(pluginName, output));

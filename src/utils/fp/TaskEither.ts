@@ -126,9 +126,9 @@ export const wrapTrivialExpressHandler =
       TE.tapIO((result) => () => resp.status(200).json(result)),
       TE.tapError((error: string) =>
         TE.fromIO(() => {
-          console.log(
-            `error occurred while handling ${req.method} ${req.path}: ${error}`
-          );
+          // console.log(
+          //   `error occurred while handling ${req.method} ${req.path}: ${error}`
+          // );
           resp.status(400).json({ error });
         })
       ),

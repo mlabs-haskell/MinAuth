@@ -15,6 +15,7 @@ import {
   tsToFpDecoder,
   tsToFpEncoder
 } from './EncodeDecoder';
+import * as log from 'tslog';
 
 // Interfaces used on the server side.
 
@@ -35,6 +36,8 @@ export const outputInvalid = (reason: string): OutputValidity => {
     reason
   };
 };
+
+export type Logger = log.Logger<log.ILogObj>;
 
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
@@ -95,7 +98,10 @@ export interface IMinAuthPluginFactory<
 > extends WithInterfaceTag<InterfaceType> {
   // Initialize the plugin given the configuration. The underlying zk program is
   // typically compiled here.
-  initialize(cfg: Configuration): RetType<InterfaceType, PluginType>;
+  initialize(
+    cfg: Configuration,
+    logger: Logger
+  ): RetType<InterfaceType, PluginType>;
 
   readonly configurationDec: Decoder<InterfaceType, Configuration>;
 
@@ -211,7 +217,9 @@ export const tsToFpMinAuthPluginFactory = <
       tsToFpEncoder(i.outputEncDec),
       tsToFpDecoder(i.outputEncDec)
     ),
-    initialize: (cfg) =>
-      fromFailablePromise(() => i.initialize(cfg).then(tsToFpMinAuthPlugin))
+    initialize: (cfg, logger) =>
+      fromFailablePromise(() =>
+        i.initialize(cfg, logger).then(tsToFpMinAuthPlugin)
+      )
   };
 };
