@@ -1,26 +1,40 @@
 import * as cmd from 'cmd-ts';
-import { Client } from '../client';
-import * as fs from 'fs/promises';
-import { commonOptions } from './common';
+import {
+  CommandHandler,
+  CommonOptions,
+  asCmdTsHandlerFunction,
+  commonOptions,
+  liftAction,
+  readJwt,
+  readRefreshToken,
+  writeJwt
+} from './common';
+import { pipe } from 'fp-ts/function';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import { refreshAction } from '../actions';
 
-export const args = commonOptions;
+const args = commonOptions;
 
-export const handler = async (cfg: {
-  serverUrl: string;
-  refreshTokenFile: string;
-  jwtFile: string;
-}) => {
-  const client = new Client(cfg.serverUrl);
-  const jwtToken: string = await fs.readFile(cfg.jwtFile, 'utf-8');
-  const refreshToken = await fs.readFile(cfg.refreshTokenFile, 'utf-8');
-  const refreshResult = await client.refresh(jwtToken, refreshToken);
-  await fs.writeFile(cfg.jwtFile, refreshResult.token);
-};
+type Options = CommonOptions;
+
+const handler = (): CommandHandler<Options, void> =>
+  pipe(
+    RTE.Do,
+    RTE.bind('jwt', readJwt),
+    RTE.bind('refreshToken', readRefreshToken),
+    RTE.bind('actionResult', ({ jwt, refreshToken }) =>
+      liftAction(refreshAction(jwt, refreshToken))
+    ),
+    RTE.tap(({ actionResult: { token } }) => writeJwt(token)),
+    RTE.asUnit
+  );
+
+const name: string = 'refresh';
 
 export const command = cmd.command({
-  name: 'refresh',
+  name,
   args,
-  handler
+  handler: asCmdTsHandlerFunction(name, handler)
 });
 
 export default command;

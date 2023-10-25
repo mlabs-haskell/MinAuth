@@ -1,77 +1,175 @@
 import * as z from 'zod';
 import MembershipsProver from '@plugins/merkleMemberships/client';
-import { safeFromString } from '@utils/fp/TaskEither';
 import { pipe } from 'fp-ts/function';
 import { Field } from 'o1js';
-import * as TE from 'fp-ts/TaskEither';
 import * as A from 'fp-ts/Array';
 import * as E from 'fp-ts/Either';
-import { ProofGeneratorFactory } from '../ProofGenerator';
+import {
+  GenerateProof,
+  GenerateProofError,
+  IProofGenerator,
+  askConfig
+} from '../ProofGenerator';
+import {
+  Decoder,
+  EncodeDecoder,
+  wrapZodDec
+} from '@lib/plugin/fp/EncodeDecoder';
+import { FpInterfaceType, fpInterfaceTag } from '@lib/plugin/fp/interfaceKind';
+import { Either } from 'fp-ts/Either';
+import { MinAuthProof } from '@lib/server/minauthStrategy';
+import { TaskEither } from 'fp-ts/TaskEither';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import { safeFromString } from '@utils/fp/Either';
+import { tapLogger } from '@utils/fp/ReaderTaskEither';
 
-const publicAndPrivateInputsSchema = z.object({
+// FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
+const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
+  __interface_tag: 'fp',
+
+  decode: (i: unknown) =>
+    pipe(
+      wrapZodDec('fp', z.string()).decode(i),
+      E.chain(
+        safeFromString(Field.from, (err) => `failed to decode Field: ${err}`)
+      )
+    ),
+
+  encode: (i: Field) => i.toString()
+};
+
+const bigintEncDec: EncodeDecoder<FpInterfaceType, bigint> = {
+  __interface_tag: 'fp',
+
+  decode: (i: unknown) =>
+    pipe(
+      wrapZodDec('fp', z.string()).decode(i),
+      E.chain(
+        safeFromString(BigInt, (err) => `failed to decode bigint: ${err}`)
+      )
+    ),
+  encode: (val: bigint): unknown => val.toString()
+};
+
+const rawPublicAndPrivateInputsSchema = z.object({
   treeRoot: z.string(),
   leafIndex: z.string(),
   secret: z.string()
 });
 
-type PublicAndPrivateInputs = z.infer<typeof publicAndPrivateInputsSchema>;
+type RawPublicAndPrivateInputs = z.infer<
+  typeof rawPublicAndPrivateInputsSchema
+>;
 
-const allInputsSchema = z.array(publicAndPrivateInputsSchema);
-
-const confSchema = z.object({
+const rawConfSchema = z.object({
   pluginUrl: z.string(),
-  allInputs: allInputsSchema
+  allInputs: z.array(rawPublicAndPrivateInputsSchema)
 });
 
-export type Conf = z.infer<typeof confSchema>;
+export type Conf = {
+  pluginUrl: string;
+  allInputs: Array<{
+    treeRoot: Field;
+    leafIndex: bigint;
+    secret: Field;
+  }>;
+};
 
-const Factory: ProofGeneratorFactory<Conf> = {
-  confSchema: confSchema,
-  mkGenerator: (cfg: Conf) => () =>
+const confDec: Decoder<FpInterfaceType, Conf> = {
+  __interface_tag: fpInterfaceTag,
+  decode: (inp: unknown): Either<string, Conf> =>
     pipe(
-      TE.Do,
-      TE.bind('prover', () =>
-        MembershipsProver.initialize({
-          baseUrl: cfg.pluginUrl
-        })
+      E.Do,
+      E.bind('confRaw', () =>
+        wrapZodDec(fpInterfaceTag, rawConfSchema).decode(inp)
       ),
-      TE.bind('publicInputArgs', () =>
-        A.traverse(TE.ApplicativePar)(
-          ({ treeRoot, leafIndex }: PublicAndPrivateInputs) =>
+      E.bind('typedAllInputs', ({ confRaw: { allInputs } }) =>
+        A.traverse(E.Applicative)(
+          ({ treeRoot, leafIndex, secret }: RawPublicAndPrivateInputs) =>
             pipe(
-              TE.Do,
-              TE.bind('treeRoot', () => safeFromString(Field)(treeRoot)),
-              TE.bind('leafIndex', () => safeFromString(BigInt)(leafIndex))
+              E.Do,
+              E.bind('treeRoot', () => fieldEncDec.decode(treeRoot)),
+              E.bind('leafIndex', () => bigintEncDec.decode(leafIndex)),
+              E.bind('secret', () => fieldEncDec.decode(secret))
             )
-        )(cfg.allInputs)
+        )(allInputs)
       ),
-      TE.bind('secretInputs', () =>
-        A.traverse(TE.ApplicativePar)(({ secret }: PublicAndPrivateInputs) =>
-          safeFromString(Field)(secret)
-        )(cfg.allInputs)
-      ),
-      TE.bind('publicInputs', ({ prover, publicInputArgs }) =>
-        prover.fetchPublicInputs(publicInputArgs)
-      ),
-      TE.bind('proof', ({ prover, publicInputs, secretInputs }) =>
-        prover.prove(publicInputs, secretInputs)
-      )
-    )().then(
-      E.match(
-        (err) => Promise.reject(err),
-        ({ proof, publicInputArgs }) =>
-          Promise.resolve({
-            plugin: 'MerkleMembershipsPlugin',
-            proof,
-            // NOTE: Public input arguments have a different meaning from the
-            // server's point of view. In particular, the server must not know
-            // which leaf was used.
-            publicInputArgs: publicInputArgs.map((args) =>
-              args.treeRoot.toString()
-            )
-          })
+      E.map(
+        ({ confRaw: { pluginUrl }, typedAllInputs }): Conf => ({
+          pluginUrl,
+          allInputs: typedAllInputs
+        })
       )
     )
 };
 
-export default Factory;
+const fromTE =
+  (mapError: (_: string) => GenerateProofError) =>
+  <T>(f: TaskEither<string, T>): GenerateProof<Conf, T> =>
+    pipe(RTE.fromTaskEither(f), RTE.mapError(mapError));
+
+const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
+  pipe(
+    RTE.Do,
+    tapLogger((logger) =>
+      logger.info('generating proof using merkle memberships prover')
+    ),
+    RTE.bind('config', askConfig<Conf>),
+    RTE.bind('prover', ({ config: { pluginUrl } }) =>
+      fromTE((err) => ({
+        __tag: 'failedToInitializeProver',
+        reason: err
+      }))(MembershipsProver.initialize({ baseUrl: pluginUrl }))
+    ),
+    tapLogger((logger) => logger.info('prover initialized')),
+    RTE.let('publicInputArgs', ({ config: { allInputs } }) =>
+      A.map(
+        ({ treeRoot, leafIndex }: { treeRoot: Field; leafIndex: bigint }) => ({
+          treeRoot,
+          leafIndex
+        })
+      )(allInputs)
+    ),
+    RTE.bind('publicInputs', ({ prover, publicInputArgs }) =>
+      fromTE((err) => ({
+        __tag: 'failedToFetchPublicInputs',
+        reason: err,
+        publicInputArgs
+      }))(prover.fetchPublicInputs(publicInputArgs))
+    ),
+    tapLogger((logger, { publicInputs }) =>
+      logger.debug('public inputs', publicInputs)
+    ),
+    RTE.let('secretInputs', ({ config: { allInputs } }) =>
+      A.map(({ secret }: { secret: Field }) => secret)(allInputs)
+    ),
+    tapLogger((logger) => logger.info('proving')),
+    RTE.bind('proof', ({ publicInputs, secretInputs, prover }) =>
+      fromTE((err) => ({ __tag: 'failedToProve', reason: err }))(
+        prover.prove(publicInputs, secretInputs)
+      )
+    ),
+    // NOTE: Public input arguments have a different meaning from the
+    // server's point of view. In particular, the server must not know
+    // which leaf was used.
+    RTE.let('encodedPublicInputArgs', ({ publicInputArgs }) =>
+      A.map(({ treeRoot }: { treeRoot: Field }) => treeRoot.toString())(
+        publicInputArgs
+      )
+    ),
+    RTE.map(
+      ({ encodedPublicInputArgs, proof }): MinAuthProof => ({
+        plugin: 'MerkleMembershipsPlugin',
+        proof,
+        publicInputArgs: encodedPublicInputArgs
+      })
+    ),
+    tapLogger((logger) => logger.info('all done'))
+  );
+
+const generator: IProofGenerator<Conf> = {
+  confDec,
+  generateProof
+};
+
+export default generator;

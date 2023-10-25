@@ -1,9 +1,17 @@
 import * as cmd from 'cmd-ts';
-import { commonOptions } from './common';
-import { Client } from '../client';
-import * as fs from 'fs/promises';
+import {
+  CommandHandler,
+  CommonOptions,
+  asCmdTsHandlerFunction,
+  commonOptions,
+  liftAction,
+  readJwt
+} from './common';
+import { pipe } from 'fp-ts/lib/function';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import { accessProtectedAction } from '../actions';
 
-export const args = {
+const args = {
   ...commonOptions,
   protectedPath: cmd.option({
     type: cmd.string,
@@ -12,21 +20,23 @@ export const args = {
   })
 };
 
-export const handler = async (cfg: {
-  serverUrl: string;
-  jwtFile: string;
+type Options = CommonOptions & {
   protectedPath: string;
-}) => {
-  const client = new Client(cfg.serverUrl);
-  const jwtToken: string = await fs.readFile(cfg.jwtFile, 'utf-8');
-  const resp = await client.accessProtected(jwtToken, cfg.protectedPath);
-  console.log(resp);
 };
 
+const handler = (): CommandHandler<Options, void> =>
+  pipe(
+    readJwt(),
+    RTE.chain((jwt) => liftAction(accessProtectedAction(jwt))),
+    RTE.asUnit
+  );
+
+const name: string = 'accessProtected';
+
 export const command = cmd.command({
-  name: 'accessProtected',
+  name,
   args,
-  handler
+  handler: asCmdTsHandlerFunction(name, handler)
 });
 
 export default command;

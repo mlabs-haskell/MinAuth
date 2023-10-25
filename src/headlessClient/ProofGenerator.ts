@@ -1,10 +1,55 @@
+import { FpInterfaceType, Logger } from '@lib/plugin';
+import { Decoder } from '@lib/plugin/fp/EncodeDecoder';
 import { MinAuthProof } from '@lib/server/minauthStrategy';
-import { z } from 'zod';
+import { askRecordField } from '@utils/fp/ReaderTaskEither';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
 
-export interface ProofGeneratorFactory<Conf> {
-  mkGenerator(conf: Conf): () => Promise<MinAuthProof>;
+export type GenerateProofEnv<Conf> = Readonly<{
+  logger: Logger;
+  config: Conf;
+}>;
 
-  readonly confSchema: z.Schema<Conf>;
+export type GenerateProofError =
+  | {
+      __tag: 'failedToInitializeProver';
+      reason: string;
+    }
+  | {
+      __tag: 'failedToProve';
+      reason: string;
+    }
+  | {
+      __tag: 'failedToFetchPublicInputs';
+      reason: string;
+      publicInputArgs: unknown;
+    }
+  | {
+      __tag: 'otherError';
+      detail: unknown;
+    };
+
+export type GenerateProof<Conf, A> = ReaderTaskEither<
+  GenerateProofEnv<Conf>,
+  GenerateProofError,
+  A
+>;
+
+export interface IProofGenerator<Conf> {
+  generateProof: () => GenerateProof<Conf, MinAuthProof>;
+
+  readonly confDec: Decoder<FpInterfaceType, Conf>;
 }
 
-export type UntypedProofGeneratorFactory = ProofGeneratorFactory<unknown>;
+export type UntypedProofGenerator = IProofGenerator<unknown>;
+
+export const askConfig = <Conf>(): GenerateProof<Conf, Conf> =>
+  askRecordField('config');
+
+export const asUntypedProofGenerator = <Conf>({
+  confDec,
+  generateProof
+}: IProofGenerator<Conf>): UntypedProofGenerator => ({
+  confDec,
+  generateProof: () => (c: GenerateProofEnv<unknown>) =>
+    generateProof()(c as GenerateProofEnv<Conf>)
+});
