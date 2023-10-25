@@ -2799,6 +2799,15 @@
         sha512 = "AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==";
       };
     };
+    "tslog-4.9.2" = {
+      name = "tslog";
+      packageName = "tslog";
+      version = "4.9.2";
+      src = fetchurl {
+        url = "https://registry.npmjs.org/tslog/-/tslog-4.9.2.tgz";
+        sha512 = "wBM+LRJoNl34Bdu8mYEFxpvmOUedpNUwMNQB/NcuPIZKwdDde6xLHUev3bBjXQU7gdurX++X/YE7gLH8eXYsiQ==";
+      };
+    };
     "tsutils-3.21.0" = {
       name = "tsutils";
       packageName = "tsutils";
@@ -3410,6 +3419,7 @@
       sources."ts-node-10.9.1"
       sources."tsconfig-paths-4.2.0"
       sources."tslib-2.6.2"
+      sources."tslog-4.9.2"
       (sources."tsutils-3.21.0"
         // {
           dependencies = [
