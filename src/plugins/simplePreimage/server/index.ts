@@ -20,7 +20,7 @@ import {
   wrapTrivialEnc
 } from '@lib/plugin/fp/EncodeDecoder';
 
-const configurationSchema = z
+export const configurationSchema = z
   .object({
     roles: z.record(
       // FIXME: the key should be a valid poseidon hash
@@ -34,7 +34,7 @@ const configurationSchema = z
     })
   );
 
-type Configuration = z.infer<typeof configurationSchema>;
+export type Configuration = z.infer<typeof configurationSchema>;
 
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
