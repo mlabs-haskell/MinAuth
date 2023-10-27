@@ -4,6 +4,7 @@ import z from 'zod';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
+  Logger,
   OutputValidity,
   outputInvalid,
   outputValid
@@ -173,6 +174,8 @@ export class MerkleMembershipsPlugin
   readonly verificationKey: string;
   private readonly storageProvider: TreesProvider;
 
+  readonly logger: Logger;
+
   readonly customRoutes: Router = Router()
     .get(
       '/getLeaves/:treeRoot/',
@@ -230,8 +233,6 @@ export class MerkleMembershipsPlugin
     publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof
   ): TaskEither<string, Output> {
-    console.log(publicInputArgs);
-
     const treeRoots = TE.fromOption(() => 'empty input list')(
       NE.fromArray(publicInputArgs)
     );
@@ -253,7 +254,10 @@ export class MerkleMembershipsPlugin
       TE.bind('expectedHash', ({ treeRoots }) =>
         pipe(
           computeExpectedHash(this.storageProvider)(treeRoots),
-          TE.mapLeft(computeExpectedHashErrorToString)
+          TE.mapLeft(computeExpectedHashErrorToString),
+          TE.tapIO(
+            (hash) => () => this.logger.debug(`expected hash`, hash.toString())
+          )
         )
       ),
       TE.tap(({ expectedHash, deserializedProof }) =>
@@ -290,15 +294,21 @@ export class MerkleMembershipsPlugin
     );
   }
 
-  constructor(verificationKey: string, storageProvider: TreesProvider) {
+  constructor(
+    verificationKey: string,
+    storageProvider: TreesProvider,
+    logger: Logger
+  ) {
     this.verificationKey = verificationKey;
     this.storageProvider = storageProvider;
+    this.logger = logger;
   }
 
   static readonly __interface_tag = 'fp';
 
   static initialize(
-    cfg: MinaTreesProviderConfiguration
+    cfg: MinaTreesProviderConfiguration,
+    logger: Logger
   ): TaskEither<string, MerkleMembershipsPlugin> {
     return pipe(
       TE.Do,
@@ -313,7 +323,8 @@ export class MerkleMembershipsPlugin
         ({ compilationResult, storage }) =>
           new MerkleMembershipsPlugin(
             compilationResult.verificationKey,
-            storage
+            storage,
+            logger
           )
       )
     );

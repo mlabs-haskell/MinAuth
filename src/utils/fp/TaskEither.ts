@@ -119,17 +119,21 @@ export const launchTE = <T>(t: TaskEither<string, T>): Promise<T> =>
   );
 
 export const wrapTrivialExpressHandler =
-  <R>(f: (req: Express.Request) => TaskEither<string, R>) =>
+  <R>(
+    f: (req: Express.Request) => TaskEither<string, R>,
+    onError: (err: string) => {
+      statusCode: number;
+      body: unknown;
+    } = (err) => ({ statusCode: 400, body: { error: err } })
+  ) =>
   (req: Express.Request, resp: Express.Response): Promise<void> =>
     pipe(
       f(req),
       TE.tapIO((result) => () => resp.status(200).json(result)),
       TE.tapError((error: string) =>
         TE.fromIO(() => {
-          console.log(
-            `error occurred while handling ${req.method} ${req.path}: ${error}`
-          );
-          resp.status(400).json({ error });
+          const { statusCode, body } = onError(error);
+          resp.status(statusCode).json(body);
         })
       ),
       T.asUnit

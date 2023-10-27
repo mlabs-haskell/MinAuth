@@ -1,7 +1,38 @@
 import { MinAuthProof } from '@lib/server/minauthStrategy';
 import axios from 'axios';
+import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
 import path from 'path';
 import * as z from 'zod';
+import { pipe } from 'fp-ts/function';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import {
+  liftZodParseResult,
+  tryCatch,
+  tryCatchIO,
+  useLogger
+} from '@utils/fp/ReaderTaskEither';
+import { Option } from 'fp-ts/lib/Option';
+import * as O from 'fp-ts/Option';
+import { Logger } from '@lib/plugin';
+
+export type ClientEnv = Readonly<{
+  serverUrl: string;
+  logger: Logger;
+}>;
+
+export type ClientError =
+  | {
+      __tag: 'badUrl';
+      reason: string;
+    }
+  | {
+      __tag: 'ioFailure';
+      reason: string;
+    }
+  | { __tag: 'badCredential' | 'badRequest'; respBody: unknown }
+  | { __tag: 'serverError'; reason: string; respBody: unknown };
+
+export type Client<T> = ReaderTaskEither<ClientEnv, ClientError, T>;
 
 export const loginResponseSchema = z.object({
   token: z.string(),
@@ -20,52 +51,147 @@ export type AccessProtectedResponse = z.infer<
   typeof accessProtectedResponseSchema
 >;
 
-export class Client {
-  readonly serverUrl: string;
+const mkUrl = (...pathComponents: string[]): Client<string> =>
+  tryCatchIO(
+    ({ serverUrl }: ClientEnv) =>
+      new URL(path.join(...pathComponents), serverUrl).href,
+    (err) => {
+      return {
+        __tag: 'badUrl',
+        reason: String(err)
+      };
+    }
+  );
 
-  constructor(serverUrl: string) {
-    this.serverUrl = serverUrl;
-  }
+const logAction = (action: string, parameter?: unknown): Client<void> =>
+  useLogger((logger) => {
+    logger.info(`performing ${action}`);
+    if (parameter !== undefined) logger.debug(action, parameter);
+  });
 
-  mkUrl(...pathComponents: string[]): string {
-    return new URL(path.join(...pathComponents), this.serverUrl).href;
-  }
+const tapAndLogError = (action: string): (<R>(_: Client<R>) => Client<R>) =>
+  RTE.tapError((err) =>
+    useLogger((logger) => logger.error(`${action} failed`, err))
+  );
 
-  async login(proof: MinAuthProof): Promise<LoginResponse> {
-    const resp = await axios.post(this.mkUrl('login'), proof);
-    if (resp.status !== 200) throw 'failed to login';
-    return loginResponseSchema.parse(resp.data);
-  }
-
-  async refresh(
-    jwtToken: string,
-    refreshToken: string
-  ): Promise<RefreshResponse> {
-    const resp = await axios.post(
-      this.mkUrl('token'),
-      {
-        refreshToken
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${jwtToken}`
-        }
-      }
+const wrapPublicApi =
+  (action: string, parameter?: unknown) =>
+  <R>(f: Client<R>): Client<R> =>
+    pipe(
+      logAction(action, parameter),
+      RTE.chain(() => f),
+      tapAndLogError(action)
     );
-    if (resp.status !== 200) throw 'failed to refresh jwt token';
-    return refreshResponseSchema.parse(resp.data);
-  }
 
-  async accessProtected(
-    jwtToken: string,
-    protectedPath: string = '/protected'
-  ): Promise<AccessProtectedResponse> {
-    const resp = await axios.get(this.mkUrl(protectedPath), {
-      headers: {
-        Authorization: `Bearer ${jwtToken}`
-      }
-    });
-    if (resp.status !== 200) throw 'failed to access protected route';
-    return accessProtectedResponseSchema.parse(resp.data);
-  }
-}
+type Request<T> = {
+  urlComponents: Array<string>;
+  jwt: Option<string>;
+  // We'll use this schema to parse the body of any successful(200) responses.
+  respSchema: z.Schema<T>;
+} & (
+  | {
+      method: 'GET';
+    }
+  | {
+      method: 'POST';
+      body: unknown;
+    }
+);
+
+const mkRequest = <T>(req: Request<T>): Client<T> =>
+  pipe(
+    RTE.Do,
+    RTE.bind('url', () => mkUrl(...req.urlComponents)),
+    RTE.let('headers', () =>
+      O.isNone(req.jwt)
+        ? undefined
+        : { Authorization: `Bearer ${req.jwt.value}` }
+    ),
+    RTE.let(
+      'reqFn',
+      ({ url, headers }) =>
+        // This is pure: the returned value is a function.
+        () =>
+          req.method == 'GET'
+            ? axios.get(url, { headers })
+            : axios.post(url, req.body, { headers })
+    ),
+    // `reqFn` is actually carried out here.
+    RTE.bind('resp', ({ reqFn }) =>
+      tryCatch(
+        reqFn,
+        (err): ClientError => ({
+          __tag: 'ioFailure',
+          reason: `failed to make request: ${err}`
+          // TODO: Should probably record the axios request here, but I have no idea how to gracefully redact the sensitive info.
+        })
+      )
+    ),
+    // We assume that the server would never response with status code
+    // other than 200, 401 and 400.
+    RTE.chain(
+      ({ resp }): Client<T> =>
+        resp.status == 200
+          ? liftZodParseResult(
+              req.respSchema.safeParse(resp.data),
+              (err): ClientError => ({
+                __tag: 'serverError',
+                reason: `unable to parse response body: ${err}`,
+                respBody: resp.data
+              })
+            )
+          : resp.status == 401
+          ? RTE.left({
+              __tag: 'badCredential',
+              respBody: resp.data
+            })
+          : resp.status == 400
+          ? RTE.left({
+              __tag: 'badRequest',
+              respBody: resp.data
+            })
+          : RTE.left({
+              __tag: 'serverError',
+              reason: `bad status code: ${resp.status}`,
+              respBody: resp.data
+            })
+    )
+  );
+
+export const login = (proof: MinAuthProof): Client<LoginResponse> =>
+  wrapPublicApi(
+    'login',
+    proof
+  )(
+    mkRequest({
+      method: 'POST',
+      body: proof,
+      urlComponents: ['login'],
+      jwt: O.none,
+      respSchema: loginResponseSchema
+    })
+  );
+
+export const refresh = (
+  jwt: string,
+  refreshToken: string
+): Client<RefreshResponse> =>
+  wrapPublicApi('refresh')(
+    mkRequest({
+      method: 'POST',
+      body: { refreshToken },
+      urlComponents: ['token'],
+      jwt: O.some(jwt),
+      respSchema: refreshResponseSchema
+    })
+  );
+
+export const accessProtected = (jwt: string): Client<AccessProtectedResponse> =>
+  wrapPublicApi('accessProtected')(
+    mkRequest({
+      method: 'GET',
+      urlComponents: ['protected'],
+      jwt: O.some(jwt),
+      respSchema: accessProtectedResponseSchema
+    })
+  );

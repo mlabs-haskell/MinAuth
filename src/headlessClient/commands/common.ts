@@ -1,4 +1,17 @@
+import { Logger } from '@lib/plugin';
 import * as cmd from 'cmd-ts';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
+import * as log from 'tslog';
+import * as E from 'fp-ts/Either';
+import { Action, ActionError } from '../actions';
+import { pipe } from 'fp-ts/lib/function';
+import {
+  askLogger,
+  askRecordField,
+  tryCatch
+} from '@utils/fp/ReaderTaskEither';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import * as fs from 'fs/promises';
 
 export const commonOptions = {
   serverUrl: cmd.option({
@@ -15,8 +28,134 @@ export const commonOptions = {
   }),
   refreshTokenFile: cmd.option({
     long: 'refresh-token-file',
-    short: 's',
+    short: 'r',
     type: cmd.string,
     defaultValue: () => './.fixtures/refreshToken'
+  }),
+  silent: cmd.flag({
+    long: 'silent',
+    short: 's',
+    defaultValue: () => false
+  }),
+  verbose: cmd.flag({
+    long: 'verbose',
+    short: 'v',
+    defaultValue: () => false
   })
 };
+
+export type CommonOptions = {
+  serverUrl: string;
+  jwtFile: string;
+  refreshTokenFile: string;
+  silent: boolean;
+  verbose: boolean;
+};
+
+export type CommandHandlerEnv<Opts extends CommonOptions> = Readonly<{
+  logger: Logger;
+  opts: Opts;
+}>;
+
+export type CommandHandler<Opts extends CommonOptions, T> = ReaderTaskEither<
+  CommandHandlerEnv<Opts>,
+  string,
+  T
+>;
+
+export const asCmdTsHandlerFunction =
+  <Opts extends CommonOptions, T>(
+    commandName: string,
+    f: () => CommandHandler<Opts, T>
+  ) =>
+  async (opts: Opts): Promise<void> => {
+    const logger = new log.Logger<log.ILogObj>({
+      name: commandName,
+      type: opts.silent ? 'hidden' : 'pretty',
+      minLevel: opts.verbose ? 2 : 3
+    });
+    const env: CommandHandlerEnv<Opts> = {
+      logger,
+      opts
+    };
+    logger.info(`start executing command ${commandName}`);
+    logger.debug('options', opts);
+    const res = await f()(env)();
+    return E.match(
+      (err) => {
+        logger.error(
+          `error while executing the command ${commandName}: String(${err})`
+        );
+        process.exit(1);
+      },
+      () => {
+        logger.info('all done');
+      }
+    )(res);
+  };
+
+export const askOpt = <
+  P extends string,
+  Opts extends { [key in P]: unknown } & CommonOptions
+>(
+  key: P
+): CommandHandler<Opts, Opts[P]> =>
+  pipe(
+    askRecordField<'opts', CommandHandlerEnv<Opts>>('opts'),
+    RTE.map((opts) => opts[key])
+  );
+
+export const liftAction = <Opts extends CommonOptions, T>(
+  f: Action<T>
+): CommandHandler<Opts, T> =>
+  pipe(
+    RTE.Do,
+    RTE.bind('serverUrl', () => askOpt('serverUrl')),
+    RTE.bind('logger', () => askLogger()),
+    RTE.chain(
+      ({ serverUrl, logger }): CommandHandler<Opts, T> =>
+        pipe(
+          RTE.fromTaskEither(f({ logger, serverUrl })),
+          RTE.tapError((err: ActionError) =>
+            RTE.fromIO(() => logger.error('failed to perform action', err))
+          ),
+          RTE.mapLeft((err: ActionError): string => String(err))
+        )
+    )
+  );
+
+export const writeFile =
+  (content: string) =>
+  <Opts extends CommonOptions>(path: string): CommandHandler<Opts, void> =>
+    tryCatch(
+      () => fs.writeFile(path, content, 'utf8'),
+      (err) => `unable to write file ${path}: String(${err})`
+    );
+
+export const readFile = <Opts extends CommonOptions>(
+  path: string
+): CommandHandler<Opts, string> =>
+  tryCatch(
+    () => fs.readFile(path, 'utf-8'),
+    (err) => `unable to read file ${path}: String(${err})`
+  );
+
+export const readJwt = <Opts extends CommonOptions>(): CommandHandler<
+  Opts,
+  string
+> => pipe(askOpt('jwtFile'), RTE.chain(readFile));
+
+export const writeJwt = <Opts extends CommonOptions>(
+  jwt: string
+): CommandHandler<Opts, void> =>
+  pipe(askOpt('jwtFile'), RTE.chain(writeFile(jwt)));
+
+export const readRefreshToken = <Opts extends CommonOptions>(): CommandHandler<
+  Opts,
+  string
+> => pipe(askOpt('refreshTokenFile'), RTE.chain(readFile));
+
+export const writeRefreshToken = <Opts extends CommonOptions>(
+  refreshToken: string
+): CommandHandler<Opts, void> =>
+  pipe(askOpt('refreshTokenFile'), RTE.chain(writeFile(refreshToken)));

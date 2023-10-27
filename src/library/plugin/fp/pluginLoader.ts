@@ -2,6 +2,7 @@ import * as path from 'path';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
+  Logger,
   tsToFpMinAuthPluginFactory
 } from './pluginType';
 import * as R from 'fp-ts/Record';
@@ -23,7 +24,7 @@ import {
   fpInterfaceTag,
   tsInterfaceTag
 } from './interfaceKind';
-import { Decoder, EncodeDecoder } from './EncodeDecoder';
+import { PluginRuntimeEnv, RuntimePluginInstance } from './pluginRuntime';
 
 export const configurationSchema = z.object({
   pluginDir: z.string().optional(),
@@ -37,7 +38,10 @@ export const configurationSchema = z.object({
 
 export type Configuration = z.infer<typeof configurationSchema>;
 
+// TODO: this is more like a general purpose utility to me. Might consider move
+// it to a dedicate module.
 export const _readConfiguration =
+  (logger: Logger) =>
   <T>(parseConfiguration: (s: string) => z.SafeParseReturnType<T, T>) =>
   (cfgPath?: string): TaskEither<string, T> =>
     pipe(
@@ -49,11 +53,11 @@ export const _readConfiguration =
               env.get('MINAUTH_CONFIG').default('config.yaml').asString()
           );
 
-          console.log(`reading configuration from ${finalCfgPath}`);
+          logger.debug({ finalCfgPath });
 
           return existsSync(finalCfgPath)
             ? E.right(finalCfgPath)
-            : E.left('configuration file does not exists');
+            : E.left('configuration file does not exist');
         })
       ),
       TE.bind('cfgFileContent', ({ finalCfgPath }) =>
@@ -64,11 +68,8 @@ export const _readConfiguration =
       )
     );
 
-export const readConfiguration = _readConfiguration(
-  configurationSchema.safeParse
-);
-
-//
+export const readConfiguration = (logger: Logger) =>
+  _readConfiguration(logger)(configurationSchema.safeParse);
 
 export type UntypedFpPluginFactory = IMinAuthPluginFactory<
   FpInterfaceType,
@@ -88,17 +89,6 @@ export type UntypedPluginFactory =
 
 export type UntypedPluginModule = { default: UntypedPluginFactory };
 
-export type RuntimePluginInstance = IMinAuthPlugin<
-  FpInterfaceType,
-  unknown,
-  unknown
-> & {
-  publicInputArgsDec: Decoder<FpInterfaceType, unknown>;
-  outputEncDec: EncodeDecoder<FpInterfaceType, unknown>;
-};
-
-export type ActivePlugins = Record<string, RuntimePluginInstance>;
-
 const importPluginModule = (
   pluginModulePath: string
 ): TaskEither<string, UntypedPluginModule> =>
@@ -116,7 +106,8 @@ const validatePluginCfg = (
 
 const initializePlugin = (
   pluginModulePath: string,
-  pluginCfg: unknown
+  pluginCfg: unknown,
+  logger: Logger
 ): TaskEither<string, RuntimePluginInstance> =>
   pipe(
     TE.Do,
@@ -134,7 +125,7 @@ const initializePlugin = (
       validatePluginCfg(pluginCfg, pluginFactory)
     ),
     TE.bind('pluginInstance', ({ pluginFactory, typedPluginCfg }) =>
-      pluginFactory.initialize(typedPluginCfg)
+      pluginFactory.initialize(typedPluginCfg, logger)
     ),
     TE.map(({ pluginFactory, pluginInstance }) => {
       return {
@@ -151,51 +142,100 @@ const initializePlugin = (
     })
   );
 
-export const initializePlugins = (
-  cfg: Configuration
-): TaskEither<string, ActivePlugins> => {
-  const resolvePluginModulePath =
-    (name: string, optionalPath?: string) => () => {
-      const dir =
-        cfg.pluginDir === undefined
-          ? process.cwd()
-          : path.resolve(cfg.pluginDir);
+export const initializePlugins =
+  (
+    // the root logger of the hierarchy
+    rootLogger: Logger
+  ) =>
+  (cfg: Configuration): TaskEither<string, PluginRuntimeEnv> => {
+    const resolvePluginModulePath =
+      (name: string, optionalPath?: string) => () => {
+        const dir =
+          cfg.pluginDir === undefined
+            ? process.cwd()
+            : path.resolve(cfg.pluginDir);
 
-      return optionalPath === undefined
-        ? path.join(dir, name)
-        : path.resolve(optionalPath);
-    };
+        return optionalPath === undefined
+          ? path.join(dir, name)
+          : path.resolve(optionalPath);
+      };
 
-  const resolveModulePathAndInitializePlugin = (
-    pluginName: string,
-    pluginCfg: {
-      path?: string | undefined;
-      config?: unknown;
-    }
-  ): TaskEither<string, RuntimePluginInstance> =>
-    pipe(
-      TE.Do,
-      TE.bind('modulePath', () =>
-        TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
-      ),
-      TE.tapIO(({ modulePath }) => () => {
-        console.info(`loading plugin ${pluginName} from ${modulePath}`);
-        console.log(pluginCfg.config);
-      }),
-      TE.chain(({ modulePath }) =>
-        initializePlugin(modulePath, pluginCfg.config ?? {})
-      ),
-      TE.mapLeft(
-        (err) => `error while initializing plugin ${pluginName}: ${err}`
-      )
+    const resolveModulePathAndInitializePlugin =
+      (initLogger: Logger, pluginsLogger: Logger) =>
+      (
+        pluginName: string,
+        pluginCfg: {
+          path?: string | undefined;
+          config?: unknown;
+        }
+      ): TaskEither<string, RuntimePluginInstance> =>
+        pipe(
+          TE.Do,
+          TE.bind('modulePath', () =>
+            TE.fromIO(resolvePluginModulePath(pluginName, pluginCfg.path))
+          ),
+          TE.let(
+            // The configuration object passed to the `initialize` function of the plugin factory
+            'pluginConfig',
+            () => pluginCfg.config ?? {}
+          ),
+          TE.tapIO(({ modulePath, pluginConfig }) => () => {
+            initLogger.info(`loading plugin ${pluginName}`);
+            initLogger.debug({
+              pluginName,
+              modulePath,
+              pluginConfig
+            });
+          }),
+          TE.bind('pluginLogger', () =>
+            TE.fromIO(() =>
+              pluginsLogger.getSubLogger({
+                name: `${pluginName}`
+              })
+            )
+          ),
+          TE.chain(({ modulePath, pluginConfig, pluginLogger }) =>
+            initializePlugin(modulePath, pluginConfig, pluginLogger)
+          ),
+          TE.mapLeft(
+            // TODO: more structural error?
+            (err) => `error while initializing plugin ${pluginName}: ${err}`
+          ),
+          TE.tapError((err) =>
+            TE.fromIO(() =>
+              initLogger.error(`unable to initialize plugin ${pluginName}`, err)
+            )
+          )
+        );
+
+    const Applicative = TE.getApplicativeTaskValidation(
+      T.ApplyPar,
+      pipe(Str.Semigroup, S.intercalate(', '))
     );
 
-  const Applicative = TE.getApplicativeTaskValidation(
-    T.ApplyPar,
-    pipe(Str.Semigroup, S.intercalate(', '))
-  );
+    const mkLogger = (name: string) =>
+      TE.fromIO(() => rootLogger.getSubLogger({ name }));
 
-  return R.traverseWithIndex(Applicative)(resolveModulePathAndInitializePlugin)(
-    cfg.plugins
-  );
-};
+    return pipe(
+      TE.Do,
+      // A dedicated logger for the plugin initilization process
+      TE.bind('initLogger', () => mkLogger('pluginLoader')),
+      // Plugin runtime "manages" plugins and knows nothing about
+      // what happens in each plugin, used to log events happen inside the
+      // PluginRuntime monad.
+      TE.bind('pluginsLogger', () => mkLogger('activePlugins')),
+      // Plugins should use the provided logger to log the events
+      // that happen inside the plugin, like the detail of the verification process.
+      TE.bind('runtimeLogger', () => mkLogger('pluginRuntime')),
+      // Initialize each plugin
+      TE.bind('plugins', ({ initLogger, pluginsLogger }) =>
+        R.traverseWithIndex(Applicative)(
+          resolveModulePathAndInitializePlugin(initLogger, pluginsLogger)
+        )(cfg.plugins)
+      ),
+      // lift results
+      TE.map(({ plugins, runtimeLogger }): PluginRuntimeEnv => {
+        return { logger: runtimeLogger, plugins };
+      })
+    );
+  };

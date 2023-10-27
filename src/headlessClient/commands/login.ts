@@ -1,16 +1,27 @@
 import * as cmd from 'cmd-ts';
-import { UntypedProofGeneratorFactory } from '../ProofGenerator';
 import SimplePreImageGenerator from '../proofGenerators/SimplePreimageGenerator';
 import MerkleMembershipsGenerator from '../proofGenerators/MerkleMembershipsGenerator';
 import * as R from 'fp-ts/Record';
-import * as O from 'fp-ts/Option';
-import { pipe } from 'fp-ts/lib/function';
-import * as fs from 'fs/promises';
-import { commonOptions } from './common';
-import { Client } from '../client';
-import * as jwt from 'jsonwebtoken';
+import { pipe } from 'fp-ts/function';
+import {
+  CommandHandler,
+  CommonOptions,
+  asCmdTsHandlerFunction,
+  askOpt,
+  commonOptions,
+  liftAction,
+  readFile,
+  writeJwt,
+  writeRefreshToken
+} from './common';
+import {
+  UntypedProofGenerator,
+  asUntypedProofGenerator
+} from '../ProofGenerator';
+import * as RTE from 'fp-ts/ReaderTaskEither';
+import { loginAction } from '../actions';
 
-export const args = {
+const args = {
   ...commonOptions,
   proofGeneratorName: cmd.option({
     long: 'proof-generator-name',
@@ -24,45 +35,69 @@ export const args = {
   })
 };
 
-const proofGenerators: Record<string, UntypedProofGeneratorFactory> = {
-  SimplePreimage: SimplePreImageGenerator,
-  MerkleMembership: MerkleMembershipsGenerator
+const proofGenerators: Record<string, UntypedProofGenerator> = {
+  SimplePreimage: asUntypedProofGenerator(SimplePreImageGenerator),
+  MerkleMembership: asUntypedProofGenerator(MerkleMembershipsGenerator)
 };
 
-export const handler = async (cfg: {
-  serverUrl: string;
-  jwtFile: string;
-  refreshTokenFile: string;
+type Options = CommonOptions & {
   proofGeneratorName: string;
   proofGeneratorConfFile: string;
-}) => {
-  const client = new Client(cfg.serverUrl);
-  const generatorFactory = await pipe(
-    R.lookup(cfg.proofGeneratorName)(proofGenerators),
-    O.match(
-      () => Promise.reject(`unknown generator ${cfg.proofGeneratorName}`),
-      (o) => Promise.resolve(o)
-    )
-  );
-  const generatorConf = await fs
-    .readFile(cfg.proofGeneratorConfFile, 'utf-8')
-    .then(JSON.parse)
-    .then(generatorFactory.confSchema.parse);
-  const generate = generatorFactory.mkGenerator(generatorConf);
-  const proof = await generate();
-  const loginResult = await client.login(proof);
-
-  const jwtPayload = jwt.decode(loginResult.token);
-  console.log(jwtPayload);
-
-  await fs.writeFile(cfg.jwtFile, loginResult.token);
-  await fs.writeFile(cfg.refreshTokenFile, loginResult.refreshToken);
 };
 
+const lookupProofGenerator = (): CommandHandler<
+  Options,
+  UntypedProofGenerator
+> =>
+  pipe(
+    askOpt<'proofGeneratorName', Options>('proofGeneratorName'),
+    RTE.chain((generatorName: string) =>
+      RTE.fromOption(() => `missing proof generator: ${generatorName}`)(
+        R.lookup(generatorName)(proofGenerators)
+      )
+    )
+  );
+
+const decodeProofGeneratorConfig =
+  (generator: UntypedProofGenerator) =>
+  (untypedConfig: unknown): CommandHandler<Options, unknown> =>
+    pipe(
+      RTE.fromEither(generator.confDec.decode(untypedConfig)),
+      RTE.mapLeft(
+        (err: string) => `unable to decode proof generator config: ${err}`
+      )
+    );
+
+const handler = (): CommandHandler<Options, void> =>
+  pipe(
+    RTE.Do,
+    RTE.bind('proofGenerator', lookupProofGenerator),
+    RTE.bind('typedGeneratorConfig', ({ proofGenerator }) =>
+      pipe(
+        askOpt<'proofGeneratorConfFile', Options>('proofGeneratorConfFile'),
+        RTE.chain(readFile<Options>),
+        RTE.map(JSON.parse),
+        RTE.chain(decodeProofGeneratorConfig(proofGenerator))
+      )
+    ),
+    RTE.bind('actionResult', ({ proofGenerator, typedGeneratorConfig }) =>
+      liftAction(loginAction(proofGenerator, typedGeneratorConfig))
+    ),
+    RTE.tap(({ actionResult: { token, refreshToken } }) =>
+      pipe(
+        writeJwt(token),
+        RTE.chain(() => writeRefreshToken(refreshToken))
+      )
+    ),
+    RTE.asUnit
+  );
+
+const name: string = 'login';
+
 export const command = cmd.command({
-  name: 'login',
+  name,
   args,
-  handler
+  handler: asCmdTsHandlerFunction(name, handler)
 });
 
 export default command;

@@ -9,7 +9,6 @@ export class SimplePreimageProver
   readonly __interface_tag: 'ts';
 
   async prove(publicInput: Field, secretInput: Field): Promise<JsonProof> {
-    console.debug('proving', publicInput, secretInput);
     const proof = await ProvePreimageProgram.baseCase(publicInput, secretInput);
     return proof.toJSON();
   }
