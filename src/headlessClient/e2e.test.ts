@@ -70,9 +70,7 @@ runTestGroup({
         errorSubset: {
           __tag: 'clientError',
           error: {
-            // FIXME: Axios seems to treat 400 response as an exception, so we
-            // expect an ioFailure here.
-            __tag: 'ioFailure'
+            __tag: 'badRequest'
           }
         }
       },
