@@ -64,6 +64,24 @@ runTestGroup({
       }
     },
     {
+      name: 'bad password',
+      outcome: {
+        shouldSuccess: false,
+        errorSubset: {
+          __tag: 'clientError',
+          error: {
+            // FIXME: Axios seems to treat 400 response as an exception, so we
+            // expect an ioFailure here.
+            __tag: 'ioFailure'
+          }
+        }
+      },
+      kind: 'simplePreimage',
+      config: {
+        password: Field.from('424242')
+      }
+    },
+    {
       name: 'good memberships',
       outcome: {
         shouldSuccess: true
