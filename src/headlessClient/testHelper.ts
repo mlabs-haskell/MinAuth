@@ -187,15 +187,10 @@ const startPluginServer = async (
 
   const env = { ...process.env, MINAUTH_CONFIG: serverConfigPath };
 
-  const p = cp.spawn(
-    // FIXME: not sure if this is gonna work on ci.
-    'ts-node',
-    ['src/library/tools/pluginServer'],
-    {
-      stdio: 'inherit', // TODO redirect stdout to a file for debugging.
-      env
-    }
-  );
+  const p = cp.spawn('ts-node', ['src/library/tools/pluginServer'], {
+    stdio: 'inherit', // TODO redirect stdout to a file for debugging.
+    env
+  });
 
   // Waiting for the plugin server to fully initialize.
 
