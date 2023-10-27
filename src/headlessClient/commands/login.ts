@@ -76,6 +76,7 @@ const handler = (): CommandHandler<Options, void> =>
       pipe(
         askOpt<'proofGeneratorConfFile', Options>('proofGeneratorConfFile'),
         RTE.chain(readFile<Options>),
+        RTE.map(JSON.parse),
         RTE.chain(decodeProofGeneratorConfig(proofGenerator))
       )
     ),

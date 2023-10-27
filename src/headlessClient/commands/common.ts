@@ -36,6 +36,11 @@ export const commonOptions = {
     long: 'silent',
     short: 's',
     defaultValue: () => false
+  }),
+  verbose: cmd.flag({
+    long: 'verbose',
+    short: 'v',
+    defaultValue: () => false
   })
 };
 
@@ -44,6 +49,7 @@ export type CommonOptions = {
   jwtFile: string;
   refreshTokenFile: string;
   silent: boolean;
+  verbose: boolean;
 };
 
 export type CommandHandlerEnv<Opts extends CommonOptions> = Readonly<{
@@ -65,7 +71,8 @@ export const asCmdTsHandlerFunction =
   async (opts: Opts): Promise<void> => {
     const logger = new log.Logger<log.ILogObj>({
       name: commandName,
-      type: opts.silent ? 'hidden' : 'pretty'
+      type: opts.silent ? 'hidden' : 'pretty',
+      minLevel: opts.verbose ? 2 : 3
     });
     const env: CommandHandlerEnv<Opts> = {
       logger,
@@ -76,7 +83,9 @@ export const asCmdTsHandlerFunction =
     const res = await f()(env)();
     return E.match(
       (err) => {
-        logger.error(`error while executing the command: ${err}`);
+        logger.error(
+          `error while executing the command ${commandName}: String(${err})`
+        );
         process.exit(1);
       },
       () => {

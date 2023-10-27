@@ -133,7 +133,7 @@ const mkRequest = <T>(req: Request<T>): Client<T> =>
       ({ resp }): Client<T> =>
         resp.status == 200
           ? liftZodParseResult(
-              req.respSchema.safeParse(resp),
+              req.respSchema.safeParse(resp.data),
               (err): ClientError => ({
                 __tag: 'serverError',
                 reason: `unable to parse response body: ${err}`,
