@@ -20,7 +20,7 @@ import {
   wrapTrivialEnc
 } from '@lib/plugin/fp/EncodeDecoder';
 
-export const configurationSchema = z
+const configurationSchema = z
   .object({
     roles: z.record(
       // FIXME: the key should be a valid poseidon hash

@@ -4,15 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start-api": "nodemon src/someServer/apiServer.ts",
+    "start-api": "nodemon src/someServer/index.ts",
     "start-plugin-server": "nodemon src/library/tools/pluginServer/index.ts",
     "start-client": "nodemon src/headlessClient/client.ts",
     "build": "tsc",
-    "serve-api": "ts-node ./src/someServer/apiServer.ts",
+    "serve-api": "ts-node ./src/someServer/index.ts",
     "serve-plugin-server": "ts-node ./src/library/tools/pluginServer",
     "run-client": "ts-node ./src/headlessClient",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -41,6 +42,7 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@relmify/jest-fp-ts": "^2.1.1",
     "@types/axios": "^0.14.0",
     "@types/express": "^4.17.17",
@@ -62,10 +64,5 @@
   },
   "peerDependencies": {
     "o1js": "0.13.*"
-  },
-  "jest": {
-    "setupFilesAfterEnv": [
-      "@relmify/jest-fp-ts"
-    ]
   }
 }

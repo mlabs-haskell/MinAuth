@@ -11,6 +11,7 @@ import * as PluginServer from '@lib/tools/pluginServer/config';
 import * as cp from 'child_process';
 import * as log from 'tslog';
 import '@relmify/jest-fp-ts';
+import axios from 'axios';
 
 export type PluginKind = 'merkleMemberships' | 'simplePreimage';
 
@@ -40,7 +41,7 @@ export type TestPluginServerConf = {
   loadPlugins: Record<
     string,
     | {
-        kind: 'simplePreImage';
+        kind: 'simplePreimage';
         config: ChoosePluginConfig<'simplePreimage'>;
       }
     | {
@@ -61,7 +62,7 @@ export type TestOutcome =
 
 export type TestCase = { name: string; outcome: TestOutcome } & (
   | {
-      kind: 'simplePreImage';
+      kind: 'simplePreimage';
       config: ChooseProofGeneratorConfig<'simplePreimage'>;
     }
   | {
@@ -133,7 +134,7 @@ const encodeServerConfig = async (
   rawCfg: TestPluginServerConf
 ): Promise<PluginServer.Configuration> => {
   const mkPluginDir = (name: string) =>
-    `${__dirname}/../../plugins/${name}/server`;
+    `${__dirname}/../plugins/${name}/server`;
 
   const plugins = await Array.from(Object.entries(rawCfg.loadPlugins)).reduce(
     (
@@ -168,9 +169,16 @@ const encodeServerConfig = async (
 const startPluginServer = async (
   rawCfg: TestPluginServerConf
 ): Promise<cp.ChildProcess> => {
-  const fixtureDir = os.tmpdir();
+  const fixtureDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'minauth-e2e-tests')
+  );
+
+  console.debug(fixtureDir);
 
   const pluginsDir = path.join(fixtureDir, 'plugins');
+
+  console.debug(pluginsDir);
+
   await fs.mkdir(pluginsDir);
   const serverConfig = await encodeServerConfig(pluginsDir, rawCfg);
 
@@ -179,17 +187,41 @@ const startPluginServer = async (
 
   const env = { ...process.env, MINAUTH_CONFIG: serverConfigPath };
 
-  return cp.spawn(
+  const p = cp.spawn(
     // FIXME: not sure if this is gonna work on ci.
-    'node -r tsconfig-paths/register dist/src/library/tools/pluginServer/index.js',
-    { env }
+    'ts-node',
+    ['src/library/tools/pluginServer'],
+    {
+      stdio: 'inherit', // TODO redirect stdout to a file for debugging.
+      env
+    }
   );
+
+  // Waiting for the plugin server to fully initialize.
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const resp = await axios.get('http://127.0.0.1:3001/health');
+      if (resp.status == 200) break;
+    } catch (err) {
+      /* empty */
+    }
+  }
+
+  console.log('plugin server spawned', p.pid);
+
+  return p;
 };
 
 const startSomeServer = async (): Promise<cp.ChildProcess> => {
-  return cp.spawn(
-    'node -r tsconfig-paths/register dist/src/someServer/apiServer.js'
-  );
+  const p = cp.spawn('ts-node', ['src/someServer'], {
+    stdio: 'inherit'
+  });
+
+  console.log('api server spawned', p.pid);
+
+  return p;
 };
 
 const mkJestTest = (c: TestCase) =>
@@ -218,17 +250,14 @@ export const runTestGroup = (g: TestGroup) =>
     let someServerProcess: cp.ChildProcess;
 
     beforeAll(async () => {
-      pluginServerProcess = await startPluginServer(g.server);
       someServerProcess = await startSomeServer();
+      pluginServerProcess = await startPluginServer(g.server);
     });
 
     g.tests.map(mkJestTest);
 
-    afterAll(async () => {
+    afterAll(() => {
       pluginServerProcess.kill();
       someServerProcess.kill();
-
-      await new Promise((resolve) => pluginServerProcess.on('exit', resolve));
-      await new Promise((resolve) => someServerProcess.on('exit', resolve));
     });
   });
