@@ -93,12 +93,14 @@
           pkgs.writeShellScriptBin "eslint-with-plugins"
           "NODE_PATH=${nodeDependencies}/lib/node_modules ${nodeDependencies}/lib/node_modules/.bin/eslint $@";
 
-        combinedCheck = pkgs.symlinkJoin {
+        combinedCheck = pkgs.stdenv.mkDerivation {
           name = "MinAuth-combined-check";
-          paths = [
+          buildInputs = [
             minAuthTests
             self'.checks.pre-commit
           ];
+          src = gitignore.lib.gitignoreSource ./.;
+          installPhase = ''touch $out '';
         };
       in {
         pre-commit.settings.hooks = {
