@@ -71,6 +71,24 @@
             runHook postInstall
           '';
         };
+        minAuthTests = pkgs.stdenv.mkDerivation {
+          name = "MinAuth-tests";
+          version = "0.1.0";
+          src = gitignore.lib.gitignoreSource ./.;
+          buildInputs = [
+            nodejs
+            # TODO: determine if this isreally required
+            pkgs.nodePackages.ts-node
+          ];
+          buildPhase = ''
+            runHook preBuild
+              ln -sf ${nodeDependencies}/lib/node_modules ./node_modules
+              export PATH="${nodeDependencies}/bin:$PATH"
+              npm run test
+              runHook postBuild
+          '';
+          installPhase = ''touch $out '';
+        };
       in {
         pre-commit.settings.hooks = {
           eslint.enable = true;
@@ -85,7 +103,18 @@
           ];
           shellHook = config.pre-commit.installationScript;
         };
-        checks.default = self'.checks.pre-commit;
+
+        checks = {
+          tests = minAuthTests;
+          default = pkgs.symlinkJoin {
+            name = "combined-check";
+            paths = [
+              minAuthTests
+              self'.checks.pre-commit
+            ];
+          };
+        };
+
         packages = {
           inherit minAuth;
           default = minAuth;
