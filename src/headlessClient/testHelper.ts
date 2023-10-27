@@ -166,6 +166,8 @@ const encodeServerConfig = async (
   return PluginServer.configurationSchema.parse({ plugins });
 };
 
+const testLogger = new log.Logger<log.ILogObj>({ name: `test` });
+
 const startPluginServer = async (
   rawCfg: TestPluginServerConf
 ): Promise<cp.ChildProcess> => {
@@ -173,11 +175,9 @@ const startPluginServer = async (
     path.join(os.tmpdir(), 'minauth-e2e-tests')
   );
 
-  console.debug(fixtureDir);
+  testLogger.debug('fixture dir', fixtureDir);
 
   const pluginsDir = path.join(fixtureDir, 'plugins');
-
-  console.debug(pluginsDir);
 
   await fs.mkdir(pluginsDir);
   const serverConfig = await encodeServerConfig(pluginsDir, rawCfg);
@@ -209,7 +209,7 @@ const startPluginServer = async (
     }
   }
 
-  console.log('plugin server spawned', p.pid);
+  testLogger.debug('plugin server spawned', p.pid);
 
   return p;
 };
@@ -219,7 +219,7 @@ const startSomeServer = async (): Promise<cp.ChildProcess> => {
     stdio: 'inherit'
   });
 
-  console.log('api server spawned', p.pid);
+  testLogger.debug('api server spawned', p.pid);
 
   return p;
 };
@@ -232,7 +232,7 @@ const mkJestTest = (c: TestCase) =>
         : fullWorkflowAction(SimplePreimagePG.generator, c.config);
 
     const actionEnv: ActionEnv = {
-      logger: new log.Logger<log.ILogObj>({ name: `test-${c.name}` }),
+      logger: testLogger.getSubLogger({ name: c.name }),
       serverUrl: 'http://127.0.0.1:3000'
     };
 
