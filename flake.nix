@@ -82,12 +82,23 @@
           ];
           buildPhase = ''
             runHook preBuild
-              ln -sf ${nodeDependencies}/lib/node_modules ./node_modules
-              export PATH="${nodeDependencies}/bin:$PATH"
-              npm run test
-              runHook postBuild
+            ln -sf ${nodeDependencies}/lib/node_modules ./node_modules
+            export PATH="${nodeDependencies}/bin:$PATH"
+            npm run test
+            runHook postBuild
           '';
           installPhase = ''touch $out '';
+        };
+        eslintWithPlugins =
+          pkgs.writeShellScriptBin "eslint-with-plugins"
+          "NODE_PATH=${nodeDependencies}/lib/node_modules ${nodeDependencies}/lib/node_modules/.bin/eslint $@";
+
+        combinedCheck = pkgs.symlinkJoin {
+          name = "MinAuth-combined-check";
+          paths = [
+            minAuthTests
+            self'.checks.pre-commit
+          ];
         };
       in {
         pre-commit.settings.hooks = {
@@ -95,6 +106,9 @@
           prettier.enable = true;
           alejandra.enable = true;
         };
+
+        pre-commit.settings.settings.eslint.binPath = "${eslintWithPlugins}/bin/eslint-with-plugins";
+
         devShells.default = pkgs.mkShell {
           packages = [
             nodejs
@@ -106,13 +120,7 @@
 
         checks = {
           tests = minAuthTests;
-          default = pkgs.symlinkJoin {
-            name = "combined-check";
-            paths = [
-              minAuthTests
-              self'.checks.pre-commit
-            ];
-          };
+          default = combinedCheck;
         };
 
         packages = {
