@@ -180,7 +180,7 @@ export const refresh = (
     mkRequest({
       method: 'POST',
       body: { refreshToken },
-      urlComponents: ['refresh'],
+      urlComponents: ['token'],
       jwt: O.some(jwt),
       respSchema: refreshResponseSchema
     })
