@@ -218,14 +218,22 @@ export const initializePlugins =
 
     return pipe(
       TE.Do,
+      // A dedicated logger for the plugin initilization process
       TE.bind('initLogger', () => mkLogger('pluginLoader')),
+      // Plugin runtime "manages" plugins and knows nothing about
+      // what happens in each plugin, used to log events happen inside the
+      // PluginRuntime monad.
       TE.bind('pluginsLogger', () => mkLogger('activePlugins')),
+      // Plugins should use the provided logger to log the events
+      // that happen inside the plugin, like the detail of the verification process.
       TE.bind('runtimeLogger', () => mkLogger('pluginRuntime')),
+      // Initialize each plugin
       TE.bind('plugins', ({ initLogger, pluginsLogger }) =>
         R.traverseWithIndex(Applicative)(
           resolveModulePathAndInitializePlugin(initLogger, pluginsLogger)
         )(cfg.plugins)
       ),
+      // lift results
       TE.map(({ plugins, runtimeLogger }): PluginRuntimeEnv => {
         return { logger: runtimeLogger, plugins };
       })
