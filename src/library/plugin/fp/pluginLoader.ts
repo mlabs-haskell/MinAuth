@@ -64,7 +64,7 @@ export const _readConfiguration =
         fromFailablePromise<string>(() => fs.readFile(finalCfgPath, 'utf-8'))
       ),
       TE.chain(({ cfgFileContent }) =>
-        liftZodParseResult(parseConfiguration(cfgFileContent))
+        liftZodParseResult(parseConfiguration(JSON.parse(cfgFileContent)))
       )
     );
 

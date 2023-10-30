@@ -71,12 +71,46 @@
             runHook postInstall
           '';
         };
+        minAuthTests = pkgs.stdenv.mkDerivation {
+          name = "MinAuth-tests";
+          version = "0.1.0";
+          src = gitignore.lib.gitignoreSource ./.;
+          buildInputs = [
+            nodejs
+            # TODO: determine if this isreally required
+            pkgs.nodePackages.ts-node
+          ];
+          buildPhase = ''
+            runHook preBuild
+            ln -sf ${nodeDependencies}/lib/node_modules ./node_modules
+            export PATH="${nodeDependencies}/bin:$PATH"
+            npm run test
+            runHook postBuild
+          '';
+          installPhase = ''touch $out '';
+        };
+        eslintWithPlugins =
+          pkgs.writeShellScriptBin "eslint-with-plugins"
+          "NODE_PATH=${nodeDependencies}/lib/node_modules ${nodeDependencies}/lib/node_modules/.bin/eslint $@";
+
+        combinedCheck = pkgs.stdenv.mkDerivation {
+          name = "MinAuth-combined-check";
+          buildInputs = [
+            minAuthTests
+            self'.checks.pre-commit
+          ];
+          src = gitignore.lib.gitignoreSource ./.;
+          installPhase = ''touch $out '';
+        };
       in {
         pre-commit.settings.hooks = {
           eslint.enable = true;
           prettier.enable = true;
           alejandra.enable = true;
         };
+
+        pre-commit.settings.settings.eslint.binPath = "${eslintWithPlugins}/bin/eslint-with-plugins";
+
         devShells.default = pkgs.mkShell {
           packages = [
             nodejs
@@ -85,7 +119,12 @@
           ];
           shellHook = config.pre-commit.installationScript;
         };
-        checks.default = self'.checks.pre-commit;
+
+        checks = {
+          tests = minAuthTests;
+          default = combinedCheck;
+        };
+
         packages = {
           inherit minAuth;
           default = minAuth;

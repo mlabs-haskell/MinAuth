@@ -167,7 +167,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     tapLogger((logger) => logger.info('all done'))
   );
 
-const generator: IProofGenerator<Conf> = {
+export const generator: IProofGenerator<Conf> = {
   confDec,
   generateProof
 };

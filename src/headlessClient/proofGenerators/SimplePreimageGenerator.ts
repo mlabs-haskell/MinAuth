@@ -90,7 +90,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     }))
   );
 
-const generator: IProofGenerator<Conf> = {
+export const generator: IProofGenerator<Conf> = {
   confDec,
   generateProof
 };

@@ -1,5 +1,5 @@
 import { MinAuthProof } from '@lib/server/minauthStrategy';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
 import path from 'path';
 import * as z from 'zod';
@@ -117,44 +117,46 @@ const mkRequest = <T>(req: Request<T>): Client<T> =>
             : axios.post(url, req.body, { headers })
     ),
     // `reqFn` is actually carried out here.
+    // We assume that the server would never response with status code
+    // other than 200, 401 and 400.
     RTE.bind('resp', ({ reqFn }) =>
       tryCatch(
         reqFn,
-        (err): ClientError => ({
-          __tag: 'ioFailure',
-          reason: `failed to make request: ${err}`
-          // TODO: Should probably record the axios request here, but I have no idea how to gracefully redact the sensitive info.
-        })
+        (err): ClientError =>
+          isAxiosError(err) && err.response !== undefined
+            ? // response status is not 200
+              err.response.status == 401
+              ? {
+                  __tag: 'badCredential',
+                  respBody: err.response.data
+                }
+              : err.response.status == 400
+              ? {
+                  __tag: 'badRequest',
+                  respBody: err.response.data
+                }
+              : {
+                  __tag: 'serverError',
+                  reason: `bad status code: ${err.response.status}`,
+                  respBody: err.response.data
+                }
+            : // no response
+              {
+                __tag: 'ioFailure',
+                reason: `failed to make request: ${err}`
+              }
       )
     ),
-    // We assume that the server would never response with status code
-    // other than 200, 401 and 400.
     RTE.chain(
       ({ resp }): Client<T> =>
-        resp.status == 200
-          ? liftZodParseResult(
-              req.respSchema.safeParse(resp.data),
-              (err): ClientError => ({
-                __tag: 'serverError',
-                reason: `unable to parse response body: ${err}`,
-                respBody: resp.data
-              })
-            )
-          : resp.status == 401
-          ? RTE.left({
-              __tag: 'badCredential',
-              respBody: resp.data
-            })
-          : resp.status == 400
-          ? RTE.left({
-              __tag: 'badRequest',
-              respBody: resp.data
-            })
-          : RTE.left({
-              __tag: 'serverError',
-              reason: `bad status code: ${resp.status}`,
-              respBody: resp.data
-            })
+        liftZodParseResult(
+          req.respSchema.safeParse(resp.data),
+          (err): ClientError => ({
+            __tag: 'serverError',
+            reason: `unable to parse response body: ${err}`,
+            respBody: resp.data
+          })
+        )
     )
   );
 

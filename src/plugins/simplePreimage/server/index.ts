@@ -34,7 +34,7 @@ const configurationSchema = z
     })
   );
 
-type Configuration = z.infer<typeof configurationSchema>;
+export type Configuration = z.infer<typeof configurationSchema>;
 
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
