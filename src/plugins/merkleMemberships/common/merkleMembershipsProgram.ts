@@ -25,11 +25,12 @@ export class PublicOutput extends Struct({
   recursiveHash: Field
 }) {}
 
-// Prove knowledge of a preimage of a hash in a merkle tree.
-// The proof does not reveal the preimage nor the hash.
-// The output contains a recursive hash of all the roots for which the preimage is known.
-// output = hash(lastRoot + hash(secondLastRoot, ... hash(xLastRoot, lastRoot) ...)
-// Therefore the order of the proofs matters.
+/** Prove knowledge of a preimage of a hash in a merkle tree.
+ *  The proof does not reveal the preimage nor the hash.
+ *  The output contains a recursive hash of all the roots for which the preimage is known.
+ *  output = hash(lastRoot + hash(secondLastRoot, ... hash(xLastRoot, lastRoot) ...)
+ *  Therefore the order of the proofs matters.
+ */
 export const Program = Experimental.ZkProgram({
   publicInput: PublicInput,
   publicOutput: PublicOutput,

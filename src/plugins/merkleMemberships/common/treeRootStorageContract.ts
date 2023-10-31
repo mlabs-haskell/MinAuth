@@ -7,6 +7,10 @@ import {
   state
 } from 'o1js';
 
+/**
+ * A simple contract that stores a single field - the root of a Merkle tree.
+ * Anyone can read the root, but only the owner of the contract private key can change it.
+ */
 export class TreeRootStorageContract extends SmartContract {
   @state(Field) treeRoot = State<Field>();
 

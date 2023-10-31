@@ -15,18 +15,30 @@ import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
 import * as z from 'zod';
 
+/**
+ * Configuration for the prover.
+ */
 export type MembershipsProverConfiguration = {
   baseUrl: string;
 };
 
 export type MembershipsPublicInputArgs = Array<{
+  /** The root of the merkle tree that the prover is trying to prove
+   *  membership in. */
   treeRoot: Field;
+  /** Note that the leaf index is not part of the proof public input,
+   *  but it is required to build one. */
   leafIndex: bigint;
 }>;
 
 type ZkProof = SelfProof<ZkProgram.PublicInput, ZkProgram.PublicOutput>;
 
-// Prove that you belong to a set of user without revealing which user you are.
+/**
+ * With this class you can build proofs and interact with `MerkleMembershipsPlugin`.
+ * The zk-circuit will check knowledge of a secret and its witness in merkle trees.
+ * Proving this knowledge can be understood as proving membership in a set of users.
+ * Because of recursion one can prove membership in multiple sets in one proof.
+ */
 export class MembershipsProver
   implements
     IMinAuthProver<
@@ -36,10 +48,16 @@ export class MembershipsProver
       Array<Field>
     >
 {
+  /** This class uses the functionl style interface of the plugin. */
   readonly __interface_tag = 'fp';
 
   private readonly cfg: MembershipsProverConfiguration;
 
+  /**
+   * Build a proof for given inputs.
+   * Note that even though TreeWitness is passed as public input, it should not be known to the verifier.
+   * TODO fix the above
+   */
   prove(
     publicInput: Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
     secretInput: Array<Field>
@@ -48,6 +66,7 @@ export class MembershipsProver
       [ZkProgram.PublicInput, ZkProgram.TreeWitness],
       Field
     ]): TaskEither<string, ZkProof> =>
+      // lay the base layer of the recursive proof
       fromFailablePromise(
         () =>
           ZkProgram.Program.baseCase(
@@ -85,6 +104,7 @@ export class MembershipsProver
             )
         )(l);
 
+    // actually compute the proof
     const computeFinalProof = (
       pl: NonEmptyArray<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
       sl: NonEmptyArray<Field>
@@ -119,46 +139,11 @@ export class MembershipsProver
     );
   }
 
-  // fetchPublicInputs(
-  //   args: MembershipsPublicInputArgs
-  // ): TaskEither<string, Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
-  //   const getRootAndWitness = async (
-  //     treeRoot: Field,
-  //     leafIndex: bigint
-  //   ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-  //     const url = `${this.cfg.baseUrl}/getRootAndWitness/${treeRoot
-  //       .toBigInt()
-  //       .toString()}/${leafIndex.toString()}`;
-  //     const resp = await axios.get(url);
-  //     if (resp.status == 200) {
-  //       const body: { leaves: Array<string | undefined> } = resp.data;
-  //       const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
-  //       body.leaves.forEach((leaf, index) => {
-  //         if (leaf !== undefined) tree.setLeaf(BigInt(index), Field.from(leaf));
-  //       });
-  //       const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
-  //       return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
-  //     } else {
-  //       const body: { error: string } = resp.data;
-  //       throw `error while getting root and witness: ${body.error}`;
-  //     }
-  //   };
-
-  //   return fromFailablePromise(
-  //     () =>
-  //       Promise.all(
-  //         A.map(
-  //           (args: {
-  //             treeRoot: Field;
-  //             leafIndex: bigint;
-  //           }): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> =>
-  //             getRootAndWitness(args.treeRoot, args.leafIndex)
-  //         )(args)
-  //       ),
-  //     'unable to fetch inputs'
-  //   );
-  // }
-
+  /**
+   * Fetch the data necessary to build the proof inputs.
+   * In this case these are Merkle trees related to the roots
+   * passed as arguments.
+   */
   fetchPublicInputs(
     args: MembershipsPublicInputArgs
   ): TaskEither<string, Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
@@ -166,14 +151,18 @@ export class MembershipsProver
       treeRoot: Field,
       leafIndex: bigint
     ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
+      // fetch the leaves of the tree
       const url = `${this.cfg.baseUrl}/getLeaves/${treeRoot
         .toBigInt()
         .toString()}`;
       const resp = await axios.get(url);
+
       if (resp.status == 200) {
+        // successfully fetched the leaves
         const leaves: Array<string | null> = await z
           .array(z.string().nullable())
           .parseAsync(resp.data);
+        // build the tree and the witness
         const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
         leaves.forEach((leaf, index) => {
           if (leaf !== null) tree.setLeaf(BigInt(index), Field.from(leaf));
@@ -181,6 +170,7 @@ export class MembershipsProver
         const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
         return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
       } else {
+        // failed to fetch the leaves
         const body: { error: string } = resp.data;
         throw `error while getting root and witness: ${body.error}`;
       }
@@ -188,6 +178,7 @@ export class MembershipsProver
 
     return fromFailablePromise(
       () =>
+        // foreach merkle root return the tree root and the witness
         Promise.all(
           A.map(
             (args: {

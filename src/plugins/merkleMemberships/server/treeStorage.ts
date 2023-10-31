@@ -9,6 +9,7 @@ import * as TE from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import {
   dropResult,
+  findM,
   fromFailablePromise,
   liftZodParseResult
 } from '@utils/fp/TaskEither';
@@ -19,24 +20,47 @@ import * as A from 'fp-ts/Array';
 import { Either } from 'fp-ts/Either';
 import * as E from 'fp-ts/Either';
 
+/**
+ * An interface for o1js Merkle trees store holding sets of members.
+ *
+ * It uses fp-ts TaskEither to allow failible async actions executed
+ * during the tree operations.
+ */
 export interface TreeStorage {
+  /** Get the root of the Merkle tree. */
   getRoot: () => TaskEither<string, Field>;
+
+  /** Get a witness for given leaf index */
   getWitness: (
     leafIndex: bigint
   ) => TaskEither<string, O.Option<ZkProgram.TreeWitness>>;
+
+  /** Check if there's a leaf under the given index */
   hasLeaf: (leafIndex: bigint) => TaskEither<string, boolean>;
+
+  /** Set a Field value under the given index */
   setLeaf: (leafIndex: bigint, leaf: Field) => TaskEither<string, void>;
+
+  /** Get the set of leaves as an array of optional Fields */
   getLeaves(): TaskEither<string, Array<O.Option<Field>>>;
 }
 
+/**
+ * An implementation of the tree storage using in-memory data structures.
+ */
 export class InMemoryStorage implements TreeStorage {
+  /** Set of indexes of occupied leaves */
   occupied: Set<bigint> = new Set();
+
+  /** The underlying Merkle tree */
   merkleTree: MerkleTree = new MerkleTree(ZkProgram.TREE_HEIGHT);
 
+  /** The Merkle tree root */
   getRoot(): TaskEither<string, Field> {
     return TE.of(this.merkleTree.getRoot());
   }
 
+  /** Get a witness for given leaf index */
   getWitness(leafIndex: bigint) {
     return TE.of(
       this.occupied.has(leafIndex)
@@ -47,10 +71,12 @@ export class InMemoryStorage implements TreeStorage {
     );
   }
 
+  /** Check if there's a leaf under the given index */
   hasLeaf(leafIndex: bigint) {
     return TE.of(this.occupied.has(leafIndex));
   }
 
+  /** Set a Field value under the given index */
   setLeaf(leafIndex: bigint, leaf: Field) {
     return TE.fromIO(() => {
       this.occupied.add(leafIndex);
@@ -58,6 +84,7 @@ export class InMemoryStorage implements TreeStorage {
     });
   }
 
+  /** Get the set of leaves as an array of optional Fields */
   getLeaves() {
     return (): Promise<Either<string, Array<O.Option<Field>>>> => {
       const leaves: Array<O.Option<Field>> = new Array(
@@ -74,9 +101,15 @@ export class InMemoryStorage implements TreeStorage {
   }
 }
 
+/**
+ * An implementation of the tree storage using a file system handle.
+ */
 export class PersistentInMemoryStorage extends InMemoryStorage {
   readonly file: fs.FileHandle;
 
+  /**
+   * Write current state of the storage to the file.
+   */
   persist(): TaskEither<string, void> {
     const storageObj = Array.from(this.occupied.values()).reduce(
       (acc: Record<number, string>, idx: bigint) => {
@@ -105,6 +138,10 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
     this.merkleTree = merkleTree;
   }
 
+  /**
+   * Initialize the storage from a file.
+   * If the file is empty, initialize the storage with the given leaves.
+   */
   static initialize(
     path: string,
     initialLeaves?: Record<string, string>
@@ -152,6 +189,10 @@ export class PersistentInMemoryStorage extends InMemoryStorage {
   }
 }
 
+/**
+ * A tree storage implementation with additional method `updateTreeRootOnChainIfNecessary`
+ * that updates the root stored on chain if the off-chain root differs from the on-chain one.
+ */
 export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
   implements TreeStorage
 {
@@ -176,6 +217,10 @@ export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
     );
   }
 
+  /**
+   * Fetch the root stored on chain, compare to the off-chain counterpart
+   * and update the on-chain root if necessary.
+   */
   updateTreeRootOnChainIfNecessary(): TaskEither<string, void> {
     return pipe(
       TE.Do,
@@ -189,29 +234,46 @@ export class GenericMinaBlockchainTreeStorage<T extends TreeStorage>
     );
   }
 
+  /**
+   * Get the off-chain Merkle tree root.
+   */
   getRoot() {
     return this.underlyingStorage.getRoot();
   }
 
+  /** Get a witness for given leaf index */
   getWitness(leafIdx: bigint) {
     return this.underlyingStorage.getWitness(leafIdx);
   }
 
+  /** Check if there's a leaf under the given index */
   hasLeaf(leafIdx: bigint) {
     return this.underlyingStorage.hasLeaf(leafIdx);
   }
 
+  /** Set a Field value under the given index
+   *
+   * NOTE. This function does not update the on-chain root.
+   */
   setLeaf(leafIndex: bigint, leaf: Field) {
     return TE.chain(() => this.updateTreeRootOnChainIfNecessary())(
       this.underlyingStorage.setLeaf(leafIndex, leaf)
     );
   }
 
+  /** Get the set of leaves as an array of optional Fields */
   getLeaves() {
     return this.underlyingStorage.getLeaves();
   }
 }
 
+/**
+ * Initialize a blockchain tree storage.
+ * The funciton will:
+ *  - compile and deploy the tree root storage contract if necessary
+ *  - initialize the mina storage using the given storage
+ *  - update the on-chain root to the one available through proviced storage
+ */
 function initializeGenericMinaBlockchainTreeStorage<T extends TreeStorage>(
   storage: T,
   contractPrivateKey: PrivateKey,
@@ -265,6 +327,11 @@ function initializeGenericMinaBlockchainTreeStorage<T extends TreeStorage>(
   );
 }
 
+/**
+ * A Merkle tree storage that keeps the tree root on Mina blockchain
+ * guarded by a contract controlled by a private key.
+ * The tree itself is stored in the off-chain file storage.
+ */
 export class MinaBlockchainTreeStorage extends GenericMinaBlockchainTreeStorage<PersistentInMemoryStorage> {
   static initialize(
     path: string,
@@ -288,11 +355,17 @@ export class MinaBlockchainTreeStorage extends GenericMinaBlockchainTreeStorage<
   }
 }
 
+/**
+ * An interface of an entity that provides access to a set of Merkle trees.
+ */
 export interface TreesProvider {
   getTree(treeRoot: Field): TaskEither<string, O.Option<TreeStorage>>;
   getTreeRoots(): TaskEither<string, Array<Field>>;
 }
 
+/**
+ * Schema for the configuration of a Mina trees provider.
+ */
 export const minaTreesProviderConfigurationSchema = z.object({
   feePayerPrivateKey: z.string().optional(),
   trees: z.array(
@@ -304,24 +377,17 @@ export const minaTreesProviderConfigurationSchema = z.object({
   )
 });
 
+/**
+ * Type of the configuration of the Mina trees provider.
+ */
 export type MinaTreesProviderConfiguration = z.infer<
   typeof minaTreesProviderConfigurationSchema
 >;
 
-const findM =
-  <T>(f: (x: T) => TaskEither<string, boolean>) =>
-  (arr: Array<T>): TaskEither<string, O.Option<T>> =>
-    A.foldLeft(
-      () => TE.right(O.none),
-      (x: T, left) =>
-        pipe(
-          pipe(
-            f(x),
-            TE.chain((found) => (found ? TE.right(O.some(x)) : findM(f)(left)))
-          )
-        )
-    )(arr);
-
+/**
+ * Implements a trees provider that uses Mina blockchain to store the roots of the trees.
+ * The trees are stored in the off-chain storage.
+ */
 export class MinaTreesProvider implements TreesProvider {
   readonly treeStorages: Array<TreeStorage>;
 

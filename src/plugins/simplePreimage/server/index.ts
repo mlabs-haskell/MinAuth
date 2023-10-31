@@ -20,30 +20,58 @@ import {
   wrapTrivialEnc
 } from '@lib/plugin/fp/EncodeDecoder';
 
+/**
+ * The plugin configuration schema.
+ */
 const configurationSchema = z
   .object({
     roles: z.record(
       // FIXME: the key should be a valid poseidon hash
+      /** Hash preimage of which is used to authorize operations */
       z.string(),
+      /** An auxilliary name for the hash - for example
+       *  a name of a role in the system */
       z.string()
     )
   })
   .or(
     z.object({
+      /** Alternatively, the "roles" can be loaded from a file */
       loadRolesFrom: z.string()
     })
   );
 
 export type Configuration = z.infer<typeof configurationSchema>;
 
+/**
+ * Somewhat trivial example of a plugin.
+ * The plugin keeps a fixed set of hashes.
+ * Each hash is associated with a role in the system.
+ * One can prove that they have the role by providing the secret
+ * preimage of the hash.
+ *
+ * NOTE. Although one can always generate valid zkproof its output must
+ *       match the list kept by the server.
+ */
 export class SimplePreimagePlugin
   implements IMinAuthPlugin<TsInterfaceType, unknown, string>
 {
+  // This plugin uses an idiomatic Typescript interface
   readonly __interface_tag = 'ts';
 
+  /**
+   *  A memoized zk-circuit verification key
+   */
   readonly verificationKey: string;
+
+  /**
+   *  The mapping between hashes and role
+   */
   private readonly roles: Record<string, string>;
 
+  /**
+   * Verify a proof and return the role.
+   */
   async verifyAndGetOutput(
     _: unknown,
     serializedProof: JsonProof
@@ -54,8 +82,14 @@ export class SimplePreimagePlugin
     else return ret.value;
   }
 
+  /**
+   * Trivial - no public inputs.
+   */
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
+  /**
+   * Provide an endpoint returning a list of roles recognized by the plugin.
+   */
   readonly customRoutes = Router().get('/roles', (_, res) =>
     res.status(200).json(this.roles)
   );
@@ -64,6 +98,9 @@ export class SimplePreimagePlugin
     return outputValid;
   }
 
+  /**
+   * This ctor is meant ot be called by the `initialize` function.
+   */
   constructor(verificationKey: string, roles: Record<string, string>) {
     this.verificationKey = verificationKey;
     this.roles = roles;
@@ -71,6 +108,9 @@ export class SimplePreimagePlugin
 
   static readonly __interface_tag = 'ts';
 
+  /**
+   * Initialize the plugin with a configuration.
+   */
   static async initialize(
     configuration: Configuration
   ): Promise<SimplePreimagePlugin> {

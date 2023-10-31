@@ -11,6 +11,7 @@ import { Either } from 'fp-ts/Either';
 import { Field } from 'o1js';
 import * as Express from 'express';
 import * as T from 'fp-ts/Task';
+import * as A from 'fp-ts/Array';
 
 /**
  * Converts a promise that may resolve into an empty value into
@@ -181,3 +182,24 @@ export function guardPassthrough<E>(
 ): <T>(ret: T) => TaskEither<E, T> {
   return (ret) => taskEither.fromEither(cond ? E.right(ret) : E.left(err));
 }
+
+/**
+ * Find the first element in the array that satisfies the given predicate.
+ * @param f A predicate, that can be a failible async action.
+ * @param arr An array to search.
+ * @returns A failible async action that returns the first element in the array
+ *          that satisfies the given predicate.
+ */
+export const findM =
+  <T>(f: (x: T) => TaskEither<string, boolean>) =>
+  (arr: Array<T>): TaskEither<string, O.Option<T>> =>
+    A.foldLeft(
+      () => TE.right(O.none),
+      (x: T, tail: Array<T>) =>
+        pipe(
+          pipe(
+            f(x),
+            TE.chain((found) => (found ? TE.right(O.some(x)) : findM(f)(tail)))
+          )
+        )
+    )(arr);

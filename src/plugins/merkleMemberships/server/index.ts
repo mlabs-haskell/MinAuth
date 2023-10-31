@@ -24,7 +24,6 @@ import {
   fromFailablePromise,
   guard,
   safeGetFieldParam,
-  safeGetNumberParam,
   wrapTrivialExpressHandler
 } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
@@ -39,8 +38,16 @@ import {
   wrapZodDec
 } from '@lib/plugin/fp/EncodeDecoder';
 
+/**
+ * The type of the public input of the Minauth plugin.
+ * The public input is a list of Merkle tree roots.
+ * Each tree represents a set of authorized members.
+ */
 export type PublicInputArgs = NonEmptyArray<Field>;
 
+/**
+ * Encode/decode an o1js Field. (to string)
+ */
 const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
   __interface_tag: 'fp',
 
@@ -59,6 +66,9 @@ const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
   encode: (i: Field) => i.toString()
 };
 
+/**
+ * Encode/decode `PublicInputArgs` to/from an array of strings.
+ */
 const publicInputArgsEncDec: EncodeDecoder<FpInterfaceType, PublicInputArgs> = {
   __interface_tag: 'fp',
 
@@ -74,11 +84,19 @@ const publicInputArgsEncDec: EncodeDecoder<FpInterfaceType, PublicInputArgs> = {
   encode: NE.map(fieldEncDec.encode)
 };
 
+/**
+ * The type of the output of the MerkleMemberships Minauth plugin.
+ */
 export type Output = {
+  /** The input used to generate the proof related to this output. */
   publicInputArgs: PublicInputArgs;
+  /** The hash informing the plugin to which trees the proof relates. */
   recursiveHash: Field;
 };
 
+/**
+ * Encode/decode `Output` to/from an object.
+ */
 const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
   __interface_tag: 'fp',
 
@@ -116,6 +134,9 @@ const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
   }
 };
 
+/**
+ * An error used by the plugin
+ */
 type ComputeExpectedHashError =
   | {
       __kind: 'tree_missing';
@@ -147,6 +168,11 @@ const computeExpectedHashErrorToString = (
     ? `tree with root ${e.root.toString()} not found`
     : e.error;
 
+/** There's a particular hash connected to a set of roots.
+ *  It is also computed by the zk program that generates the proof.
+ *  This function computes the expected hash.
+ *  To understand the hash construction consult `merkleMembershipsProgram.ts`
+ */
 const computeExpectedHash =
   (forest: TreesProvider) =>
   (roots: NonEmptyArray<Field>): TaskEither<ComputeExpectedHashError, Field> =>
@@ -166,6 +192,15 @@ const computeExpectedHash =
       )
     );
 
+/**
+ * The MerkleMemberships Minauth plugin.
+ * The plugin keeps a configured set of Merkle trees.
+ * Each tree represents a set of authorized members.
+ * A user can prove that they are a member of a set by providing
+ * a Merkle witness to a known secret within a tree.
+ * The user identity is not revealed - only the set of proven
+ * memberships
+ */
 export class MerkleMembershipsPlugin
   implements IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>
 {
@@ -176,8 +211,12 @@ export class MerkleMembershipsPlugin
 
   readonly logger: Logger;
 
+  /**
+   * A set of express.js routes for communicating with the prover.
+   */
   readonly customRoutes: Router = Router()
     .get(
+      /** Return all the leaves for a given tree root */
       '/getLeaves/:treeRoot/',
       wrapTrivialExpressHandler((req) =>
         pipe(
@@ -198,37 +237,15 @@ export class MerkleMembershipsPlugin
         )
       )
     )
-    .get(
-      '/getWitness/:treeRoot/:leafIndex',
-      wrapTrivialExpressHandler((req) => {
-        const getNumberParam = (key: string) =>
-          safeGetNumberParam(key, req.params);
-        const getFieldParam = (key: string) =>
-          safeGetFieldParam(key, req.params);
-        return pipe(
-          TE.Do,
-          TE.bind('treeRoot', () => getFieldParam('treeRoot')),
-          TE.bind('leafIndex', () => getNumberParam('leafIndex')),
-          TE.chain(({ treeRoot, leafIndex }) =>
-            pipe(
-              this.storageProvider.getTree(treeRoot),
-              TE.chain(
-                TE.fromOption(
-                  () => `tree with root ${treeRoot.toString()} missing`
-                )
-              ),
-              TE.chain((tree) => tree.getWitness(BigInt(leafIndex))),
-              TE.chain(TE.fromOption(() => 'invalid leaf index'))
-            )
-          )
-        );
-      })
-    )
+    /** Return all merkle tree roots supported the plugin */
     .get(
       '/getTreeRoots',
       wrapTrivialExpressHandler(() => this.storageProvider.getTreeRoots())
     );
 
+  /** Given public input description and a zk proof validate the proof
+   *  and produce the output
+   */
   verifyAndGetOutput(
     publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof
@@ -277,6 +294,11 @@ export class MerkleMembershipsPlugin
     );
   }
 
+  /**
+   * The output of the plugin may become invalid if the underlying
+   * Merkle trees got updated. This function checks if the output
+   * is still valid.
+   */
   checkOutputValidity(o: Output): TaskEither<string, OutputValidity> {
     return pipe(
       computeExpectedHash(this.storageProvider)(o.publicInputArgs),
@@ -306,6 +328,9 @@ export class MerkleMembershipsPlugin
 
   static readonly __interface_tag = 'fp';
 
+  /**
+   * Initialize plugin with a typed configuration.
+   */
   static initialize(
     cfg: MinaTreesProviderConfiguration,
     logger: Logger
