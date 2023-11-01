@@ -17,7 +17,7 @@ import * as fs from 'fs/promises';
 import {
   wrapZodDec,
   combineEncDec,
-  wrapTrivialEnc
+  noOpEncoder
 } from '@lib/plugin/fp/EncodeDecoder';
 
 /**
@@ -129,7 +129,7 @@ export class SimplePreimagePlugin
   static readonly publicInputArgsDec = wrapZodDec('ts', z.unknown());
 
   static readonly outputEncDec = combineEncDec(
-    wrapTrivialEnc('ts'),
+    noOpEncoder('ts'),
     wrapZodDec('ts', z.string())
   );
 }

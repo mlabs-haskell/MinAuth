@@ -26,20 +26,33 @@ import {
 } from './interfaceKind';
 import { PluginRuntimeEnv, RuntimePluginInstance } from './pluginRuntime';
 
+/**
+ * Configuration schema for the plugin loader
+ */
 export const configurationSchema = z.object({
+  /** Directory where to look for plugins */
   pluginDir: z.string().optional(),
+
+  /** Plugins to load along with their configuration */
   plugins: z.record(
     z.object({
+      /** Path to the plugin module */
       path: z.string().optional(),
+
+      /** Configuration for the plugin */
       config: z.unknown()
     })
   )
 });
 
+/**
+ * Type of the plugins configuration.
+ */
 export type Configuration = z.infer<typeof configurationSchema>;
 
-// TODO: this is more like a general purpose utility to me. Might consider move
-// it to a dedicate module.
+/**
+ * Read the configuration from a file with custom parser
+ */
 export const _readConfiguration =
   (logger: Logger) =>
   <T>(parseConfiguration: (s: string) => z.SafeParseReturnType<T, T>) =>
@@ -68,25 +81,46 @@ export const _readConfiguration =
       )
     );
 
+/** Read the configuration from a file
+ *  The file path can be passed from $MINAUTH_CONFIG env var and
+ *  defaults to `config.yaml` in the current working directory
+ */
 export const readConfiguration = (logger: Logger) =>
   _readConfiguration(logger)(configurationSchema.safeParse);
 
+/**
+ * The type of a plugin factory used by the library to dynamically load plugins.
+ * This factory will create plugins with interfaces in the functional style.
+ */
 export type UntypedFpPluginFactory = IMinAuthPluginFactory<
   FpInterfaceType,
   IMinAuthPlugin<FpInterfaceType, unknown, unknown>,
   unknown
 >;
 
+/**
+ * The type of a plugin factory used by the library to dynamically load plugins.
+ * This factory will create plugins with idiomatic typescript interface style.
+ */
 export type UntypedTsPluginFactory = IMinAuthPluginFactory<
   TsInterfaceType,
   IMinAuthPlugin<TsInterfaceType, unknown, unknown>,
   unknown
 >;
 
+/**
+ * The type of a plugin factory used by the library to dynamically load plugins.
+ * A module that defines a plugin has to export a value of this type.
+ * This means that the plugin author may pick either functional or idiomatic typescript interface.
+ */
 export type UntypedPluginFactory =
   | UntypedFpPluginFactory
   | UntypedTsPluginFactory;
 
+/**
+ * The type of a plugin module used by the library to dynamically load plugins.
+ * The module can define a plugin with either functional or idiomatic typescript interface.
+ */
 export type UntypedPluginModule = { default: UntypedPluginFactory };
 
 const importPluginModule = (
@@ -104,6 +138,9 @@ const validatePluginCfg = (
 ): TaskEither<string, unknown> =>
   TE.fromEither(factory.configurationDec.decode(cfg));
 
+/**
+ * Perform a dynamic import of the plugin module and initialize the plugin.
+ */
 const initializePlugin = (
   pluginModulePath: string,
   pluginCfg: unknown,
@@ -142,6 +179,11 @@ const initializePlugin = (
     })
   );
 
+/**
+ * Given a logger and plugin configuration, initialize the plugins.
+ * Provided plugins will be transformed to the functional style interface,
+ * to used as such by the library.
+ */
 export const initializePlugins =
   (
     // the root logger of the hierarchy
