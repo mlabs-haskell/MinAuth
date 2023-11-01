@@ -10,6 +10,9 @@ import { fromFailableIO } from '@utils/fp/TaskEither';
 
 import express from 'express';
 
+/**
+ * The plugin server configuration schema
+ */
 export const configurationSchema = PL.configurationSchema.extend({
   address: z.string().default('127.0.0.1'),
   port: z.number().default(3001),
@@ -17,11 +20,17 @@ export const configurationSchema = PL.configurationSchema.extend({
   logType: z.enum(['pretty', 'json', 'hidden']).default('pretty')
 });
 
+/**
+ * The plugin server configuration
+ */
 export type Configuration = z.infer<typeof configurationSchema>;
 
 const mkPluginDir = (name: string) =>
   `${__dirname}/../../../plugins/${name}/server`;
 
+/**
+ * The plugin server default configuration
+ */
 export const defaultConfiguration: Configuration = configurationSchema.parse({
   plugins: {
     SimplePreimagePlugin: {
@@ -46,11 +55,18 @@ export const defaultConfiguration: Configuration = configurationSchema.parse({
   }
 });
 
+/**
+ * The logger that works before server is fully configured.
+ */
 const preConfigurationLogger = (): TaskEither<string, Logger> =>
   TE.fromIO(
     () => new log.Logger({ name: 'minauth-plugin-server-pre-configuration' })
   );
 
+/**
+ * Call _readConfiruation with the preConfigurationLogger
+ * and fallback to default configuration.
+ */
 export const readConfigurationFallback = (): TaskEither<
   string,
   Configuration
@@ -71,6 +87,9 @@ export const readConfigurationFallback = (): TaskEither<
     )
   );
 
+/**
+ * Initializes the plugin server environment based on a given configuration.
+ */
 export const mkPluginServerEnv = (
   config: Configuration
 ): TaskEither<string, PluginServerEnv> =>

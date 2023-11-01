@@ -15,7 +15,7 @@ import {
   useLogger
 } from './pluginRuntime';
 
-const installCustomRoute =
+const installPluginsCustomRoutes =
   (app: expressCore.Express) =>
   (
     pluginName: string,
@@ -49,7 +49,9 @@ export const installCustomRoutes = (
 ): PluginRuntime<void> =>
   pipe(
     askActivePlugins(),
-    RTE.chain(R.traverseWithIndex(RTE.ApplicativeSeq)(installCustomRoute(app))),
+    RTE.chain(
+      R.traverseWithIndex(RTE.ApplicativeSeq)(installPluginsCustomRoutes(app))
+    ),
     RTE.asUnit,
     tapAndLogError('failed to install custom routes')
   );

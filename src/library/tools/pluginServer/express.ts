@@ -32,6 +32,7 @@ interface VerifyProofData {
   proof: JsonProof;
 }
 
+/** Handle a POST request to /verifyProof */
 const handleVerifyProof = (env: PluginRuntimeEnv) =>
   wrapTrivialExpressHandler((req) => {
     const body = req.body as VerifyProofData;
@@ -50,6 +51,7 @@ const validateOutputDataSchema = z.object({
 
 type ValidateOutputData = z.infer<typeof validateOutputDataSchema>;
 
+/** Handle a POST request to /validateOutput */
 const handleValidateOutput =
   (env: PluginRuntimeEnv) =>
   async (req: expressCore.Request, resp: expressCore.Response): Promise<void> =>
@@ -69,6 +71,12 @@ const handleValidateOutput =
       )
     );
 
+/**
+ * Install the basic routes for the plugin server:
+ * - POST /verifyProof
+ * - POST /validateOutput
+ * - GET /health
+ */
 const installBasicRoutes = (): PluginServer<void> =>
   pipe(
     askPluginRuntimeEnv(),
@@ -83,6 +91,10 @@ const installBasicRoutes = (): PluginServer<void> =>
     )
   );
 
+/**
+ * If a request is not handled by any of the routes above,
+ * Return a 404 error and 500 if an error occurs.
+ */
 const installFallbackHandlers = (): PluginServer<void> =>
   pipe(
     askRootLogger(),
@@ -104,6 +116,9 @@ const installFallbackHandlers = (): PluginServer<void> =>
     )
   );
 
+/**
+ * Plugins can define their own routes to communicate with provers.
+ */
 const installPluginCustomRoutes = (): PluginServer<void> =>
   pipe(
     useRootLogger((logger) =>
@@ -123,6 +138,10 @@ export const setupAllRoutes = (): PluginServer<void> =>
     RTE.asUnit
   );
 
+/**
+ * Calls app.listen() to start serving the plugin server
+ * the configuration is read from the plugin server environment
+ */
 export const startServing = (): PluginServer<void> =>
   pipe(
     RTE.Do,
