@@ -23,7 +23,7 @@ import * as RTE from 'fp-ts/ReaderTaskEither';
 import { safeFromString } from '@utils/fp/Either';
 import { tapLogger } from '@utils/fp/ReaderTaskEither';
 
-// FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
+// TODO/FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
   __interface_tag: 'fp',
 
@@ -51,6 +51,7 @@ const bigintEncDec: EncodeDecoder<FpInterfaceType, bigint> = {
   encode: (val: bigint): unknown => val.toString()
 };
 
+/** Prover input schema */
 const rawPublicAndPrivateInputsSchema = z.object({
   treeRoot: z.string(),
   leafIndex: z.string(),
@@ -61,17 +62,20 @@ type RawPublicAndPrivateInputs = z.infer<
   typeof rawPublicAndPrivateInputsSchema
 >;
 
+/** Config schema */
 const rawConfSchema = z.object({
   pluginUrl: z.string(),
   allInputs: z.array(rawPublicAndPrivateInputsSchema)
 });
 
+/** The configuration for the Merkle memberships proof generator */
 export type Conf = {
-  pluginUrl: string;
+  pluginUrl: string; // url of the plugin @ the server
   allInputs: Array<{
+    // for each membership set
     treeRoot: Field;
-    leafIndex: bigint;
-    secret: Field;
+    leafIndex: bigint; // secret
+    secret: Field; // secret
   }>;
 };
 
@@ -108,6 +112,9 @@ const fromTE =
   <T>(f: TaskEither<string, T>): GenerateProof<Conf, T> =>
     pipe(RTE.fromTaskEither(f), RTE.mapError(mapError));
 
+/**
+ * Generate a proof using the Merkle memberships prover.
+ */
 const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
   pipe(
     RTE.Do,
@@ -144,6 +151,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
       A.map(({ secret }: { secret: Field }) => secret)(allInputs)
     ),
     tapLogger((logger) => logger.info('proving')),
+    // build the proof
     RTE.bind('proof', ({ publicInputs, secretInputs, prover }) =>
       fromTE((err) => ({ __tag: 'failedToProve', reason: err }))(
         prover.prove(publicInputs, secretInputs)
@@ -157,6 +165,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
         publicInputArgs
       )
     ),
+    // return the proof
     RTE.map(
       ({ encodedPublicInputArgs, proof }): MinAuthProof => ({
         plugin: 'MerkleMembershipsPlugin',
@@ -167,6 +176,9 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     tapLogger((logger) => logger.info('all done'))
   );
 
+/**
+ * Export the generator
+ */
 export const generator: IProofGenerator<Conf> = {
   confDec,
   generateProof
