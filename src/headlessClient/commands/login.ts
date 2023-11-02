@@ -21,6 +21,7 @@ import {
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import { loginAction } from '../actions';
 
+/** CLI login subcommand arguments */
 const args = {
   ...commonOptions,
   proofGeneratorName: cmd.option({
@@ -35,11 +36,15 @@ const args = {
   })
 };
 
+/** The available proof generators */
 const proofGenerators: Record<string, UntypedProofGenerator> = {
   SimplePreimage: asUntypedProofGenerator(SimplePreImageGenerator),
   MerkleMembership: asUntypedProofGenerator(MerkleMembershipsGenerator)
 };
 
+/**
+ * The command options
+ */
 type Options = CommonOptions & {
   proofGeneratorName: string;
   proofGeneratorConfFile: string;
@@ -68,6 +73,11 @@ const decodeProofGeneratorConfig =
       )
     );
 
+/**
+ * The login command handler. It:
+ * - reads the proof generator configuration from a file
+ *
+ */
 const handler = (): CommandHandler<Options, void> =>
   pipe(
     RTE.Do,
@@ -94,6 +104,7 @@ const handler = (): CommandHandler<Options, void> =>
 
 const name: string = 'login';
 
+/** Export login command */
 export const command = cmd.command({
   name,
   args,

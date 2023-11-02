@@ -13,6 +13,9 @@ import {
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import * as fs from 'fs/promises';
 
+/**
+ * Options shared by all commands
+ */
 export const commonOptions = {
   serverUrl: cmd.option({
     long: 'server-url',
@@ -44,6 +47,9 @@ export const commonOptions = {
   })
 };
 
+/**
+ * Type of options shared by all commands
+ */
 export type CommonOptions = {
   serverUrl: string;
   jwtFile: string;
@@ -52,11 +58,18 @@ export type CommonOptions = {
   verbose: boolean;
 };
 
+/**
+ * The data available to the CommandHandler actions.
+ */
 export type CommandHandlerEnv<Opts extends CommonOptions> = Readonly<{
   logger: Logger;
   opts: Opts;
 }>;
 
+/**
+ * The command handler monad. Basically fallible async functions with access to
+ * the command options and a logger.
+ */
 export type CommandHandler<Opts extends CommonOptions, T> = ReaderTaskEither<
   CommandHandlerEnv<Opts>,
   string,
@@ -94,6 +107,10 @@ export const asCmdTsHandlerFunction =
     )(res);
   };
 
+/**
+ * Get the value of the given option from the command options
+ * in a type-safe manner.
+ */
 export const askOpt = <
   P extends string,
   Opts extends { [key in P]: unknown } & CommonOptions
@@ -105,6 +122,9 @@ export const askOpt = <
     RTE.map((opts) => opts[key])
   );
 
+/**
+ * Lift a program in an Action monad into CommandHandler monad.
+ */
 export const liftAction = <Opts extends CommonOptions, T>(
   f: Action<T>
 ): CommandHandler<Opts, T> =>
@@ -124,6 +144,9 @@ export const liftAction = <Opts extends CommonOptions, T>(
     )
   );
 
+/*
+ * Command handler level wrapper for the `writeFile` function.
+ */
 export const writeFile =
   (content: string) =>
   <Opts extends CommonOptions>(path: string): CommandHandler<Opts, void> =>
@@ -132,6 +155,9 @@ export const writeFile =
       (err) => `unable to write file ${path}: String(${err})`
     );
 
+/*
+ * Command handler level wrapper for the `readfile` function.
+ */
 export const readFile = <Opts extends CommonOptions>(
   path: string
 ): CommandHandler<Opts, string> =>
@@ -140,21 +166,33 @@ export const readFile = <Opts extends CommonOptions>(
     (err) => `unable to read file ${path}: String(${err})`
   );
 
+/*
+ * Command handler level wrapper to get the jwt file content.
+ */
 export const readJwt = <Opts extends CommonOptions>(): CommandHandler<
   Opts,
   string
 > => pipe(askOpt('jwtFile'), RTE.chain(readFile));
 
+/*
+ * Command handler level wrapper to write the jwt file content.
+ */
 export const writeJwt = <Opts extends CommonOptions>(
   jwt: string
 ): CommandHandler<Opts, void> =>
   pipe(askOpt('jwtFile'), RTE.chain(writeFile(jwt)));
 
+/*
+ * Command handler level wrapper to read the refresh token content.
+ */
 export const readRefreshToken = <Opts extends CommonOptions>(): CommandHandler<
   Opts,
   string
 > => pipe(askOpt('refreshTokenFile'), RTE.chain(readFile));
 
+/*
+ * Command handler level wrapper to write the refresh token content.
+ */
 export const writeRefreshToken = <Opts extends CommonOptions>(
   refreshToken: string
 ): CommandHandler<Opts, void> =>

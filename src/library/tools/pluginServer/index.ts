@@ -5,6 +5,9 @@ import { setupAllRoutes, startServing } from './express';
 import { PluginServer, useRootLogger } from './types';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 
+/**
+ * Start the plugin server.
+ */
 const server: PluginServer<void> = pipe(
   setupAllRoutes(),
   RTE.chain(startServing),
@@ -16,6 +19,9 @@ const server: PluginServer<void> = pipe(
   )
 );
 
+/**
+ * Read the configuration, setup the plugin server environment and start the server.
+ */
 const main = pipe(
   readConfigurationFallback(),
   TE.chain(mkPluginServerEnv),

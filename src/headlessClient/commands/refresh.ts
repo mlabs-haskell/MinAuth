@@ -13,10 +13,14 @@ import { pipe } from 'fp-ts/function';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import { refreshAction } from '../actions';
 
+/** CLI refresh subcommand arguments */
 const args = commonOptions;
 
 type Options = CommonOptions;
 
+/**
+ * The command handler for the refresh action
+ */
 const handler = (): CommandHandler<Options, void> =>
   pipe(
     RTE.Do,

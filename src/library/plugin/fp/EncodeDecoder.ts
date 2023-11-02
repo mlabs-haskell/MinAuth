@@ -9,6 +9,10 @@ import { Either } from 'fp-ts/Either';
 import * as E from 'fp-ts/Either';
 import * as z from 'zod';
 
+/**
+ * An interface for the decoder concept.
+ * Availble in both idiomatic typescript and functional styles.
+ */
 export interface Decoder<InterfaceType extends InterfaceKind, T>
   extends WithInterfaceTag<InterfaceType> {
   decode: (
@@ -16,6 +20,9 @@ export interface Decoder<InterfaceType extends InterfaceKind, T>
   ) => ChooseType<InterfaceType, Either<string, T>, T | undefined>;
 }
 
+/**
+ *  Convert a decoder from the idiomatic typescript interface to the functional style.
+ */
 export const tsToFpDecoder = <T>(
   tsDec: Decoder<TsInterfaceType, T>
 ): Decoder<FpInterfaceType, T> => {
@@ -25,13 +32,19 @@ export const tsToFpDecoder = <T>(
   };
 };
 
+/**
+ * An interface for the encoder concept.
+ * Encoding MUST NOT fail.
+ * The returned value MUST serializable via `JSON.stringify`.
+ */
 export interface Encoder<InterfaceType extends InterfaceKind, T>
   extends WithInterfaceTag<InterfaceType> {
-  // Encoding should never failed. The returned value should be able to
-  // serialize using `JSON.stringify`.
   encode: (_: T) => unknown;
 }
 
+/**
+ * Convert an encoder from the idiomatic typescript interface to the functional style
+ */
 export const tsToFpEncoder = <T>(
   tsEnc: Encoder<TsInterfaceType, T>
 ): Encoder<FpInterfaceType, T> => {
@@ -41,12 +54,16 @@ export const tsToFpEncoder = <T>(
   };
 };
 
+/** A combined encoder and decoder */
 export type EncodeDecoder<InterfaceType extends InterfaceKind, T> = Encoder<
   InterfaceType,
   T
 > &
   Decoder<InterfaceType, T>;
 
+/**
+ * This laws should hold
+ */
 export const __encDecLaw = <T>(
   input: T,
   enc: Encoder<FpInterfaceType, T>,
@@ -57,7 +74,10 @@ export const __encDecLaw = <T>(
     (decoded) => decoded === input
   )(dec.decode(enc.encode(input)));
 
-export const wrapTrivialEnc = <InterfaceType extends InterfaceKind, T>(
+/**
+ * This is an encoder that just casts the object using "as unknown"
+ */
+export const noOpEncoder = <InterfaceType extends InterfaceKind, T>(
   i: InterfaceType
 ): Encoder<InterfaceType, T> => {
   return {
@@ -66,6 +86,9 @@ export const wrapTrivialEnc = <InterfaceType extends InterfaceKind, T>(
   };
 };
 
+/**
+ * Create a decoder out of a zod schema parser
+ */
 export const wrapZodDec = <InterfaceType extends InterfaceKind, T>(
   i: InterfaceType,
   s: z.Schema<T>
@@ -101,6 +124,9 @@ export const wrapZodDec = <InterfaceType extends InterfaceKind, T>(
   return (i === 'fp' ? fpDec : tsDec) as Decoder<InterfaceType, T>;
 };
 
+/**
+ * Combine a decoder and an encoder into a single object.
+ */
 export const combineEncDec = <InterfaceType extends InterfaceKind, T>(
   enc: Encoder<InterfaceType, T>,
   dec: Decoder<InterfaceType, T>

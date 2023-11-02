@@ -11,8 +11,10 @@ import { pipe } from 'fp-ts/lib/function';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import { accessProtectedAction } from '../actions';
 
+/** CLI refresh subcommand arguments */
 const args = {
   ...commonOptions,
+  /** The route of the protected resource to access */
   protectedPath: cmd.option({
     type: cmd.string,
     long: 'protected path',
@@ -24,6 +26,9 @@ type Options = CommonOptions & {
   protectedPath: string;
 };
 
+/**
+ * The command handler for the access-protected action
+ */
 const handler = (): CommandHandler<Options, void> =>
   pipe(
     readJwt(),

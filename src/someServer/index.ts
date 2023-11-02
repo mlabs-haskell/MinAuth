@@ -1,43 +1,32 @@
 import express, { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import bodyParser from 'body-parser';
-import crypto from 'crypto';
 import MinAuthStrategy, {
   AuthenticationResponse
 } from '@lib/server/minauthStrategy';
-import { setupPassport } from './passport';
+import {
+  JWTPayload,
+  generateRefreshToken,
+  hashAuthResp,
+  refreshTokenStore,
+  setupPassport,
+  signJWTPayload
+} from './setup_jwt_passport';
 import axios from 'axios';
 
-const SECRET_KEY: string = 'YOUR_SECRET_KEY';
-
 const app = express();
+const PORT: number = 3000;
 
-const refreshTokenStore: Record<string, AuthenticationResponse> = {};
+// The authentication will be done with the help of passport.js library
+const passport = setupPassport();
 
-const passport = setupPassport(SECRET_KEY);
+// ====== The express.js server setup.
 
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
 
-const PORT: number = 3000;
-
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-type JWTPayload = { authRespHash: string };
-
-const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
-
-const signJWTPayload = (payload: JWTPayload) =>
-  jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
-
-const hashAuthResp = (a: AuthenticationResponse): string =>
-  crypto
-    .createHash('sha256')
-    .update(JSON.stringify(a))
-    .digest()
-    .toString('hex');
 
 app.post(
   '/login',
@@ -114,7 +103,7 @@ app.post(
 app.get(
   '/protected',
   passport.authenticate('jwt', { session: false }),
-  (req: Request, res: Response) => {
+  (_: Request, res: Response) => {
     res.send({ message: `You are accessing a protected route.` });
   }
 );

@@ -1,5 +1,8 @@
 import { Field, Experimental, Poseidon } from 'o1js';
 
+/**
+ * O1JS ZK program that checks if private input is a hash preimage of public input.
+ */
 export const ProvePreimageProgram = Experimental.ZkProgram({
   publicInput: Field,
   publicOutput: Field,

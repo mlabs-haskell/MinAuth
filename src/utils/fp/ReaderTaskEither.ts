@@ -64,6 +64,9 @@ export const askRecordField = <
   key: P
 ): ReaderTaskEither<R, Err, R[P]> => RTE.asks((env) => env[key]);
 
+/**
+ * Returns the logger stored within RTE env.
+ */
 export const askLogger = <
   R extends { logger: LoggerType },
   LoggerType extends Logger<LogObjType>,
@@ -71,6 +74,10 @@ export const askLogger = <
   Err = never
 >(): ReaderTaskEither<R, Err, LoggerType> => askRecordField('logger');
 
+/**
+ * Pass a function accepting the logger stored within RTE env
+ * to call it with the logger.
+ */
 export const useLogger = <
   R extends { logger: LoggerType },
   B,
@@ -86,6 +93,12 @@ export const useLogger = <
     RTE.asUnit
   );
 
+/**
+ * Pass a function accepting the logger stored within RTE env
+ * to call it with the logger.
+ * It will passthrough the given task either action
+ * - to be used within monadic actions chains.
+ */
 export const tapLogger = <
   R extends { logger: LoggerType },
   A,
@@ -103,6 +116,9 @@ export const tapLogger = <
     )
   );
 
+/**
+ * Returns a sublogger of the logger stored within RTE env.
+ */
 export const askSublogger = <
   R extends { logger: Logger<LogObjType> },
   Err = never,

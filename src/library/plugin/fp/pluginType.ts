@@ -19,6 +19,10 @@ import * as log from 'tslog';
 
 // Interfaces used on the server side.
 
+/**
+ * Information about the validity of a proof.
+ * In the future there could be more information that plugin wants to return.
+ */
 export type OutputValidity =
   | {
       isValid: true;
@@ -39,13 +43,31 @@ export const outputInvalid = (reason: string): OutputValidity => {
 
 export type Logger = log.Logger<log.ILogObj>;
 
+/**
+ * MinAuth plugins must implement this interface.
+ * The interface type is parameterized by an interface kind:
+ * - `TsInterfaceType` for idiomatic typescript interface
+ * - `FpInterfaceType` for functional style interface
+ * that is used by the library to provide safety and composability.
+ * A plugin author is free to implement the plugin using any interface,
+ * the library will convert it to the functional style interface.
+ * A plugin is a server-side component that can be used to verify a proof.
+ * It may defined custom routes and handlers that are necessary for the
+ * client counterpart to generate a proof.
+ * The two remainng arguments `PublicInputArgs` and `Output` parametrize
+ * The plugin input and output.
+ * `PublicInputArgs` usually will define the way to acquire public inputs
+ * for the proof and `Output` will wrap the output of the proof.
+ */
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
   PublicInputArgs,
   Output
 > extends WithInterfaceTag<InterfaceType> {
-  // Verify a proof give the arguments for fetching public inputs, and return
-  // the output.
+  /**
+   * This is meant to build the public inputs for the proof and verify
+   * the proof using compiled verifier zk-circuit.
+   */
   verifyAndGetOutput(
     publicInputArgs: PublicInputArgs,
     serializedProof: JsonProof
@@ -68,6 +90,7 @@ export interface IMinAuthPlugin<
   readonly verificationKey: string;
 }
 
+/** Type parameter extraction (inference) helpers. */
 type ExtractPluginPublicInputArgsType<T> = T extends IMinAuthPlugin<
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   infer _1,
@@ -78,6 +101,7 @@ type ExtractPluginPublicInputArgsType<T> = T extends IMinAuthPlugin<
   ? PublicInputArgs
   : never;
 
+/** Type parameter extraction (inference) helpers. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type ExtractPluginOutputType<T> = T extends IMinAuthPlugin<
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -89,6 +113,11 @@ type ExtractPluginOutputType<T> = T extends IMinAuthPlugin<
   ? Output
   : never;
 
+/**
+ * A plugin factory is responsible for initializing a plugin given the configuration.
+ * A module defining a plugin must export a value of this type as `default`.
+ * For the explanation of the interface type parameter, see `IMinAuthPlugin`.
+ */
 export interface IMinAuthPluginFactory<
   InterfaceType extends InterfaceKind,
   PluginType extends IMinAuthPlugin<InterfaceType, PublicInputArgs, Output>,
@@ -96,22 +125,46 @@ export interface IMinAuthPluginFactory<
   PublicInputArgs = ExtractPluginPublicInputArgsType<PluginType>,
   Output = ExtractPluginOutputType<PluginType>
 > extends WithInterfaceTag<InterfaceType> {
-  // Initialize the plugin given the configuration. The underlying zk program is
-  // typically compiled here.
+  /**
+   * Initialize the plugin given the configuration.
+   * The underlying zk program is typically compiled here.
+   * @param cfg The plugin configuration
+   * @param outputValidityUpdate: a callback that the plugin can use to notify about
+   * the validity of outputs it has generated.
+   */
   initialize(
     cfg: Configuration,
     logger: Logger
   ): RetType<InterfaceType, PluginType>;
 
+  /** Decoder for the plugin configuration. */
   readonly configurationDec: Decoder<InterfaceType, Configuration>;
 
+  /** Decoder for the public input construction arguments. */
   readonly publicInputArgsDec: Decoder<InterfaceType, PublicInputArgs>;
 
+  /** Encoder/Decoder for the plugins outputs. */
   readonly outputEncDec: EncodeDecoder<InterfaceType, Output>;
 }
 
 // Interfaces used on the client side.
 
+/**
+ * IMinAuthProver defines the part of MinAuth plugin that is used by the client
+ * - the party that wants to present a proof qualifying for access to a resource.
+ * The interface type is parameterized by an interface kind:
+ * - `TsInterfaceType` for idiomatic typescript interface
+ * - `FpInterfaceType` for functional style interface
+ * that is usd by the library to provide safety and composability.
+ * A plugin author is free to implement the prover using any interface,
+ * the library will convert it to the functional style interface for internal use.
+ *
+ * @param InterfaceType - the interface kind
+ * @param PublicInputArgs - used to parameterize the way in which public inputs
+ * are prepared for the proof.
+ * @param PublicInput - the type of public input needed to produce a proof.
+ * @param PrivateInput - the type of private input needed to produce a proof.
+ */
 export interface IMinAuthProver<
   InterfaceType extends InterfaceKind,
   PublicInputArgs,
@@ -162,6 +215,11 @@ type ExtractProverPrivateInputType<T> = T extends IMinAuthProver<
   ? PrivateInput
   : never;
 
+/**
+ * IMinAuthProverFactory encapsulates the logic of creating a prover.
+ * The meaning of its type parameters can be looked up in the documentation
+ * of `IMinAuthProver`.
+ */
 export interface IMinAuthProverFactory<
   InterfaceType extends InterfaceKind,
   ProverType extends IMinAuthProver<
@@ -180,6 +238,9 @@ export interface IMinAuthProverFactory<
 
 // ts -> fp
 
+/**
+ * Convert a plugin factory from the idiomatic typescript interface to the functional style
+ */
 export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
   i: IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>
 ): IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output> => {
@@ -194,6 +255,9 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
   };
 };
 
+/**
+ * Convert a plugin factory from the idiomatic typescript interface to the functional style
+ */
 export const tsToFpMinAuthPluginFactory = <
   Configuration,
   PublicInputArgs,
