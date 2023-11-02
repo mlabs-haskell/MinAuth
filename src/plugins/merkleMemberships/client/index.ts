@@ -1,19 +1,16 @@
 import { Field, JsonProof, MerkleTree, SelfProof } from 'o1js';
 import * as ZkProgram from '../common/merkleMembershipsProgram';
-import {
-  IMinAuthProver,
-  IMinAuthProverFactory
-} from '@lib/plugin/fp/pluginType';
+import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin/plugintype';
 import * as A from 'fp-ts/Array';
 import axios from 'axios';
 import { TaskEither } from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import * as TE from 'fp-ts/TaskEither';
 import * as NE from 'fp-ts/NonEmptyArray';
-import { fromFailablePromise } from '@utils/fp/TaskEither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
-import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { FpInterfaceType } from '@lib/plugin/interfacekind';
 import * as z from 'zod';
+import { fromFailablePromise } from '@lib/utils/fp/taskeither';
 
 /**
  * Configuration for the prover.

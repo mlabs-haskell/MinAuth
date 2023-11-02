@@ -1,4 +1,4 @@
-import { MinAuthProof } from '@lib/server/minauthStrategy';
+import { MinAuthProof } from '@lib/server/minauthstrategy';
 import axios, { isAxiosError } from 'axios';
 import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
 import path from 'path';
@@ -10,10 +10,10 @@ import {
   tryCatch,
   tryCatchIO,
   useLogger
-} from '@utils/fp/ReaderTaskEither';
+} from '@lib/utils/fp/readertaskeither';
 import { Option } from 'fp-ts/lib/Option';
 import * as O from 'fp-ts/Option';
-import { Logger } from '@lib/plugin';
+import { Logger } from '@lib/plugin/logger';
 
 export type ClientEnv = Readonly<{
   serverUrl: string;

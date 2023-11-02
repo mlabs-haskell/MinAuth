@@ -9,8 +9,6 @@ import * as R from 'fp-ts/Record';
 import * as IOE from 'fp-ts/IOEither';
 import { Either } from 'fp-ts/Either';
 import { Field } from 'o1js';
-import * as Express from 'express';
-import * as T from 'fp-ts/Task';
 import * as A from 'fp-ts/Array';
 
 /**
@@ -135,34 +133,6 @@ export const launchTE = <T>(t: TaskEither<string, T>): Promise<T> =>
       ? Promise.reject(result.left)
       : Promise.resolve(result.right)
   );
-
-/**
- * Converts a simple request handler from a functional-style definition
- * into a form expected by express.js
- * If the handler returns a value, it is returned as json with code 200
- * If the handler throws an error, it is logged and the code 400 is returned
- * TODO: move to avoid depending on express.js
- */
-export const wrapTrivialExpressHandler =
-  <R>(
-    f: (req: Express.Request) => TaskEither<string, R>,
-    onError: (err: string) => {
-      statusCode: number;
-      body: unknown;
-    } = (err) => ({ statusCode: 400, body: { error: err } })
-  ) =>
-  (req: Express.Request, resp: Express.Response): Promise<void> =>
-    pipe(
-      f(req),
-      TE.tapIO((result) => () => resp.status(200).json(result)),
-      TE.tapError((error: string) =>
-        TE.fromIO(() => {
-          const { statusCode, body } = onError(error);
-          resp.status(statusCode).json(body);
-        })
-      ),
-      T.asUnit
-    )();
 
 /**
  * Given an assertion and an error stop the task execution when the condition is false.

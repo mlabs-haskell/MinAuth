@@ -4,7 +4,7 @@ import {
   TsInterfaceType,
   FpInterfaceType,
   ChooseType
-} from './interfaceKind';
+} from './interfacekind';
 import { Either } from 'fp-ts/Either';
 import * as E from 'fp-ts/Either';
 import * as z from 'zod';

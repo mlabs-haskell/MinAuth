@@ -10,18 +10,14 @@ import {
   IProofGenerator,
   askConfig
 } from '../ProofGenerator';
-import {
-  Decoder,
-  EncodeDecoder,
-  wrapZodDec
-} from '@lib/plugin/fp/EncodeDecoder';
-import { FpInterfaceType, fpInterfaceTag } from '@lib/plugin/fp/interfaceKind';
+import { Decoder, EncodeDecoder, wrapZodDec } from '@lib/plugin/encodedecoder';
+import { FpInterfaceType, fpInterfaceTag } from '@lib/plugin/interfacekind';
 import { Either } from 'fp-ts/Either';
-import { MinAuthProof } from '@lib/server/minauthStrategy';
+import { MinAuthProof } from '@lib/server/minauthstrategy';
 import { TaskEither } from 'fp-ts/TaskEither';
 import * as RTE from 'fp-ts/ReaderTaskEither';
-import { safeFromString } from '@utils/fp/Either';
-import { tapLogger } from '@utils/fp/ReaderTaskEither';
+import { safeFromString } from '@lib/utils/fp/either';
+import { tapLogger } from '@lib/utils/fp/readertaskeither';
 
 // TODO/FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {

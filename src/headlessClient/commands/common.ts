@@ -1,4 +1,4 @@
-import { Logger } from '@lib/plugin';
+import { Logger } from '@lib/plugin/logger';
 import * as cmd from 'cmd-ts';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
 import * as log from 'tslog';
@@ -9,7 +9,7 @@ import {
   askLogger,
   askRecordField,
   tryCatch
-} from '@utils/fp/ReaderTaskEither';
+} from '@lib/utils/fp/readertaskeither';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import * as fs from 'fs/promises';
 

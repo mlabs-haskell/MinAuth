@@ -7,7 +7,7 @@ import os from 'os';
 import fs from 'fs/promises';
 import path from 'path';
 import * as O from 'fp-ts/Option';
-import * as PluginServer from '@lib/tools/pluginServer/config';
+import * as PluginServer from '@lib/tools/plugin-server/config';
 import * as cp from 'child_process';
 import * as log from 'tslog';
 import '@relmify/jest-fp-ts';
@@ -187,7 +187,7 @@ const startPluginServer = async (
 
   const env = { ...process.env, MINAUTH_CONFIG: serverConfigPath };
 
-  const p = cp.spawn('ts-node', ['src/library/tools/pluginServer'], {
+  const p = cp.spawn('ts-node', ['src/library/tools/plugin-server'], {
     stdio: 'inherit', // TODO redirect stdout to a file for debugging.
     env
   });

@@ -1,11 +1,11 @@
-import { Logger, PluginRuntimeEnv } from '@lib/plugin';
 import { Configuration } from './config';
 import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
-import { PluginRuntime } from '@lib/plugin/fp/pluginRuntime';
+import { PluginRuntime, PluginRuntimeEnv } from '@lib/server/pluginruntime';
 import { pipe } from 'fp-ts/function';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import * as expressCore from 'express-serve-static-core';
-import { tryCatchIO } from '@utils/fp/ReaderTaskEither';
+import { tryCatchIO } from '@lib/utils/fp/readertaskeither';
+import { Logger } from '@lib/plugin/logger';
 
 /**
  * The data that is constantly available to the plugin server.

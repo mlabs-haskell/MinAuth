@@ -1,7 +1,7 @@
 import { Field, JsonProof } from 'o1js';
-import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin';
+import { IMinAuthProver, IMinAuthProverFactory } from '@lib/plugin/plugintype';
 import ProvePreimageProgram from '../common/hashPreimageProof';
-import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { TsInterfaceType } from '@lib/plugin/interfacekind';
 
 /**
  * Somewhat trivial example of a prover.

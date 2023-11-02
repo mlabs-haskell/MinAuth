@@ -5,11 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start-api": "nodemon src/someServer/index.ts",
-    "start-plugin-server": "nodemon src/library/tools/pluginServer/index.ts",
+    "start-plugin-server": "nodemon src/library/tools/plugin-server/index.ts",
     "start-client": "nodemon src/headlessClient/client.ts",
     "build": "tsc",
     "serve-api": "ts-node ./src/someServer/index.ts",
-    "serve-plugin-server": "ts-node ./src/library/tools/pluginServer",
+    "serve-plugin-server": "ts-node ./src/library/tools/plugin-server",
     "run-client": "ts-node ./src/headlessClient",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "lint": "eslint . --ext .ts",
