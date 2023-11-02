@@ -12,7 +12,7 @@ import {
   findM,
   fromFailablePromise,
   liftZodParseResult
-} from '@utils/fp/TaskEither';
+} from '@lib/utils/fp/taskeither';
 import * as R from 'fp-ts/Record';
 import * as Str from 'fp-ts/string';
 import { toArray } from 'fp-ts/ReadonlyArray';

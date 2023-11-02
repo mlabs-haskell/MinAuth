@@ -6,19 +6,15 @@ import {
   IProofGenerator,
   askConfig
 } from '../ProofGenerator';
-import {
-  Decoder,
-  EncodeDecoder,
-  wrapZodDec
-} from '@lib/plugin/fp/EncodeDecoder';
-import { FpInterfaceType, fpInterfaceTag } from '@lib/plugin';
+import { Decoder, EncodeDecoder, wrapZodDec } from '@lib/plugin/encodedecoder';
 import { pipe } from 'fp-ts/lib/function';
-import { safeFromString } from '@utils/fp/Either';
+import { safeFromString } from '@lib/utils/fp/either';
 import * as E from 'fp-ts/Either';
-import { MinAuthProof } from '@lib/server/minauthStrategy';
+import { MinAuthProof } from '@lib/server/minauthstrategy';
 import * as RTE from 'fp-ts/ReaderTaskEither';
-import { tapLogger, tryCatch } from '@utils/fp/ReaderTaskEither';
+import { tapLogger, tryCatch } from '@lib/utils/fp/readertaskeither';
 import { SimplePreimageProver } from '@plugins/simplePreimage/client';
+import { FpInterfaceType, fpInterfaceTag } from '@lib/plugin/interfacekind';
 
 const rawConfSchema = z.object({
   password: z.string()

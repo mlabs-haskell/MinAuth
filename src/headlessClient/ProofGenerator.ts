@@ -1,7 +1,8 @@
-import { FpInterfaceType, Logger } from '@lib/plugin';
-import { Decoder } from '@lib/plugin/fp/EncodeDecoder';
-import { MinAuthProof } from '@lib/server/minauthStrategy';
-import { askRecordField } from '@utils/fp/ReaderTaskEither';
+import { Decoder } from '@lib/plugin/encodedecoder';
+import { FpInterfaceType } from '@lib/plugin/interfacekind';
+import { Logger } from '@lib/plugin/logger';
+import { MinAuthProof } from '@lib/server/minauthstrategy';
+import { askRecordField } from '@lib/utils/fp/readertaskeither';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
 
 export type GenerateProofEnv<Conf> = Readonly<{

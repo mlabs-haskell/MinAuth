@@ -6,16 +6,16 @@ import {
   RetType,
   TsInterfaceType,
   FpInterfaceType
-} from './interfaceKind';
-import { fromFailablePromise } from '@utils/fp/TaskEither';
+} from './interfacekind';
 import {
   Decoder,
   EncodeDecoder,
   combineEncDec,
   tsToFpDecoder,
   tsToFpEncoder
-} from './EncodeDecoder';
-import * as log from 'tslog';
+} from './encodedecoder';
+import { Logger } from './logger';
+import { fromFailablePromise } from '@lib/utils/fp/taskeither';
 
 // Interfaces used on the server side.
 
@@ -40,8 +40,6 @@ export const outputInvalid = (reason: string): OutputValidity => {
     reason
   };
 };
-
-export type Logger = log.Logger<log.ILogObj>;
 
 /**
  * MinAuth plugins must implement this interface.

@@ -1,4 +1,4 @@
-import { Logger } from '@lib/plugin/fp/pluginType';
+import { Logger } from '@lib/plugin/logger';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
 import {
   Client,
@@ -19,7 +19,7 @@ import {
   tapLogger,
   useLogger,
   withRTE
-} from '@utils/fp/ReaderTaskEither';
+} from '@lib/utils/fp/readertaskeither';
 import * as RTE from 'fp-ts/ReaderTaskEither';
 import { pipe } from 'fp-ts/lib/function';
 

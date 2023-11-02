@@ -1,11 +1,12 @@
 import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
-import { Decoder, EncodeDecoder } from './EncodeDecoder';
-import { FpInterfaceType } from './interfaceKind';
-import { IMinAuthPlugin, Logger } from './pluginType';
+import { Decoder, EncodeDecoder } from '@lib/plugin/encodedecoder';
+import { FpInterfaceType } from '@lib/plugin/interfacekind';
+import { IMinAuthPlugin } from '@lib/plugin/plugintype';
 import { pipe } from 'fp-ts/lib/function';
 import * as RTE from 'fp-ts/ReaderTaskEither';
-import { launchTE } from '@utils/fp/TaskEither';
 import * as R from 'fp-ts/Record';
+import { Logger } from '@lib/plugin/logger';
+import { launchTE } from '@lib/utils/fp/taskeither';
 
 /** Runtime environment of runnning plugins. */
 export type PluginRuntimeEnv = Readonly<{

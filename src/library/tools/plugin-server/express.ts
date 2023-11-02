@@ -1,14 +1,4 @@
-import { PluginRuntimeEnv } from '@lib/plugin/fp/pluginRuntime';
-import {
-  installCustomRoutes,
-  validateOutput,
-  verifyProof
-} from '@lib/plugin/fp/utils';
-import {
-  launchTE,
-  liftZodParseResult,
-  wrapTrivialExpressHandler
-} from '@utils/fp/TaskEither';
+import { PluginRuntimeEnv } from '@lib/server/pluginruntime';
 import bodyParser from 'body-parser';
 import * as expressCore from 'express-serve-static-core';
 import { pipe } from 'fp-ts/function';
@@ -26,6 +16,15 @@ import {
   withExpressApp
 } from './types';
 import * as RTE from 'fp-ts/ReaderTaskEither';
+import { wrapTrivialExpressHandler } from '@lib/plugin/express';
+import { launchTE, liftZodParseResult } from '@lib/utils/fp/taskeither';
+import {
+  installCustomRoutes,
+  validateOutput,
+  verifyProof
+} from '@lib/server/plugin-fp-api';
+import { OutputValidity } from '@lib/plugin/plugintype';
+
 interface VerifyProofData {
   plugin: string;
   publicInputArgs: unknown;
@@ -40,7 +39,8 @@ const handleVerifyProof = (env: PluginRuntimeEnv) =>
       verifyProof(body.proof, body.publicInputArgs, body.plugin)(env),
       TE.map((output) => {
         return { output };
-      })
+      }),
+      TE.mapLeft(() => 'unknown error')
     );
   });
 
@@ -62,7 +62,7 @@ const handleValidateOutput =
           validateOutput(body.plugin, body.output)(env)
         ),
         TE.tapIO(
-          (val) => () =>
+          (val: OutputValidity) => () =>
             val.isValid
               ? resp.status(200).json({})
               : resp.status(400).json({ message: val.reason })

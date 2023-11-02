@@ -4,11 +4,10 @@ import z from 'zod';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
-  Logger,
   OutputValidity,
   outputInvalid,
   outputValid
-} from '@lib/plugin/fp/pluginType';
+} from '@lib/plugin/plugintype';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,
@@ -23,20 +22,17 @@ import * as IOE from 'fp-ts/IOEither';
 import {
   fromFailablePromise,
   guard,
-  safeGetFieldParam,
-  wrapTrivialExpressHandler
-} from '@utils/fp/TaskEither';
+  safeGetFieldParam
+} from '@lib/utils/fp/taskeither';
 import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
 import * as NE from 'fp-ts/NonEmptyArray';
-import { FpInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { FpInterfaceType } from '@lib/plugin/interfacekind';
 import * as E from 'fp-ts/Either';
 import * as O from 'fp-ts/Option';
 import * as A from 'fp-ts/Array';
-import {
-  Decoder,
-  EncodeDecoder,
-  wrapZodDec
-} from '@lib/plugin/fp/EncodeDecoder';
+import { Decoder, EncodeDecoder, wrapZodDec } from '@lib/plugin/encodedecoder';
+import { Logger } from '@lib/plugin/logger';
+import { wrapTrivialExpressHandler } from '@lib/plugin/express';
 
 /**
  * The type of the public input of the Minauth plugin.

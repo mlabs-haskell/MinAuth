@@ -4,7 +4,7 @@ import {
   IMinAuthPluginFactory,
   OutputValidity,
   outputValid
-} from '@lib/plugin';
+} from '@lib/plugin/plugintype';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from '../common/hashPreimageProof';
@@ -12,13 +12,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as R from 'fp-ts/Record';
 import * as O from 'fp-ts/Option';
-import { TsInterfaceType } from '@lib/plugin/fp/interfaceKind';
+import { TsInterfaceType } from '@lib/plugin/interfacekind';
 import * as fs from 'fs/promises';
 import {
   wrapZodDec,
   combineEncDec,
   noOpEncoder
-} from '@lib/plugin/fp/EncodeDecoder';
+} from '@lib/plugin/encodedecoder';
 
 /**
  * The plugin configuration schema.
