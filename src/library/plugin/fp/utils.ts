@@ -15,6 +15,12 @@ import {
   useLogger
 } from './pluginRuntime';
 
+/**
+ * Install custom routes for a plugin into the express app.
+ * The routes are installed under `/plugins/${pluginName}`.
+ * and come from `pluginInstance.customRoutes`.
+ * The routes are meant for plugin / prover communication.
+ */
 const installPluginsCustomRoutes =
   (app: expressCore.Express) =>
   (
@@ -44,6 +50,12 @@ const installPluginsCustomRoutes =
       RTE.asUnit
     );
 
+/**
+ * Install custom routes for all the active plugins.
+ * The routes are installed under `/plugins/${pluginName}`.
+ * and come from `pluginInstance.customRoutes`.
+ * The routes are meant for plugin / prover communication.
+ */
 export const installCustomRoutes = (
   app: expressCore.Express
 ): PluginRuntime<void> =>
@@ -56,6 +68,9 @@ export const installCustomRoutes = (
     tapAndLogError('failed to install custom routes')
   );
 
+/**
+ * Verify proof with given plugin and return its output.
+ */
 export const verifyProof = (
   proof: JsonProof,
   // The encoded public input arguments.
@@ -76,6 +91,7 @@ export const verifyProof = (
       })
     ),
     RTE.bind('pluginInstance', () => askPluginInstance(pluginName)),
+    // TODO remove this step - this will be handled by the plugin
     // Step 1: check that the proof was generated using a certain verification key.
     RTE.tap(({ pluginInstance }) =>
       pipe(
@@ -102,6 +118,8 @@ export const verifyProof = (
     tapAndLogError(`unable to verify proof using plugin ${pluginName}`)
   );
 
+/** Validate the output of a plugin within the active  plugin runtime.
+ */
 export const validateOutput = (
   pluginName: string,
   // The encoded plugin output

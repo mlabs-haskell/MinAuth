@@ -83,10 +83,13 @@ export interface IMinAuthPlugin<
    */
   checkOutputValidity(output: Output): RetType<InterfaceType, OutputValidity>;
 
-  // Custom routes and handlers. Will be installed under `/plugins/<plugin name>`
+  /** Custom routes and handlers. Will be installed under `/plugins/<plugin name>` */
   readonly customRoutes: Router;
 
-  // The verification key of the underlying zk circuit.
+  // TODO consider removing this from the interface
+  // Plugin will be internally responsible for the zk circuit.
+
+  /** The verification key of the underlying zk circuit. */
   readonly verificationKey: string;
 }
 
