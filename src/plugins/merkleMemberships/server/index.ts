@@ -1,5 +1,5 @@
-import { Experimental, Field, JsonProof, Poseidon } from 'o1js';
-import * as ZkProgram from '../common/merkleMembershipsProgram';
+import { Field, JsonProof, Poseidon, ZkProgram } from 'o1js';
+import * as PluginCircuit from '../common/merkleMembershipsProgram';
 import z from 'zod';
 import {
   IMinAuthPlugin,
@@ -256,10 +256,7 @@ export class MerkleMembershipsPlugin
 
     const deserializedProof = TE.fromIOEither(
       IOE.tryCatch(
-        () =>
-          Experimental.ZkProgram.Proof(ZkProgram.Program).fromJSON(
-            serializedProof
-          ),
+        () => ZkProgram.Proof(PluginCircuit.Program).fromJSON(serializedProof),
         (err) => String(err)
       )
     );
@@ -339,7 +336,7 @@ export class MerkleMembershipsPlugin
       TE.Do,
       TE.bind('compilationResult', () =>
         fromFailablePromise(
-          ZkProgram.Program.compile,
+          PluginCircuit.Program.compile,
           'bug: unable to compile MerkleMembershipsProgram'
         )
       ),
