@@ -1,2 +1,5 @@
-node_modules
-dist
+minauth-demo/minauth-demo-server/plugins
+**/dist
+**/build
+**/node_modules
+**/*config.js

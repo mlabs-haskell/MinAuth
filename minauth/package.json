@@ -1,0 +1,88 @@
+{
+  "name": "minauth",
+  "version": "1.0.0-alpha",
+  "description": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "test": "echo \"Test are provided in the minauth-demo package.\" && exit 1"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "big-integer": "^1.6.51",
+    "body-parser": "^1.20.2",
+    "cmd-ts": "^0.13.0",
+    "crypto": "^1.0.1",
+    "env-var": "^7.4.1",
+    "express": "^4.18.2",
+    "fp-ts": "^2.16.1",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.1",
+    "passport-strategy": "^1.0.0",
+    "path": "^0.12.7",
+    "tslog": "^4.9.2",
+    "yaml": "^2.3.2",
+    "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/body-parser": "^1.19.3",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.3",
+    "@types/passport": "^1.0.12",
+    "@types/passport-jwt": "^3.0.9",
+    "@types/passport-strategy": "^0.2.35",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "o1js": "0.14.1"
+  },
+  "keywords": [
+    "authentication",
+    "blockchain",
+    "cryptography",
+    "express",
+    "mina",
+    "minauth",
+    "o1js",
+    "passport",
+    "security",
+    "typescript",
+    "zero-knowledge"
+  ],
+  "author": {
+    "name": "Michał Adamczyk",
+    "email": "michal@mlabs.city",
+    "url": "https://github.com/adamczykm"
+  },
+  "contributors": [
+    {
+      "name": "Connor Fang",
+      "email": "connor@mlabs.city",
+      "url": "https://github.com/chfanghr"
+    },
+    {
+      "name": "Michał Adamczyk",
+      "email": "michal@mlabs.city",
+      "url": "https://github.com/adamczykm"
+    }
+  ],
+  "license": "Apache-2.0"
+}
