@@ -1,0 +1,40 @@
+{
+  "name": "demo-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@rjsf/core": "^5.14.1",
+    "@rjsf/utils": "^5.13.1",
+    "@rjsf/validator-ajv8": "^5.13.1",
+    "@types/styled-components": "^5.1.28",
+    "babel-plugin-styled-components": "^2.1.4",
+    "minauth": "file:../../minauth/dist",
+    "minauth-merkle-membership-plugin": "file:../../minauth-plugins/minauth-merkle-membership-plugin/dist",
+    "minauth-simple-preimage-plugin": "file:../../minauth-plugins/minauth-simple-preimage-plugin/dist",
+    "next": "13.5.4",
+    "o1js": "^0.13.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "simpl-schema": "^3.4.1",
+    "styled-components": "^6.0.8",
+    "uniforms": "^4.0.0-alpha.5",
+    "uniforms-bridge-simple-schema-2": "^4.0.0-alpha.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/react-jsonschema-form": "^1.7.9",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3",
+    "typescript": "^5"
+  }
+}
