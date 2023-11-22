@@ -1,0 +1,3 @@
+# minauth
+
+The MinAuth library

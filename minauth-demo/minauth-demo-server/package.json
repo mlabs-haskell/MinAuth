@@ -1,0 +1,89 @@
+{
+  "name": "minauth-demo-server",
+  "version": "1.0.0-alpha",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start-api": "nodemon ./src/api-server/index.ts",
+    "serve-api": "ts-node ./src/api-server/index.ts",
+    "serve-plugin-server": "nodemon ./node_modules/minauth/tools/plugin-server/index.js",
+    "run-client": "ts-node ./src/headless-test-client",
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "test": "jest",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "big-integer": "^1.6.51",
+    "body-parser": "^1.20.2",
+    "cmd-ts": "^0.13.0",
+    "crypto": "^1.0.1",
+    "env-var": "^7.4.1",
+    "express": "^4.18.2",
+    "fp-ts": "^2.16.1",
+    "jsonwebtoken": "^9.0.2",
+    "minauth": "file:../../minauth/dist",
+    "minauth-simple-preimage-plugin": "file:../../minauth-plugins/minauth-simple-preimage-plugin/dist",
+    "minauth-merkle-membership-plugin": "file:../../minauth-plugins/minauth-merkle-membership-plugin/dist",
+    "o1js": "^0.14.1",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.1",
+    "passport-strategy": "^1.0.0",
+    "path": "^0.12.7",
+    "tslog": "^4.9.2",
+    "yaml": "^2.3.2",
+    "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@relmify/jest-fp-ts": "^2.1.1",
+    "@types/axios": "^0.14.0",
+    "@types/body-parser": "^1.19.3",
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.6",
+    "@types/jsonwebtoken": "^9.0.3",
+    "@types/passport": "^1.0.12",
+    "@types/passport-jwt": "^3.0.9",
+    "@types/passport-strategy": "^0.2.35",
+    "io-ts": "^2.2.20",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.3",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "keywords": [
+    "authentication",
+    "blockchain",
+    "cryptography",
+    "demo",
+    "express",
+    "mina",
+    "minauth",
+    "o1js",
+    "passport",
+    "security",
+    "typescript",
+    "zero-knowledge"
+  ],
+  "author": {
+    "name": "Michał Adamczyk",
+    "email": "michal@mlabs.city",
+    "url": "https://github.com/adamczykm"
+  },
+  "contributors": [
+    {
+      "name": "Connor Fang",
+      "email": "connor@mlabs.city",
+      "url": "https://github.com/chfanghr"
+    },
+    {
+      "name": "Michał Adamczyk",
+      "email": "michal@mlabs.city",
+      "url": "https://github.com/adamczykm"
+    }
+  ],
+  "license": "Apache-2.0"
+}

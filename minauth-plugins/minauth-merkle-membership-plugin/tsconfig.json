@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
+    "baseUrl": "./",
     "declaration": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
@@ -17,10 +18,11 @@
     "sourceMap": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "target": "es2022"
+    "target": "es2016"
   },
+  "include": ["src/**/*"],
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "exclude": ["./**/node_modules", "**/*.spec.ts"]
+  "exclude": ["node_modules", "**/*.spec.ts"]
 }
