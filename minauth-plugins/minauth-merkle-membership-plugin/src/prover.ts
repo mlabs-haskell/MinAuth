@@ -198,13 +198,18 @@ export class MembershipsProver
 
   static readonly __interface_tag = 'fp';
 
+  static compile(): TaskEither<string, { verificationKey: string }> {
+    return fromFailablePromise(
+      () => ZkProgram.Program.compile({ cache: Cache.None }),
+      'failed to compile'
+    );
+  }
+
   static initialize(
     cfg: MembershipsProverConfiguration
   ): TaskEither<string, MembershipsProver> {
     return pipe(
-      fromFailablePromise(() =>
-        ZkProgram.Program.compile({ cache: Cache.None })
-      ),
+      MembershipsProver.compile(), // TODO: calling compile should probably depend on an argument flag
       TE.map(() => new MembershipsProver(cfg))
     );
   }

@@ -23,8 +23,8 @@ function LandingPage() {
         interact with different proving schemas.
       </p>
 
-      <Link href="/simplePreimage">Go to Schema 1</Link>
-      <Link href="/schema2">Go to Schema 2</Link>
+      <Link href="./provers/simplePreimage">Go to Schema 1</Link>
+      {/* <Link href="/schema2">Go to Schema 2</Link> */}
       {/* Add more links as necessary */}
     </div>
   );

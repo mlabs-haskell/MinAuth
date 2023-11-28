@@ -44,9 +44,12 @@ export class SimplePreimageProver
     throw 'not implemented, please query the `/roles` endpoint';
   }
 
+  static async compile(): Promise<{ verificationKey: string }> {
+    return await ProvePreimageProgram.compile({ cache: Cache.None });
+  }
+
   /** Initialize the prover */
   static async initialize(logger: Logger): Promise<SimplePreimageProver> {
-    await ProvePreimageProgram.compile({ cache: Cache.None });
     return new SimplePreimageProver(logger);
   }
 }
