@@ -49,10 +49,6 @@ export const WorkerComponent = <WorkerInput, WorkerOutput>({
         setWorkerStateAndUpdateParent({ status });
       }
     });
-
-    return () => {
-      worker.terminate();
-    };
   }, []); // Dependency array includes proverType to re-run effect if it changes
   // Function to update component state and notify parent
   const setWorkerStateAndUpdateParent = (newState: WorkerState) => {

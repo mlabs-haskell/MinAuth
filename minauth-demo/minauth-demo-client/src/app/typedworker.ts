@@ -51,7 +51,11 @@ export const mkTypedWorker_workaround = <Input, Output>(
   const setOnMessage = (
     onmessage: (ev: MessageEvent<WorkerStatus<Output>>) => any
   ) => {
-    worker.onmessage = onmessage;
+    const onmessage2 = (ev: MessageEvent<string>) => {
+      const message = JSON.parse(ev.data) as WorkerStatus<Output>;
+      onmessage({ ...ev, data: message });
+    };
+    worker.onmessage = onmessage2;
   };
   console.log('typeof setOnMessage', typeof setOnMessage);
 
@@ -67,4 +71,14 @@ export const mkTypedWorker_workaround = <Input, Output>(
     setOnMessage,
     workerPostMessage
   };
+};
+
+export const wrapProverOnMessage = <Input>(
+  onmessage: (ev: MessageEvent<Input>) => any
+) => {
+  const onmessage2 = (ev: MessageEvent<string>) => {
+    const message = JSON.parse(ev.data) as Input;
+    onmessage({ ...ev, data: message });
+  };
+  return onmessage2;
 };

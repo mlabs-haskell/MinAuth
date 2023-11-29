@@ -4,6 +4,8 @@ import {
   mkTypedWorker_workaround
 } from '@/app/typedworker';
 
+import Worker from 'worker-loader!./provercompiler.worker';
+
 export interface ProverZkCircuit {
   type: 'SimplePreimage' | 'MerkleMemberships';
 }
@@ -14,8 +16,7 @@ export const mkProverCompilerWorker = (): TypedWorker<
   ProverZkCircuit,
   ProverCompilationResult
 > => {
-  const worker = new Worker(
-    new URL('provercompiler.worker.ts', import.meta.url)
-  );
+  const worker = new Worker();
+  // const worker = new Worker();
   return mkTypedWorker_workaround(worker);
 };

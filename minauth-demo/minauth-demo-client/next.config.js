@@ -1,6 +1,16 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  // ... your other next.js configurations ...
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.module.rules.push({
+        test: /\.worker\.(js|ts)$/,
+        loader: 'worker-loader'
+        // You may need additional options here depending on your requirements
+      });
+    }
+    return config; // Ensure you return the config
+  },
+
   async headers() {
     return [
       {
@@ -13,6 +23,7 @@ module.exports = {
       }
     ];
   },
+
   compiler: {
     styledComponents: true
   }
