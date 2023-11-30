@@ -44,13 +44,22 @@ export class SimplePreimageProver
     throw 'not implemented, please query the `/roles` endpoint';
   }
 
+  /** Compile the underlying zk circuit */
+  static async compile(): Promise<{ verificationKey: string }> {
+    // disable cache because of bug in o1js 0.14.1:
+    // you have a verification key acquired by using cached circuit AND
+    // not build a proof locally,
+    // but use a serialized one - it will hang during verification.
+    return await ProvePreimageProgram.compile({ cache: Cache.None });
+  }
+
   /** Initialize the prover */
   static async initialize(
     logger: Logger,
-    compile: Boolean = true
+    compile: boolean = true
   ): Promise<SimplePreimageProver> {
     if (compile) {
-      await ProvePreimageProgram.compile({ cache: Cache.None });
+      await SimplePreimageProver.compile();
     }
     return new SimplePreimageProver(logger);
   }

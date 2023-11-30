@@ -240,8 +240,10 @@ export interface IMinAuthProverFactory<
 > extends WithInterfaceTag<InterfaceType> {
   initialize(
     cfg: Configuration,
-    compile: Boolean
+    compile: boolean
   ): RetType<InterfaceType, ProverType>;
+
+  compile(): RetType<InterfaceType, { verificationKey: string }>;
 }
 
 // ts -> fp
