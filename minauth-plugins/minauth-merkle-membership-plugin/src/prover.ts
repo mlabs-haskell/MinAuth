@@ -199,12 +199,16 @@ export class MembershipsProver
   static readonly __interface_tag = 'fp';
 
   static initialize(
-    cfg: MembershipsProverConfiguration
+    cfg: MembershipsProverConfiguration,
+    compile: Boolean = true
   ): TaskEither<string, MembershipsProver> {
     return pipe(
-      fromFailablePromise(() =>
-        ZkProgram.Program.compile({ cache: Cache.None })
-      ),
+      fromFailablePromise(() => {
+        if (compile) {
+          return ZkProgram.Program.compile({ cache: Cache.None });
+        }
+        return Promise.resolve({});
+      }),
       TE.map(() => new MembershipsProver(cfg))
     );
   }
