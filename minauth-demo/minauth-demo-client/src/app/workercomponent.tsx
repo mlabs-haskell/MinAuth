@@ -1,71 +1,65 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TypedWorker, WorkerStatus } from './typedworker';
 
-export interface WorkerComponentProps<WorkerInput, WorkerOutput> {
-  mkWorker: () => TypedWorker<WorkerInput, WorkerOutput>;
-  workerInput: WorkerInput;
-  onWorkerStateChange?: (state: WorkerState) => void;
+export interface WorkComponentProps<WorkInput, WorkOutput> {
+  workInput: WorkInput;
+  executor: (workInput: WorkInput) => Promise<WorkOutput>;
+  onWorkStateChange: (state: WorkState<WorkOutput>) => void;
 }
 
-export interface WorkerState {
+export interface WorkState<WorkOutput> {
   status: 'idle' | 'processing' | 'success' | 'error';
-  result?: string;
+  result?: WorkOutput;
   error?: string;
 }
-export const WorkerComponent = <WorkerInput, WorkerOutput>({
-  mkWorker,
-  workerInput,
-  onWorkerStateChange
-}: WorkerComponentProps<WorkerInput, WorkerOutput>) => {
-  const [workerState, setWorkerState] = useState<WorkerState>({
+export const WorkComponent = <WorkInput, WorkOutput>({
+  workInput,
+  executor,
+  onWorkStateChange
+}: WorkComponentProps<WorkInput, WorkOutput>) => {
+  const [workState, setWorkState] = useState<WorkState<WorkOutput>>({
     status: 'idle'
   });
-  const workerInitialized = useRef(false);
+  const workInitialized = useRef(false);
+
+  const wrapExecutor = (
+    executor: (workInput: WorkInput) => Promise<WorkOutput>
+  ) => {
+    return async (workInput: WorkInput) => {
+      try {
+        setWorkState({ status: 'processing' });
+        const result = await executor(workInput);
+        const workResult = { status: 'success', result };
+        setWorkState(workResult);
+        onWorkStateChange(workResult);
+      } catch (error) {
+        const workResult = { status: 'error', error: JSON.stringify(error) };
+        setWorkState(workResult);
+        onWorkStateChange(workResult);
+      }
+    };
+  };
 
   useEffect(() => {
-    const { worker, setOnMessage, workerPostMessage } = mkWorker();
-    console.log('wtf', typeof workerPostMessage);
-
-    // Start the worker immediately with the provided proverType
-    if (!workerInitialized.current) {
+    // Start the work immediately with the provided proverType
+    if (!workInitialized.current) {
       // start the work
-      console.log('posting worker input', workerInput);
-      workerPostMessage(workerInput);
-      workerInitialized.current = true;
+      console.log('posting work input', workInput);
+      wrapExecutor(executor)(workInput).catch((error) => {
+        console.log('error in work', error);
+      });
     }
-
-    setOnMessage((event: MessageEvent<WorkerStatus<WorkerOutput>>) => {
-      console.log('Message received from worker', event.data);
-      const { status, result, error } = event.data;
-
-      if (status === 'success') {
-        setWorkerStateAndUpdateParent({
-          status,
-          result: JSON.stringify(result)
-        });
-      } else if (status === 'error') {
-        setWorkerStateAndUpdateParent({ status, error: error?.message });
-      } else if (status === 'processing') {
-        setWorkerStateAndUpdateParent({ status });
-      }
-    });
   }, []); // Dependency array includes proverType to re-run effect if it changes
-  // Function to update component state and notify parent
-  const setWorkerStateAndUpdateParent = (newState: WorkerState) => {
-    setWorkerState(newState);
-    onWorkerStateChange?.(newState);
-  };
-  const jebieto = JSON.stringify(workerState);
 
   return (
     <div>
-      {workerState.status === 'idle' && <p>Idle...</p>}
-      {workerState.status === 'processing' && <p>Processing...</p>}
-      {workerState.status === 'success' && <p>Result: {workerState.result}</p>}
-      {workerState.status === 'error' && <p>Error: {workerState.error}</p>}
-      <p>{jebieto}</p>
+      {workState.status === 'idle' && <p>Idle...</p>}
+      {workState.status === 'processing' && <p>Processing...</p>}
+      {workState.status === 'success' && (
+        <p>Result: {JSON.stringify(workState.result)}</p>
+      )}
+      {workState.status === 'error' && <p>Error: {workState.error}</p>}
     </div>
   );
 };
 
-export default WorkerComponent;
+export default WorkComponent;

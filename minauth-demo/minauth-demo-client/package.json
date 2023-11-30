@@ -21,7 +21,7 @@
     "minauth-merkle-membership-plugin": "file:../../minauth-plugins/minauth-merkle-membership-plugin/dist",
     "minauth-simple-preimage-plugin": "file:../../minauth-plugins/minauth-simple-preimage-plugin/dist",
     "next": "13.5.4",
-    "o1js": "^0.13.1",
+    "o1js": "0.14.1",
     "react": "^18",
     "react-dom": "^18",
     "simpl-schema": "^3.4.1",

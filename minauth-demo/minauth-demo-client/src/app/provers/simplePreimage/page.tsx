@@ -1,34 +1,36 @@
 'use client';
-import { TypedWorker } from '@/app/typedworker';
-import WorkerComponent, { WorkerState } from '@/app/workercomponent';
-import {
-  ProverCompilationResult,
-  ProverZkCircuit,
-  mkProverCompilerWorker
-} from '@/workers/provercompilertypes';
+import WorkComponent, { WorkState } from '@/app/workercomponent';
 import { useState } from 'react';
+import { SimplePreimageProver } from 'minauth-simple-preimage-plugin/prover';
 
-const mkWorker: () => TypedWorker<
-  ProverZkCircuit,
-  ProverCompilationResult
-> = () => {
-  return mkProverCompilerWorker();
-};
+type ProverZkCircuit = { type: 'SimplePreimage' };
+type WorkOutput = { verificationKey: string };
 
-const workerInput: ProverZkCircuit = { type: 'SimplePreimage' };
+const workInput: ProverZkCircuit = { type: 'SimplePreimage' };
+
+async function executor(workInput: ProverZkCircuit): Promise<WorkOutput> {
+  if (workInput.type === 'SimplePreimage') {
+    return await SimplePreimageProver.compile();
+  } else {
+    throw new Error('unknown prover type');
+  }
+}
 
 const SimplePreimage: React.FC = () => {
-  const [proverCompilationState, setProverCompilationState] =
-    useState<WorkerState>({
-      status: 'idle'
-    });
+  const [proverCompilationState, setProverCompilationState] = useState<
+    WorkState<WorkOutput>
+  >({
+    status: 'idle'
+  });
 
-  function onProverCompilationStateChange(state: WorkerState): void {
+  function onProverCompilationStateChange(
+    state: WorkState<{ verificationKey: string }>
+  ): void {
     setProverCompilationState(state);
   }
 
   function verificationKey(): string | undefined {
-    return proverCompilationState.result;
+    return proverCompilationState.result?.verificationKey;
   }
 
   /* const schema: RJSFSchema = {
@@ -62,11 +64,11 @@ const SimplePreimage: React.FC = () => {
 
   return (
     <div>
-      <p>Hello World! </p>
-      <WorkerComponent
-        mkWorker={mkWorker}
-        workerInput={workerInput}
-        onWorkerStateChange={onProverCompilationStateChange}
+      <p>Ponizej komponent</p>
+      <WorkComponent
+        workInput={workInput}
+        executor={executor}
+        onWorkStateChange={onProverCompilationStateChange}
       />
       <p>{verificationKey() ? <div> verificationKey() </div> : <></>} </p>
     </div>
