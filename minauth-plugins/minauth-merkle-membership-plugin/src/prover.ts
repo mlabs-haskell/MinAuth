@@ -198,19 +198,29 @@ export class MembershipsProver
 
   static readonly __interface_tag = 'fp';
 
+  /** Compile the underlying zk circuit */
   static compile(): TaskEither<string, { verificationKey: string }> {
-    return fromFailablePromise(
-      () => ZkProgram.Program.compile({ cache: Cache.None }),
-      'failed to compile'
+    // disable cache because of bug in o1js 0.14.1:
+    // you have a verification key acquired by using cached circuit AND
+    // not build a proof locally,
+    // but use a serialized one - it will hang during verification.
+    return fromFailablePromise(() =>
+      ZkProgram.Program.compile({ cache: Cache.None })
     );
   }
 
   static initialize(
-    cfg: MembershipsProverConfiguration
+    cfg: MembershipsProverConfiguration,
+    compile: boolean = true
   ): TaskEither<string, MembershipsProver> {
     return pipe(
-      MembershipsProver.compile(), // TODO: calling compile should probably depend on an argument flag
-      TE.map(() => new MembershipsProver(cfg))
+      compile
+        ? TE.tryCatch(
+            MembershipsProver.compile(),
+            (e) => 'Error compiling: ' + String(e)
+          )
+        : TE.right({ verificationKey: '' }),
+      () => TE.right(new MembershipsProver(cfg))
     );
   }
 }

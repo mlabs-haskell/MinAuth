@@ -220,6 +220,10 @@ type ExtractProverPrivateInputType<T> = T extends IMinAuthProver<
  * IMinAuthProverFactory encapsulates the logic of creating a prover.
  * The meaning of its type parameters can be looked up in the documentation
  * of `IMinAuthProver`.
+ *
+ * @param cfg The plugin configuration
+ * @param compile: whether to compile the underlying zk circuit
+ * @returns a prover
  */
 export interface IMinAuthProverFactory<
   InterfaceType extends InterfaceKind,
@@ -234,7 +238,12 @@ export interface IMinAuthProverFactory<
   PublicInput = ExtractProverPublicInputType<ProverType>,
   PrivateInput = ExtractProverPrivateInputType<ProverType>
 > extends WithInterfaceTag<InterfaceType> {
-  initialize(cfg: Configuration): RetType<InterfaceType, ProverType>;
+  initialize(
+    cfg: Configuration,
+    compile: boolean
+  ): RetType<InterfaceType, ProverType>;
+
+  compile(): RetType<InterfaceType, { verificationKey: string }>;
 }
 
 // ts -> fp
