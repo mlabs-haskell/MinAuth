@@ -45,8 +45,13 @@ export class SimplePreimageProver
   }
 
   /** Initialize the prover */
-  static async initialize(logger: Logger): Promise<SimplePreimageProver> {
-    await ProvePreimageProgram.compile({ cache: Cache.None });
+  static async initialize(
+    logger: Logger,
+    compile: Boolean = true
+  ): Promise<SimplePreimageProver> {
+    if (compile) {
+      await ProvePreimageProgram.compile({ cache: Cache.None });
+    }
     return new SimplePreimageProver(logger);
   }
 }
