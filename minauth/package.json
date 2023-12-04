@@ -1,19 +1,28 @@
 {
   "name": "minauth",
-  "version": "1.0.0-alpha",
-  "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.9.0-alpha.1",
+  "description": "A TypeScript library for building authentication systems on top of the Mina blockchain and other zero-knowledge proofs solutions.",
+  "main": "dist/node/index.js",
+  "browser": "dist/browser/index.js",
+  "type": "module",
+  "types": "dist/node/index.d.ts",
   "files": [
-    "dist/**/*"
+    "dist/node/**/*",
+    "dist/browser/**/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build-node": "tsc -p tsconfig.node.json",
+    "build-browser": "tsc -p tsconfig.browser.json",
     "lint": "eslint . --ext .ts",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "test": "echo \"Test are provided in the minauth-demo package.\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mlabs-haskell/minauth.git"
+  },
   "dependencies": {
+    "minauth": "dev",
     "axios": "^1.5.0",
     "big-integer": "^1.6.51",
     "body-parser": "^1.20.2",

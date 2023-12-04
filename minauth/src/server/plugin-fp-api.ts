@@ -145,7 +145,9 @@ export type UntypedPluginModule = { default: UntypedPluginFactory };
 const importPluginModule = (
   pluginModulePath: string
 ): TaskEither<string, UntypedPluginModule> =>
-  fromFailablePromise(() => import(pluginModulePath));
+  fromFailablePromise(async () => {
+    return import(pluginModulePath);
+  });
 
 const validatePluginCfg = (
   cfg: unknown,

@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "declaration": true,
@@ -7,17 +9,15 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2016"],
-    "module": "commonjs",
+    "lib": ["esnext"],
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "./dist",
+    "outDir": "./dist/browser",
     "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "strictPropertyInitialization": false,
-    "target": "es2016"
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
   "ts-node": {
