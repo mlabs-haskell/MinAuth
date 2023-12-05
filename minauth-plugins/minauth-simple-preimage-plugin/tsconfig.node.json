@@ -2,7 +2,6 @@
   "compilerOptions": {
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "./",
     "declaration": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
@@ -12,13 +11,17 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "./dist",
+    "outDir": "./dist/node",
     "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "target": "es2022"
+    "baseUrl": ".",
+    "paths": {
+      "minauth/*": ["./node_modules/minauth/dist/node/*"]
+    },
+    "target": "es2016"
   },
   "include": ["src/**/*"],
   "ts-node": {
