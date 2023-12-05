@@ -13,7 +13,6 @@
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
     "outDir": "./dist/browser",
-    "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,

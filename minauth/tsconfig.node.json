@@ -7,8 +7,8 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2016"],
-    "module": "commonjs",
+    "lib": ["es2020"],
+    "module": "esnext",
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
     "outDir": "./dist/node",
@@ -17,7 +17,7 @@
     "sourceMap": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "target": "es2016"
+    "target": "es2020"
   },
   "include": ["src/**/*"],
   "ts-node": {
