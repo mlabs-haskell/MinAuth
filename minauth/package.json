@@ -1,10 +1,9 @@
 {
   "name": "minauth",
-  "version": "0.9.0-alpha.1",
+  "version": "0.9.0-alpha.2",
   "description": "A TypeScript library for building authentication systems on top of the Mina blockchain and other zero-knowledge proofs solutions.",
   "main": "dist/node/index.js",
   "browser": "dist/browser/index.js",
-  "type": "module",
   "types": "dist/node/index.d.ts",
   "files": [
     "dist/node/**/*",
