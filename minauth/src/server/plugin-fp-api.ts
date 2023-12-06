@@ -221,7 +221,7 @@ export const initializePlugins =
             : path.resolve(cfg.pluginDir);
 
         return optionalPath === undefined
-          ? path.join(dir, name, 'plugin')
+          ? path.join(dir, name, 'plugin.js')
           : path.resolve(optionalPath);
       };
 
