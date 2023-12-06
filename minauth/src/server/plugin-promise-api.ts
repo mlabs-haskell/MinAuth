@@ -1,26 +1,26 @@
-import { Configuration } from './plugin-fp-api';
-import * as fpPlugin from './plugin-fp-api';
+import { Configuration } from './plugin-fp-api.js';
+import * as fpPlugin from './plugin-fp-api.js';
 import * as expressCore from 'express-serve-static-core';
 import { JsonProof } from 'o1js';
-import { launchTE } from '../utils/fp/taskeither';
-import { OutputValidity } from '../plugin/plugintype';
+import { launchTE } from '../utils/fp/taskeither.js';
+import { OutputValidity } from '../plugin/plugintype.js';
 
-export * from '../plugin/plugintype';
+export * from '../plugin/plugintype.js';
 export {
   configurationSchema,
   Configuration,
   UntypedPluginFactory,
   UntypedPluginModule
-} from './plugin-fp-api';
-export * from '../plugin/interfacekind';
+} from './plugin-fp-api.js';
+export * from '../plugin/interfacekind.js';
 import * as log from 'tslog';
-import { PluginRuntimeEnv, launchPluginRuntime } from './pluginruntime';
-import { Logger } from '../plugin/logger';
+import { PluginRuntimeEnv, launchPluginRuntime } from './pluginruntime.js';
+import { Logger } from '../plugin/logger.js';
 export {
   RuntimePluginInstance,
   PluginRuntimeEnv,
   ActivePlugins
-} from './pluginruntime';
+} from './pluginruntime.js';
 
 const defaultRootLoggerConfiguration: log.ISettingsParam<log.ILogObj> = {
   name: 'minauth-plugin-system',

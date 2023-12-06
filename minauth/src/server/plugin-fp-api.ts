@@ -1,14 +1,14 @@
 import env from 'env-var';
 import * as expressCore from 'express-serve-static-core';
-import * as E from 'fp-ts/Either';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import * as R from 'fp-ts/Record';
-import * as S from 'fp-ts/Semigroup';
-import * as T from 'fp-ts/Task';
-import * as TE from 'fp-ts/TaskEither';
-import { TaskEither } from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
-import * as Str from 'fp-ts/string';
+import * as E from 'fp-ts/lib/Either.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import * as R from 'fp-ts/lib/Record.js';
+import * as S from 'fp-ts/lib/Semigroup.js';
+import * as T from 'fp-ts/lib/Task.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as Str from 'fp-ts/lib/string.js';
 import { existsSync } from 'fs';
 import fs from 'fs/promises';
 import { JsonProof } from 'o1js';
@@ -19,19 +19,19 @@ import {
   TsInterfaceType,
   fpInterfaceTag,
   tsInterfaceTag
-} from '../plugin/interfacekind';
-import { Logger } from '../plugin/logger';
+} from '../plugin/interfacekind.js';
+import { Logger } from '../plugin/logger.js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
   OutputValidity,
   tsToFpMinAuthPluginFactory
-} from '../plugin/plugintype';
-import { tryCatchIO, useLogger } from '../utils/fp/readertaskeither';
+} from '../plugin/plugintype.js';
+import { tryCatchIO, useLogger } from '../utils/fp/readertaskeither.js';
 import {
   fromFailablePromise,
   liftZodParseResult
-} from '../utils/fp/taskeither';
+} from '../utils/fp/taskeither.js';
 import {
   PluginRuntime,
   PluginRuntimeEnv,
@@ -40,7 +40,7 @@ import {
   askLogger,
   askPluginInstance,
   tapAndLogError
-} from './pluginruntime';
+} from './pluginruntime.js';
 
 /**
  * Configuration schema for the plugin loader

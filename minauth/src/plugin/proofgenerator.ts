@@ -1,10 +1,10 @@
-import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 
-import { Decoder } from './encodedecoder';
-import { FpInterfaceType } from './interfacekind';
-import { Logger } from './logger';
-import { MinAuthProof } from '../server/minauthstrategy';
-import { askRecordField } from '../utils/fp/readertaskeither';
+import { Decoder } from './encodedecoder.js';
+import { FpInterfaceType } from './interfacekind.js';
+import { Logger } from './logger.js';
+import { MinAuthProof } from '../server/minauthstrategy.js';
+import { askRecordField } from '../utils/fp/readertaskeither.js';
 
 export type GenerateProofEnv<Conf> = Readonly<{
   logger: Logger;

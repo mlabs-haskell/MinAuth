@@ -1,8 +1,8 @@
-import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither';
-import { pipe } from 'fp-ts/function';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import * as IOE from 'fp-ts/IOEither';
-import * as E from 'fp-ts/Either';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import * as IOE from 'fp-ts/lib/IOEither.js';
+import * as E from 'fp-ts/lib/Either.js';
 import * as z from 'zod';
 import { ILogObj, Logger } from 'tslog';
 

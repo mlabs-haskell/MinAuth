@@ -7,7 +7,7 @@
  *
  * This module defines utilities to work with interface kinds.
  */
-import { TaskEither } from 'fp-ts/TaskEither';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 
 /**
  * Interface kind is a type tag that is used to distinguish between

@@ -4,9 +4,9 @@ import {
   TsInterfaceType,
   FpInterfaceType,
   ChooseType
-} from './interfacekind';
-import { Either } from 'fp-ts/Either';
-import * as E from 'fp-ts/Either';
+} from './interfacekind.js';
+import { Either } from 'fp-ts/lib/Either.js';
+import * as E from 'fp-ts/lib/Either.js';
 import * as z from 'zod';
 
 /**

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import * as PL from '../../server/plugin-fp-api';
-import { pipe } from 'fp-ts/function';
-import * as TE from 'fp-ts/TaskEither';
-import { TaskEither } from 'fp-ts/TaskEither';
+import * as PL from '../../server/plugin-fp-api.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 import * as log from 'tslog';
-import { Logger } from '../../plugin/logger';
-import { PluginServerEnv } from './types';
-import { fromFailableIO } from '../../utils/fp/taskeither';
+import { Logger } from '../../plugin/logger.js';
+import { PluginServerEnv } from './types.js';
+import { fromFailableIO } from '../../utils/fp/taskeither.js';
 
 import express from 'express';
 
