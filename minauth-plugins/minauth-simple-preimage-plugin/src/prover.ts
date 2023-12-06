@@ -5,7 +5,7 @@ import {
 } from 'minauth/plugin/plugintype';
 import { TsInterfaceType } from 'minauth/plugin/interfacekind';
 import { Logger } from 'minauth/plugin/logger';
-import ProvePreimageProgram from './hash-preimage-proof';
+import ProvePreimageProgram from './hash-preimage-proof.js';
 
 /**
  * Somewhat trivial example of a prover.

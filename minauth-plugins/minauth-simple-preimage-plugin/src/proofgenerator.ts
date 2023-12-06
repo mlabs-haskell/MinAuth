@@ -8,23 +8,26 @@ import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder';
-import { FpInterfaceType, fpInterfaceTag } from 'minauth/plugin/interfacekind';
+} from 'minauth/plugin/encodedecoder.js';
+import {
+  FpInterfaceType,
+  fpInterfaceTag
+} from 'minauth/plugin/interfacekind.js';
 import {
   GenerateProof,
   GenerateProofError,
   ProofGenerator,
   askConfig
-} from 'minauth/plugin/proofgenerator';
-import { MinAuthProof } from 'minauth/server/minauthstrategy';
-import { safeFromString } from 'minauth/utils/fp/either';
+} from 'minauth/plugin/proofgenerator.js';
+import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { safeFromString } from 'minauth/utils/fp/either.js';
 import {
   askSublogger,
   tapLogger,
   tryCatch
-} from 'minauth/utils/fp/readertaskeither';
+} from 'minauth/utils/fp/readertaskeither.js';
 
-import { SimplePreimageProver } from './prover';
+import { SimplePreimageProver } from './prover.js';
 
 const rawConfSchema = z.object({
   password: z.string()
