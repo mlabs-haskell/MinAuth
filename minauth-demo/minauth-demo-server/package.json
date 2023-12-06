@@ -25,7 +25,7 @@
     "minauth": "file:../../minauth/dist",
     "minauth-simple-preimage-plugin": "file:../../minauth-plugins/minauth-simple-preimage-plugin/dist",
     "minauth-merkle-membership-plugin": "file:../../minauth-plugins/minauth-merkle-membership-plugin/dist",
-    "o1js": "^0.14.1",
+    "o1js": "0.14.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-strategy": "^1.0.0",

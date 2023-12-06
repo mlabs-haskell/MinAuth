@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es2020",
     "module": "esnext",
+    "target": "es2020",
+    "lib": ["es2020"],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "declaration": true,
@@ -9,18 +10,13 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["esnext"],
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "./dist/browser",
+    "outDir": "./dist/",
     "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "minauth/*": ["./node_modules/minauth/dist/browser/*"]
-    },
     "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],

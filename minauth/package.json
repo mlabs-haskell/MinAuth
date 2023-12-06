@@ -1,19 +1,16 @@
 {
   "name": "minauth",
-  "version": "0.9.0-alpha.5",
+  "version": "0.9.0-alpha.7",
   "description": "A TypeScript library for building authentication systems on top of the Mina blockchain and other zero-knowledge proofs solutions.",
   "type": "module",
-  "main": "dist/node/index.js",
-  "browser": "dist/browser/index.js",
+  "main": "dist/index.js",
+  "browser": "dist/index.js",
   "types": "dist/node/index.d.ts",
   "files": [
-    "dist/node/**/*",
-    "dist/browser/**/*"
+    "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.browser.json && tsc -p tsconfig.node.json",
-    "build-node": "tsc -p tsconfig.node.json",
-    "build-browser": "tsc -p tsconfig.browser.json",
+    "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "test": "echo \"Test are provided in the minauth-demo package.\" && exit 1"
@@ -61,7 +58,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "o1js": "0.14.1"
+    "o1js": "0.14.2"
   },
   "keywords": [
     "authentication",

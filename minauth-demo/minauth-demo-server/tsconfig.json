@@ -11,7 +11,14 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "minauth/*": ["./node_modules/minauth/dist/node/*"],
+      "minauth-simple-preimage-plugin/*": [
+        "./node_modules/minauth-simple-preimage-plugin/dist/node/*"
+      ]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts"]
