@@ -18,10 +18,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "strictPropertyInitialization": false,
-    "paths": {
-      "minauth/*": ["./node_modules/minauth/dist/node/*"]
-    }
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
   "ts-node": {

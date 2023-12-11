@@ -1,6 +1,6 @@
-import * as E from 'fp-ts/Either';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import { pipe } from 'fp-ts/lib/function';
+import * as E from 'fp-ts/lib/Either.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import { Field, Poseidon } from 'o1js';
 import { z } from 'zod';
 
