@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import MinAuthStrategy, {
   AuthenticationResponse
-} from 'minauth/server/minauthstrategy';
+} from 'minauth/server/minauthstrategy.js';
 import {
   JWTPayload,
   generateRefreshToken,
@@ -10,7 +10,7 @@ import {
   refreshTokenStore,
   setupPassport,
   signJWTPayload
-} from './setup_jwt_passport';
+} from './setup_jwt_passport.js';
 import axios from 'axios';
 
 const app = express();

@@ -1,20 +1,20 @@
-import * as A from 'fp-ts/Array';
-import * as E from 'fp-ts/Either';
-import { Either } from 'fp-ts/Either';
-import * as O from 'fp-ts/Option';
-import { toArray } from 'fp-ts/ReadonlyArray';
-import * as R from 'fp-ts/Record';
-import * as TE from 'fp-ts/TaskEither';
-import { TaskEither } from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
-import * as Str from 'fp-ts/string';
+import * as A from 'fp-ts/lib/Array.js';
+import * as E from 'fp-ts/lib/Either.js';
+import { Either } from 'fp-ts/lib/Either.js';
+import * as O from 'fp-ts/lib/Option.js';
+import { toArray } from 'fp-ts/lib/ReadonlyArray.js';
+import * as R from 'fp-ts/lib/Record.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as Str from 'fp-ts/lib/string.js';
 import fs from 'fs/promises';
 import {
   dropResult,
   findM,
   fromFailablePromise,
   liftZodParseResult
-} from 'minauth/utils/fp/taskeither';
+} from 'minauth/utils/fp/taskeither.js';
 import {
   AccountUpdate,
   Field,
@@ -24,8 +24,8 @@ import {
   Cache
 } from 'o1js';
 import z from 'zod';
-import * as ZkProgram from './merklemembershipsprogram';
-import { TreeRootStorageContract } from './treerootstoragecontract';
+import * as ZkProgram from './merklemembershipsprogram.js';
+import { TreeRootStorageContract } from './treerootstoragecontract.js';
 
 /**
  * An interface for o1js Merkle trees store holding sets of members.

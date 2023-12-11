@@ -1,16 +1,16 @@
 import * as cmd from 'cmd-ts';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import * as R from 'fp-ts/Record';
-import { pipe } from 'fp-ts/function';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import * as R from 'fp-ts/lib/Record.js';
+import { pipe } from 'fp-ts/lib/function.js';
 
-import MerkleMembershipsGenerator from 'minauth-merkle-membership-plugin/proofgenerator';
-import SimplePreImageGenerator from 'minauth-simple-preimage-plugin/proofgenerator';
+import MerkleMembershipsGenerator from 'minauth-merkle-membership-plugin/proofgenerator.js';
+import SimplePreImageGenerator from 'minauth-simple-preimage-plugin/proofgenerator.js';
 
-import { loginAction } from '../actions';
+import { loginAction } from '../actions.js';
 import {
   UntypedProofGenerator,
   asUntypedProofGenerator
-} from 'minauth/plugin/proofgenerator';
+} from 'minauth/plugin/proofgenerator.js';
 import {
   CommandHandler,
   CommonOptions,
@@ -21,7 +21,7 @@ import {
   readFile,
   writeJwt,
   writeRefreshToken
-} from './common';
+} from './common.js';
 
 /** The available proof generators */
 const proofGenerators: Record<string, UntypedProofGenerator> = {

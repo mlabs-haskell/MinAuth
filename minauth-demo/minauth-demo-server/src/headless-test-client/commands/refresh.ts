@@ -8,10 +8,10 @@ import {
   readJwt,
   readRefreshToken,
   writeJwt
-} from './common';
-import { pipe } from 'fp-ts/function';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import { refreshAction } from '../actions';
+} from './common.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import { refreshAction } from '../actions.js';
 
 /** CLI refresh subcommand arguments */
 const args = commonOptions;

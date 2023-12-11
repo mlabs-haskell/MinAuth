@@ -10,6 +10,28 @@
           "21684304481040958849270710845151658168046794458221536315647897641876555971838": "guest"
         }
       }
+    },
+    "merkle-memberships": {
+      "path": "./plugins/merkle-memberships/plugin.js",
+      "config": {
+        "feePayerPrivateKey": "EKFcgUCc4oWRJATQkZHTM71BMsE2vhxizQz7sKGF4hxkTdPpQXVU",
+        "trees": [
+          {
+            "offchainStoragePath": "./plugins/storage/tree-user",
+            "initialLeaves": {
+              "0": "9622501591462839719014362002692939720925568677626677950477653333682734936080",
+              "1": "22779676748305448396963434841437484811083254264877318969561272764343978063052",
+              "2": "20307190475163560179843878304233687113040243867319358507811895775846718326775"
+            }
+          },
+          {
+            "offchainStoragePath": "./plugins/storage/tree-admin",
+            "initialLeaves": {
+              "0": "21565680844461314807147611702860246336805372493508489110556896454939225549736"
+            }
+          }
+        ]
+      }
     }
   }
 }

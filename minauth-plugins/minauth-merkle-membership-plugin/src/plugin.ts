@@ -1,5 +1,5 @@
 import { Field, JsonProof, Poseidon, ZkProgram, verify } from 'o1js';
-import { Program } from './merklemembershipsprogram';
+import { Program } from './merklemembershipsprogram.js';
 import z from 'zod';
 import {
   IMinAuthPlugin,
@@ -7,36 +7,36 @@ import {
   OutputValidity,
   outputInvalid,
   outputValid
-} from 'minauth/plugin/plugintype';
+} from 'minauth/plugin/plugintype.js';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,
   TreesProvider,
   minaTreesProviderConfigurationSchema
-} from './treestorage';
+} from './treestorage.js';
 import { Router } from 'express';
-import { TaskEither } from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
-import * as TE from 'fp-ts/TaskEither';
-import * as IOE from 'fp-ts/IOEither';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import * as IOE from 'fp-ts/lib/IOEither.js';
 import {
   fromFailablePromise,
   guard,
   safeGetFieldParam
-} from 'minauth/utils/fp/taskeither';
-import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
-import * as NE from 'fp-ts/NonEmptyArray';
-import { FpInterfaceType } from 'minauth/plugin/interfacekind';
-import * as E from 'fp-ts/Either';
-import * as O from 'fp-ts/Option';
-import * as A from 'fp-ts/Array';
+} from 'minauth/utils/fp/taskeither.js';
+import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
+import * as NE from 'fp-ts/lib/NonEmptyArray.js';
+import { FpInterfaceType } from 'minauth/plugin/interfacekind.js';
+import * as E from 'fp-ts/lib/Either.js';
+import * as O from 'fp-ts/lib/Option.js';
+import * as A from 'fp-ts/lib/Array.js';
 import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder';
-import { Logger } from 'minauth/plugin/logger';
-import { wrapTrivialExpressHandler } from 'minauth/plugin/express';
+} from 'minauth/plugin/encodedecoder.js';
+import { Logger } from 'minauth/plugin/logger.js';
+import { wrapTrivialExpressHandler } from 'minauth/plugin/express.js';
 
 /**
  * The type of the public input of the Minauth plugin.
