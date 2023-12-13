@@ -2,10 +2,10 @@ import { Field, JsonProof, Cache } from 'o1js';
 import {
   IMinAuthProver,
   IMinAuthProverFactory
-} from 'minauth/plugin/plugintype';
-import { TsInterfaceType } from 'minauth/plugin/interfacekind';
-import { Logger } from 'minauth/plugin/logger';
-import ProvePreimageProgram from './hash-preimage-proof';
+} from 'minauth/plugin/plugintype.js';
+import { TsInterfaceType } from 'minauth/plugin/interfacekind.js';
+import { Logger } from 'minauth/plugin/logger.js';
+import ProvePreimageProgram from './hash-preimage-proof.js';
 
 /**
  * Somewhat trivial example of a prover.
@@ -59,7 +59,9 @@ export class SimplePreimageProver
     compile: boolean = true
   ): Promise<SimplePreimageProver> {
     if (compile) {
+      logger.info('compiling the circuit');
       await SimplePreimageProver.compile();
+      logger.info('compiled');
     }
     return new SimplePreimageProver(logger);
   }

@@ -1,15 +1,15 @@
-import { TaskEither } from 'fp-ts/TaskEither';
-import * as E from 'fp-ts/Either';
-import { taskEither } from 'fp-ts';
-import * as TE from 'fp-ts/TaskEither';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import * as E from 'fp-ts/lib/Either.js';
+import { taskEither } from 'fp-ts/lib/index.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
 import z from 'zod';
-import { pipe } from 'fp-ts/function';
-import * as O from 'fp-ts/Option';
-import * as R from 'fp-ts/Record';
-import * as IOE from 'fp-ts/IOEither';
-import { Either } from 'fp-ts/Either';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as O from 'fp-ts/lib/Option.js';
+import * as R from 'fp-ts/lib/Record.js';
+import * as IOE from 'fp-ts/lib/IOEither.js';
+import { Either } from 'fp-ts/lib/Either.js';
 import { Field } from 'o1js';
-import * as A from 'fp-ts/Array';
+import * as A from 'fp-ts/lib/Array.js';
 
 /**
  * Converts a promise that may resolve into an empty value into

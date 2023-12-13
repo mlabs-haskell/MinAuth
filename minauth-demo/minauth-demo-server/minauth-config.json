@@ -2,6 +2,7 @@
   "pluginDir": "./plugins",
   "plugins": {
     "simple-preimage": {
+      "path": "./plugins/simple-preimage/plugin.js",
       "config": {
         "roles": {
           "21565680844461314807147611702860246336805372493508489110556896454939225549736": "admin",
@@ -11,6 +12,7 @@
       }
     },
     "merkle-memberships": {
+      "path": "./plugins/merkle-memberships/plugin.js",
       "config": {
         "feePayerPrivateKey": "EKFcgUCc4oWRJATQkZHTM71BMsE2vhxizQz7sKGF4hxkTdPpQXVU",
         "trees": [

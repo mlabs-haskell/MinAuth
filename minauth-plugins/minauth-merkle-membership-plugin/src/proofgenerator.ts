@@ -1,27 +1,30 @@
 import * as z from 'zod';
-import MembershipsProver from './prover';
-import { pipe } from 'fp-ts/function';
+import MembershipsProver from './prover.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import { Field } from 'o1js';
-import * as A from 'fp-ts/Array';
-import * as E from 'fp-ts/Either';
+import * as A from 'fp-ts/lib/Array.js';
+import * as E from 'fp-ts/lib/Either.js';
 import {
   GenerateProof,
   GenerateProofError,
   ProofGenerator,
   askConfig
-} from 'minauth/plugin/proofgenerator';
+} from 'minauth/plugin/proofgenerator.js';
 import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder';
-import { FpInterfaceType, fpInterfaceTag } from 'minauth/plugin/interfacekind';
-import { Either } from 'fp-ts/Either';
-import { MinAuthProof } from 'minauth/server/minauthstrategy';
-import { TaskEither } from 'fp-ts/TaskEither';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import { safeFromString } from 'minauth/utils/fp/either';
-import { tapLogger } from 'minauth/utils/fp/readertaskeither';
+} from 'minauth/plugin/encodedecoder.js';
+import {
+  FpInterfaceType,
+  fpInterfaceTag
+} from 'minauth/plugin/interfacekind.js';
+import { Either } from 'fp-ts/lib/Either.js';
+import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import { safeFromString } from 'minauth/utils/fp/either.js';
+import { tapLogger } from 'minauth/utils/fp/readertaskeither.js';
 
 // TODO/FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {

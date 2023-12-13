@@ -1,13 +1,16 @@
-import { Option } from 'fp-ts/lib/Option';
+import { Option } from 'fp-ts/lib/Option.js';
 import { Field, PrivateKey } from 'o1js';
-import * as MerkleMembershipsPG from 'minauth-merkle-membership-plugin/proofgenerator';
-import * as SimplePreimagePG from 'minauth-simple-preimage-plugin/proofgenerator';
-import { ActionEnv, fullWorkflowAction } from '../headless-test-client/actions';
+import * as MerkleMembershipsPG from 'minauth-merkle-membership-plugin/proofgenerator.js';
+import * as SimplePreimagePG from 'minauth-simple-preimage-plugin/proofgenerator.js';
+import {
+  ActionEnv,
+  fullWorkflowAction
+} from '../headless-test-client/actions.js';
 import os from 'os';
 import fs from 'fs/promises';
 import path from 'path';
-import * as O from 'fp-ts/Option';
-import * as PluginServer from 'minauth/tools/plugin-server/config';
+import * as O from 'fp-ts/lib/Option.js';
+import * as PluginServer from 'minauth/tools/plugin-server/config.js';
 import * as cp from 'child_process';
 import * as log from 'tslog';
 import '@relmify/jest-fp-ts';

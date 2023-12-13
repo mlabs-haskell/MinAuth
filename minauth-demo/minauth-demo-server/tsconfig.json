@@ -1,18 +1,30 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
-    "module": "CommonJS",
-    "esModuleInterop": true,
+    "module": "esnext",
+    "target": "es2020",
+    "lib": ["es2020"],
+    "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
-    "outDir": "./build",
-    "rootDir": "./src",
-    "strict": true,
-    "noImplicitAny": true,
+    "baseUrl": ".",
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
+    "noFallthroughCasesInSwitch": true,
+    "outDir": "./build",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "rootDir": "./src",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "sourceMap": true,
+    "strict": true,
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
   "exclude": ["node_modules", "**/*.spec.ts"]
 }

@@ -6,16 +6,16 @@ import {
   RetType,
   TsInterfaceType,
   FpInterfaceType
-} from './interfacekind';
+} from './interfacekind.js';
 import {
   Decoder,
   EncodeDecoder,
   combineEncDec,
   tsToFpDecoder,
   tsToFpEncoder
-} from './encodedecoder';
-import { Logger } from './logger';
-import { fromFailablePromise } from '../utils/fp/taskeither';
+} from './encodedecoder.js';
+import { Logger } from './logger.js';
+import { fromFailablePromise } from '../utils/fp/taskeither.js';
 
 // Interfaces used on the server side.
 

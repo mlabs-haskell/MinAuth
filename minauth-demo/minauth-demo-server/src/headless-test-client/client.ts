@@ -1,19 +1,19 @@
-import { MinAuthProof } from 'minauth/server/minauthstrategy';
+import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
 import axios, { isAxiosError } from 'axios';
-import { ReaderTaskEither } from 'fp-ts/ReaderTaskEither';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import path from 'path';
 import * as z from 'zod';
-import { pipe } from 'fp-ts/function';
-import * as RTE from 'fp-ts/ReaderTaskEither';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import {
   liftZodParseResult,
   tryCatch,
   tryCatchIO,
   useLogger
-} from 'minauth/utils/fp/readertaskeither';
-import { Option } from 'fp-ts/lib/Option';
-import * as O from 'fp-ts/Option';
-import { Logger } from 'minauth/plugin/logger';
+} from 'minauth/utils/fp/readertaskeither.js';
+import { Option } from 'fp-ts/lib/Option.js';
+import * as O from 'fp-ts/lib/Option.js';
+import { Logger } from 'minauth/plugin/logger.js';
 
 export type ClientEnv = Readonly<{
   serverUrl: string;

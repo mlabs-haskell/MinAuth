@@ -1,6 +1,6 @@
-import * as E from 'fp-ts/Either';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import { pipe } from 'fp-ts/lib/function';
+import * as E from 'fp-ts/lib/Either.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import { Field, Poseidon } from 'o1js';
 import { z } from 'zod';
 
@@ -8,23 +8,26 @@ import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder';
-import { FpInterfaceType, fpInterfaceTag } from 'minauth/plugin/interfacekind';
+} from 'minauth/plugin/encodedecoder.js';
+import {
+  FpInterfaceType,
+  fpInterfaceTag
+} from 'minauth/plugin/interfacekind.js';
 import {
   GenerateProof,
   GenerateProofError,
   ProofGenerator,
   askConfig
-} from 'minauth/plugin/proofgenerator';
-import { MinAuthProof } from 'minauth/server/minauthstrategy';
-import { safeFromString } from 'minauth/utils/fp/either';
+} from 'minauth/plugin/proofgenerator.js';
+import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { safeFromString } from 'minauth/utils/fp/either.js';
 import {
   askSublogger,
   tapLogger,
   tryCatch
-} from 'minauth/utils/fp/readertaskeither';
+} from 'minauth/utils/fp/readertaskeither.js';
 
-import { SimplePreimageProver } from './prover';
+import { SimplePreimageProver } from './prover.js';
 
 const rawConfSchema = z.object({
   password: z.string()

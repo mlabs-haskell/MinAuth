@@ -1,7 +1,7 @@
-import * as O from 'fp-ts/Option';
+import * as O from 'fp-ts/lib/Option.js';
 import { Field, Poseidon } from 'o1js';
 
-import { runTestGroup } from './test-helper';
+import { runTestGroup } from './test-helper.js';
 
 runTestGroup({
   name: 'default',

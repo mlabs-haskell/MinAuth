@@ -1,14 +1,16 @@
 {
   "name": "minauth-simple-preimage-plugin",
-  "version": "1.0.0-alpha",
-  "description": "",
+  "version": "0.9.0-alpha.8",
+  "description": "A very simple Minauth plugin that allows users to authenticate by providing a preimage to a given hash.",
+  "type": "module",
   "main": "dist/index.js",
+  "browser": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
     "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,7 +19,6 @@
     "express": "^4.18.2",
     "fp-ts": "^2.16.1",
     "minauth": "file:../../minauth/dist",
-    "o1js": "0.14.1",
     "zod": "^3.22.2"
   },
   "devDependencies": {
@@ -34,6 +35,9 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "o1js": "0.14.2"
   },
   "keywords": [
     "authentication",

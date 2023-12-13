@@ -1,0 +1,110 @@
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background-color: white;
+}
+
+.title {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.description {
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.formArea {
+  margin-bottom: 20px;
+}
+
+.actionButton {
+  display: inline-block;
+  background-color: #0070f3;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.actionButton:hover {
+  background-color: #0051bf;
+}
+
+.output {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+  background-color: #f7f7f7;
+}
+
+.footer {
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #777;
+}
+
+/* ... existing styles */
+
+/* Light Theme */
+.light .title {
+  color: #333;
+}
+
+.light .description {
+  color: #555;
+}
+
+.light .actionButton {
+  background-color: #0070f3;
+}
+
+.light .actionButton:hover {
+  background-color: #0051bf;
+}
+
+.light .output {
+  background-color: #f7f7f7;
+}
+
+.light .footer {
+  color: #777;
+}
+
+/* Dark Theme */
+.dark {
+  background-color: #1a1a1a;
+}
+
+.dark .title {
+  color: #ddd;
+}
+
+.dark .description {
+  color: #bbb;
+}
+
+.dark .actionButton {
+  background-color: #0a84ff;
+}
+
+.dark .actionButton:hover {
+  background-color: #0070f3;
+}
+
+.dark .output {
+  background-color: #2a2a2a;
+  color: #ddd;
+}
+
+.dark .footer {
+  color: #888;
+}

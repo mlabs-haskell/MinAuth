@@ -1,19 +1,19 @@
 import bodyParser from 'body-parser';
 import * as expressCore from 'express-serve-static-core';
-import * as RTE from 'fp-ts/ReaderTaskEither';
-import * as TE from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import { JsonProof } from 'o1js';
 import { z } from 'zod';
-import { wrapTrivialExpressHandler } from '../../plugin/express';
-import { OutputValidity } from '../../plugin/plugintype';
+import { wrapTrivialExpressHandler } from '../../plugin/express.js';
+import { OutputValidity } from '../../plugin/plugintype.js';
 import {
   installCustomRoutes,
   validateOutput,
   verifyProof
-} from '../../server/plugin-fp-api';
-import { PluginRuntimeEnv } from '../../server/pluginruntime';
-import { launchTE, liftZodParseResult } from '../../utils/fp/taskeither';
+} from '../../server/plugin-fp-api.js';
+import { PluginRuntimeEnv } from '../../server/pluginruntime.js';
+import { launchTE, liftZodParseResult } from '../../utils/fp/taskeither.js';
 import {
   PluginServer,
   askConfig,
@@ -23,7 +23,7 @@ import {
   useExpressApp,
   useRootLogger,
   withExpressApp
-} from './types';
+} from './types.js';
 
 interface VerifyProofData {
   plugin: string;

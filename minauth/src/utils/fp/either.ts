@@ -1,5 +1,5 @@
-import { Either } from 'fp-ts/lib/Either';
-import * as E from 'fp-ts/Either';
+import { Either } from 'fp-ts/lib/Either.js';
+import * as E from 'fp-ts/lib/Either.js';
 
 /**
  * Converts a failible string parse operation into an Either object.

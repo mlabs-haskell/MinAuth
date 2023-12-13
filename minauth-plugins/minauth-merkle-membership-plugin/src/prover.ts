@@ -1,19 +1,19 @@
 import { Field, JsonProof, MerkleTree, SelfProof, Cache } from 'o1js';
-import * as ZkProgram from './merklemembershipsprogram';
+import * as ZkProgram from './merklemembershipsprogram.js';
 import {
   IMinAuthProver,
   IMinAuthProverFactory
-} from 'minauth/plugin/plugintype';
-import * as A from 'fp-ts/Array';
+} from 'minauth/plugin/plugintype.js';
+import * as A from 'fp-ts/lib/Array.js';
 import axios from 'axios';
-import { TaskEither } from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
-import * as TE from 'fp-ts/TaskEither';
-import * as NE from 'fp-ts/NonEmptyArray';
-import { NonEmptyArray } from 'fp-ts/NonEmptyArray';
-import { FpInterfaceType } from 'minauth/plugin/interfacekind';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import * as NE from 'fp-ts/lib/NonEmptyArray.js';
+import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
+import { FpInterfaceType } from 'minauth/plugin/interfacekind.js';
 import * as z from 'zod';
-import { fromFailablePromise } from 'minauth/utils/fp/taskeither';
+import { fromFailablePromise } from 'minauth/utils/fp/taskeither.js';
 
 /**
  * Configuration for the prover.
@@ -23,8 +23,8 @@ export type MembershipsProverConfiguration = {
 };
 
 export type MembershipsPublicInputArgs = Array<{
-  /** The root of the merkle tree that the prover is trying to prove
-   *  membership in. */
+  /** The root of the merkle tree that the prover is trying to prove membership
+   *  in. */
   treeRoot: Field;
   /** Note that the leaf index is not part of the proof public input,
    *  but it is required to build one. */

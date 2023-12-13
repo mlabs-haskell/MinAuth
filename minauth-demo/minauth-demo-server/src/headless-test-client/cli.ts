@@ -1,7 +1,7 @@
 import * as cmd from 'cmd-ts';
-import login from './commands/login';
-import refresh from './commands/refresh';
-import accessProtected from './commands/accessProtected';
+import login from './commands/login.js';
+import refresh from './commands/refresh.js';
+import accessProtected from './commands/accessProtected.js';
 
 /**
  * The CLI's top-level command.

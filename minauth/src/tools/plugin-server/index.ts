@@ -1,9 +1,9 @@
-import { pipe } from 'fp-ts/lib/function';
-import * as TE from 'fp-ts/TaskEither';
-import { mkPluginServerEnv, readConfigurationFallback } from './config';
-import { setupAllRoutes, startServing } from './express';
-import { PluginServer, useRootLogger } from './types';
-import * as RTE from 'fp-ts/ReaderTaskEither';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { mkPluginServerEnv, readConfigurationFallback } from './config.js';
+import { setupAllRoutes, startServing } from './express.js';
+import { PluginServer, useRootLogger } from './types.js';
+import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 
 /**
  * Start the plugin server.
