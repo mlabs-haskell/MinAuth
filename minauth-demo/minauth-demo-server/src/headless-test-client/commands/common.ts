@@ -1,9 +1,9 @@
 import * as cmd from 'cmd-ts';
-import { ReaderTaskEither } from 'fp-ts/lib/lib/ReaderTaskEither.js';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import * as log from 'tslog';
 import * as E from 'fp-ts/lib/Either.js';
 import { Action, ActionError } from '../actions.js';
-import { pipe } from 'fp-ts/lib/lib/function.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import * as fs from 'fs/promises';
 import { Logger } from 'minauth/plugin/logger.js';

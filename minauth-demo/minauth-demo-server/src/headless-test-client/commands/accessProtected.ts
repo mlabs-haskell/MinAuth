@@ -7,7 +7,7 @@ import {
   liftAction,
   readJwt
 } from './common.js';
-import { pipe } from 'fp-ts/lib/lib/function.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import { accessProtectedAction } from '../actions.js';
 

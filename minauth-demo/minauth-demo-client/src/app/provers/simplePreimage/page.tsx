@@ -1,7 +1,7 @@
 'use client';
 import WorkComponent, { WorkState } from '@/app/workercomponent';
 import { useState } from 'react';
-import { SimplePreimageProver } from 'minauth-simple-preimage-plugin/prover';
+import { SimplePreimageProver } from 'minauth-simple-preimage-plugin/prover.js';
 
 type ProverZkCircuit = { type: 'SimplePreimage' };
 type WorkOutput = { verificationKey: string };

@@ -1,6 +1,6 @@
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
-import { ReaderTaskEither } from 'fp-ts/lib/lib/ReaderTaskEither.js';
-import { pipe } from 'fp-ts/lib/lib/function.js';
+import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
+import { pipe } from 'fp-ts/lib/function.js';
 
 import { Logger } from 'minauth/plugin/logger.js';
 import {
