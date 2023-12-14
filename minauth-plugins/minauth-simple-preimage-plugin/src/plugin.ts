@@ -78,7 +78,7 @@ export class SimplePreimagePlugin
   /**
    *  The mapping between hashes and role
    */
-  private readonly roles: Record<string, string>;
+  private roles: Record<string, string>;
 
   /** The plugin's logger */
   private readonly logger: Logger;
@@ -116,10 +116,22 @@ export class SimplePreimagePlugin
 
   /**
    * Provide an endpoint returning a list of roles recognized by the plugin.
+   * Additionally, provide an endpoint to update the roles
+   * NOTE. the setRoles endpoint should not be used by the client
+   * but rather by the plugin admin and that it is not persisted.
    */
-  readonly customRoutes = Router().get('/roles', (_, res) =>
-    res.status(200).json(this.roles)
-  );
+  readonly customRoutes = Router()
+    .get('/roles', (_, res) => res.status(200).json(this.roles))
+    .post('/admin/setRoles', (req, res) => {
+      try {
+        // Assuming the new roles are sent in the request body
+        this.roles = req.body;
+        res.status(200).json({ message: 'Roles updated successfully' });
+      } catch (error) {
+        // Handle errors, such as invalid input
+        res.status(400).json({ message: 'Error updating roles' });
+      }
+    });
 
   /**
    * Check if produced output is still valid. If the roles dictionary was edited

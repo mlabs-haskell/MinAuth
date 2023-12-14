@@ -6,6 +6,83 @@ import {
 import { TsInterfaceType } from 'minauth/plugin/interfacekind.js';
 import { Logger } from 'minauth/plugin/logger.js';
 import ProvePreimageProgram from './hash-preimage-proof.js';
+import z from 'zod';
+
+export class PluginRouter {
+  private serverUrl: string;
+  private logger: Logger;
+  private customRouteMapping: ((s: string) => string) | undefined;
+
+  constructor(
+    serverUrl: string,
+    logger: Logger,
+    customRouteMapping?: (s: string) => string
+  ) {
+    this.serverUrl = serverUrl;
+    this.logger = logger;
+    this.customRouteMapping = customRouteMapping;
+  }
+
+  private async request<T>(
+    method: 'GET' | 'POST',
+    pluginRoute: string,
+    schema: z.ZodType<T>,
+    body?: unknown
+  ): Promise<T> {
+    try {
+      const url = this.customRouteMapping
+        ? this.customRouteMapping(pluginRoute)
+        : `${this.serverUrl}${pluginRoute}`;
+      this.logger.debug(`Requesting ${method} ${pluginRoute}`);
+      const response = await fetch(`${url}`, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify(body) : null
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const validationResult = schema.safeParse(data);
+      if (!validationResult.success) {
+        throw new Error('Validation failed');
+      }
+
+      return validationResult.data;
+    } catch (error) {
+      this.logger.error('Error in fetch operation:', error);
+      throw error;
+    }
+  }
+
+  async get<T>(pluginRoute: string, schema: z.ZodType<T>): Promise<T> {
+    return this.request('GET', pluginRoute, schema);
+  }
+
+  async post<T>(
+    pluginRoute: string,
+    schema: z.ZodType<T>,
+    value: T
+  ): Promise<void> {
+    this.request('POST', pluginRoute, schema, value);
+  }
+
+  async getRoles(): Promise<Roles> {
+    return this.get<Roles>('/roles', RolesSchema);
+  }
+}
+
+const RolesSchema = z.record(z.string().min(1), z.string().min(1));
+type Roles = z.infer<typeof RolesSchema>;
+
+export type Configuration = {
+  logger: Logger;
+  pluginRoutes: PluginRouter;
+  compile?: boolean;
+};
 
 /**
  * Somewhat trivial example of a prover.
@@ -25,10 +102,14 @@ export class SimplePreimageProver
   static readonly __interface_tag: 'ts';
 
   /** The prover's logger */
-  private readonly logger: Logger;
+  protected readonly logger: Logger;
 
-  private constructor(logger: Logger) {
+  /** The prover's plugin routes */
+  protected readonly pluginRoutes: PluginRouter;
+
+  protected constructor(logger: Logger, pluginRoutes: PluginRouter) {
     this.logger = logger;
+    this.pluginRoutes = pluginRoutes;
   }
 
   /** Build a proof. */
@@ -44,6 +125,10 @@ export class SimplePreimageProver
     throw 'not implemented, please query the `/roles` endpoint';
   }
 
+  async getRoles(): Promise<Roles> {
+    return this.pluginRoutes.get('/roles', RolesSchema);
+  }
+
   /** Compile the underlying zk circuit */
   static async compile(): Promise<{ verificationKey: string }> {
     // disable cache because of bug in o1js 0.14.1:
@@ -55,15 +140,15 @@ export class SimplePreimageProver
 
   /** Initialize the prover */
   static async initialize(
-    logger: Logger,
-    compile: boolean = true
+    config: Configuration
   ): Promise<SimplePreimageProver> {
+    const { logger, pluginRoutes, compile } = config;
     if (compile) {
       logger.info('compiling the circuit');
       await SimplePreimageProver.compile();
       logger.info('compiled');
     }
-    return new SimplePreimageProver(logger);
+    return new SimplePreimageProver(logger, pluginRoutes);
   }
 }
 
@@ -72,3 +157,9 @@ SimplePreimageProver satisfies IMinAuthProverFactory<
   SimplePreimageProver,
   unknown
 >;
+
+export class DemoSimplePreimageProver extends SimplePreimageProver {
+  async setRoles(roles: Roles): Promise<void> {
+    return await this.pluginRoutes.post('/admin/roles', RolesSchema, roles);
+  }
+}

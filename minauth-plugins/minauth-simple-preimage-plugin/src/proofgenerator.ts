@@ -27,16 +27,17 @@ import {
   tryCatch
 } from 'minauth/utils/fp/readertaskeither.js';
 
-import { SimplePreimageProver } from './prover.js';
+import { PluginRouter, SimplePreimageProver } from './prover.js';
 
 const rawConfSchema = z.object({
-  password: z.string()
+  password: z.string(),
+  serverUrl: z.string()
 });
 
 // TODO give more visibility to proof generator configs
 /** Configuration for proof generation.
  */
-export type Conf = { password: Field };
+export type Conf = { password: Field; serverUrl: string };
 
 // FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 // TODO move to minauth-mina-utils (which is not yet created)
@@ -59,9 +60,15 @@ const confDec: Decoder<FpInterfaceType, Conf> = {
 
   decode: (inp: unknown) =>
     pipe(
-      wrapZodDec('fp', rawConfSchema).decode(inp),
-      E.chain(({ password }) => fieldEncDec.decode(password)),
-      E.map((password) => ({ password }))
+      E.Do,
+      E.bind('rawSchema', () => wrapZodDec('fp', rawConfSchema).decode(inp)),
+      E.bind('password', ({ rawSchema }) =>
+        fieldEncDec.decode(rawSchema.password)
+      ),
+      E.map(({ password, rawSchema }) => ({
+        password,
+        serverUrl: rawSchema.serverUrl
+      }))
     )
 };
 
@@ -78,9 +85,17 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
       logger.debug('publicInput', publicInput)
     ),
     RTE.bind('logger', () => askSublogger('SimplePreimageProver')),
-    RTE.bind('prover', ({ logger }) =>
+    RTE.bind('pluginRouterLogger', () => askSublogger('PluginRouterLogger')),
+    RTE.let(
+      'simplePreimageConfig',
+      ({ pluginRouterLogger, config, logger }) => ({
+        logger: logger,
+        pluginRoutes: new PluginRouter(config.serverUrl, pluginRouterLogger)
+      })
+    ),
+    RTE.bind('prover', ({ simplePreimageConfig }) =>
       tryCatch(
-        () => SimplePreimageProver.initialize(logger),
+        () => SimplePreimageProver.initialize(simplePreimageConfig),
         (err): GenerateProofError => ({
           __tag: 'failedToInitializeProver',
           reason: String(err)
