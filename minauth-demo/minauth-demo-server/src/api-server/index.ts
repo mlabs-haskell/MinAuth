@@ -12,6 +12,7 @@ import {
   signJWTPayload
 } from './setup_jwt_passport.js';
 import axios from 'axios';
+import { Filter, Options, createProxyMiddleware } from 'http-proxy-middleware';
 
 const app = express();
 const PORT: number = 3000;
@@ -19,10 +20,35 @@ const PORT: number = 3000;
 // The authentication will be done with the help of passport.js library
 const passport = setupPassport();
 
+// ====== Plugin server config.
+const pluginServerConfig = {
+  url: 'http://localhost',
+  port: 3001,
+  demoEnableProxy: true
+};
+
+const pluginServerUrl = `${pluginServerConfig.url}:${pluginServerConfig.port}`;
+
+const pluginServerProxyConfig: Filter | Options | null =
+  pluginServerConfig.demoEnableProxy
+    ? {
+        // Proxy configuration
+        target: pluginServerUrl,
+        changeOrigin: true,
+        logLevel: 'debug' // Optional: for logging
+        // Additional configurations if needed
+      }
+    : null;
+
 // ====== The express.js server setup.
 
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
+
+if (pluginServerProxyConfig) {
+  // Use the proxy middleware for specific paths
+  app.use('/plugins', createProxyMiddleware(pluginServerProxyConfig));
+}
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
@@ -54,7 +80,7 @@ app.post(
 
 const validateOutput = (plugin: string, output: unknown): Promise<boolean> =>
   axios
-    .post('http://127.0.0.1:3001/validateOutput', {
+    .post(`{pluginServerUrl}/validateOutput`, {
       plugin,
       output
     })
@@ -107,3 +133,7 @@ app.get(
     res.send({ message: `You are accessing a protected route.` });
   }
 );
+
+app.get('/health', (_: Request, res: Response) => {
+  res.status(200).json({});
+});

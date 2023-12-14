@@ -96,7 +96,7 @@ const installBasicRoutes = (): PluginServer<void> =>
           .use(bodyParser.json())
           .post('/verifyProof', handleVerifyProof(env))
           .post('/validateOutput', handleValidateOutput(env))
-          .get('/activePlugins', handleActivePlugins(env))
+          .get('/plugins/activePlugins', handleActivePlugins(env))
           .get('/health', (_, resp) => resp.status(200).json({}))
       )
     )
