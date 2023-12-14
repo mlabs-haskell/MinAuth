@@ -12,7 +12,10 @@ import {
   validateOutput,
   verifyProof
 } from '../../server/plugin-fp-api.js';
-import { PluginRuntimeEnv } from '../../server/pluginruntime.js';
+import {
+  PluginRuntimeEnv,
+  askActivePluginNames
+} from '../../server/pluginruntime.js';
 import { launchTE, liftZodParseResult } from '../../utils/fp/taskeither.js';
 import {
   PluginServer,
@@ -52,6 +55,12 @@ const validateOutputDataSchema = z.object({
 
 type ValidateOutputData = z.infer<typeof validateOutputDataSchema>;
 
+/** Handle a GET request to /activePlugins */
+const handleActivePlugins = (env: PluginRuntimeEnv) =>
+  wrapTrivialExpressHandler(() => {
+    return askActivePluginNames()(env);
+  });
+
 /** Handle a POST request to /validateOutput */
 const handleValidateOutput =
   (env: PluginRuntimeEnv) =>
@@ -87,6 +96,7 @@ const installBasicRoutes = (): PluginServer<void> =>
           .use(bodyParser.json())
           .post('/verifyProof', handleVerifyProof(env))
           .post('/validateOutput', handleValidateOutput(env))
+          .get('/activePlugins', handleActivePlugins(env))
           .get('/health', (_, resp) => resp.status(200).json({}))
       )
     )

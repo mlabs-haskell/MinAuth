@@ -79,6 +79,13 @@ export const askPluginInstance = (
     )
   );
 
+export const askActivePluginNames = (): PluginRuntime<string[]> =>
+  pipe(
+    RTE.Do,
+    RTE.bind('plugins', () => askActivePlugins()),
+    RTE.map(({ plugins }) => Object.keys(plugins))
+  );
+
 /**
  * Get the plugin runtime environment.
  */
