@@ -6,8 +6,13 @@ import React, { useEffect, useState } from 'react';
 import Form from '@rjsf/core';
 import { Logger, ILogObj } from 'tslog';
 
-import { SimplePreimageProver } from 'minauth-simple-preimage-plugin/prover.js';
+import {
+  PluginRouter,
+  SimplePreimageProver
+} from 'minauth-simple-preimage-plugin/prover.js';
 import { Field, JsonProof, Poseidon } from 'o1js';
+
+const pluginsBaseURL = 'http://localhost:3000/plugins';
 
 export interface MinAuthProof {
   plugin: string;
@@ -67,14 +72,25 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
         'minauth-simple-preimage-plugin/prover'
       );
       console.log('Compiling the prover...');
-      const { verificationKey } = await SimplePreimageProver.compile();
-      setProverVerificationKey({ verificationKey });
-      console.log('verificationKey', verificationKey);
       const proverlogger: Logger<ILogObj> =
         props.logger?.getSubLogger({ name: 'SimplePreimagePlugin prover' }) ||
         new Logger({ name: 'SimplePreimagePlugin prover' });
-      const prover = await SimplePreimageProver.initialize(proverlogger, false);
-      setProver(prover);
+      const pluginRouterLogger: Logger<ILogObj> =
+        props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
+        new Logger({ name: 'PluginRouter logger' });
+      // uncommenting causes error
+      /* const spreConfiguration = {
+       *   logger: proverlogger,
+       *   pluginRoutes: new PluginRouter(pluginsBaseURL, pluginRouterLogger),
+       *   compile: false
+       * }; */
+      /* const prover = await SimplePreimageProver.initialize(spreConfiguration); */
+
+      /* const { verificationKey } = await SimplePreimageProver.compile(); */
+      /* setProverVerificationKey({ verificationKey }); */
+
+      /* console.log('verificationKey', verificationKey); */
+      /* setProver(prover); */
     })();
   }, []);
 

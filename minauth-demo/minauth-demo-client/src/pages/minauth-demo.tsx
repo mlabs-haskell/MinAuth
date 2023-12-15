@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import MinAuthProverComponent from './minauth-prover-component';
 import { ILogObj, Logger } from 'tslog';
+import DropdownComponent from '@/components/dropdown';
 
 const MinAuthDemo: React.FC = () => {
   const [logger, setLogger] = useState<Logger<ILogObj> | undefined>(undefined);
@@ -17,6 +18,10 @@ const MinAuthDemo: React.FC = () => {
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-800 text-white p-5">
       <Header />
       <div className="flex flex-col w-full max-w-4xl mt-5">
+        <DropdownComponent
+          fetchUrl="http://localhost:3000/plugins/activePlugins"
+          onSelectedOptionChange={() => {}}
+        />
         <MinAuthProverComponent logger={logger} />
         <div className="flex justify-between space-x-4">
           <AuthenticationStatus />

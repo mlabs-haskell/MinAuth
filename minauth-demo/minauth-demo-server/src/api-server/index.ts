@@ -13,6 +13,7 @@ import {
 } from './setup_jwt_passport.js';
 import axios from 'axios';
 import { Filter, Options, createProxyMiddleware } from 'http-proxy-middleware';
+import cors from 'cors';
 
 const app = express();
 const PORT: number = 3000;
@@ -44,6 +45,13 @@ const pluginServerProxyConfig: Filter | Options | null =
 
 // Middleware to parse JSON requests
 app.use(bodyParser.json());
+
+// allow demo client
+app.use(
+  cors({
+    origin: 'http://localhost:3002'
+  })
+);
 
 if (pluginServerProxyConfig) {
   // Use the proxy middleware for specific paths

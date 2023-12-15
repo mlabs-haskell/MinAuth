@@ -9,16 +9,16 @@ import ProvePreimageProgram from './hash-preimage-proof.js';
 import z from 'zod';
 
 export class PluginRouter {
-  private serverUrl: string;
+  private baseUrl: string;
   private logger: Logger;
   private customRouteMapping: ((s: string) => string) | undefined;
 
   constructor(
-    serverUrl: string,
+    baseUrl: string,
     logger: Logger,
     customRouteMapping?: (s: string) => string
   ) {
-    this.serverUrl = serverUrl;
+    this.baseUrl = baseUrl;
     this.logger = logger;
     this.customRouteMapping = customRouteMapping;
   }
@@ -32,7 +32,7 @@ export class PluginRouter {
     try {
       const url = this.customRouteMapping
         ? this.customRouteMapping(pluginRoute)
-        : `${this.serverUrl}${pluginRoute}`;
+        : `${this.baseUrl}${pluginRoute}`;
       this.logger.debug(`Requesting ${method} ${pluginRoute}`);
       const response = await fetch(`${url}`, {
         method: method,
