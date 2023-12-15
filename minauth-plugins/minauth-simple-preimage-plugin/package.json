@@ -1,6 +1,6 @@
 {
   "name": "minauth-simple-preimage-plugin",
-  "version": "0.9.0-alpha.8",
+  "version": "0.9.0-alpha.9",
   "description": "A very simple Minauth plugin that allows users to authenticate by providing a preimage to a given hash.",
   "type": "module",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "fp-ts": "^2.16.1",
-    "minauth": "file:../../minauth/dist",
+    "minauth": "dev",
     "zod": "^3.22.2"
   },
   "devDependencies": {
