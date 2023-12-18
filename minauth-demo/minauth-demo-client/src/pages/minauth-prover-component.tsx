@@ -9,10 +9,10 @@ import { Logger, ILogObj } from 'tslog';
 import {
   PluginRouter,
   SimplePreimageProver
-} from 'minauth-simple-preimage-plugin/prover.js';
+} from 'minauth-simple-preimage-plugin/dist/prover.js';
 import { Field, JsonProof, Poseidon } from 'o1js';
 
-const pluginsBaseURL = 'http://localhost:3000/plugins';
+const pluginsBaseURL = 'http://127.0.0.1:3000/plugins';
 
 export interface MinAuthProof {
   plugin: string;
@@ -69,7 +69,7 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
   useEffect(() => {
     (async () => {
       const { SimplePreimageProver } = await import(
-        'minauth-simple-preimage-plugin/prover'
+        'minauth-simple-preimage-plugin/dist/prover'
       );
       console.log('Compiling the prover...');
       const proverlogger: Logger<ILogObj> =
@@ -79,18 +79,18 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
         props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
         new Logger({ name: 'PluginRouter logger' });
       // uncommenting causes error
-      /* const spreConfiguration = {
-       *   logger: proverlogger,
-       *   pluginRoutes: new PluginRouter(pluginsBaseURL, pluginRouterLogger),
-       *   compile: false
-       * }; */
-      /* const prover = await SimplePreimageProver.initialize(spreConfiguration); */
+      const spreConfiguration = {
+        logger: proverlogger,
+        pluginRoutes: new PluginRouter(pluginsBaseURL, pluginRouterLogger),
+        compile: false
+      };
+      const prover = await SimplePreimageProver.initialize(spreConfiguration);
 
-      /* const { verificationKey } = await SimplePreimageProver.compile(); */
-      /* setProverVerificationKey({ verificationKey }); */
+      const { verificationKey } = await SimplePreimageProver.compile();
+      setProverVerificationKey({ verificationKey });
 
-      /* console.log('verificationKey', verificationKey); */
-      /* setProver(prover); */
+      console.log('verificationKey', verificationKey);
+      setProver(prover);
     })();
   }, []);
 
@@ -170,7 +170,7 @@ export default MinAuthProverComponent;
  * });
  *
  * async function postMinAuthProof(minAuthProof: MinAuthProof): Promise<Response> {
- *   const url = 'http://localhost:3000/login';
+ *   const url = 'http://127.0.0.1:3000/login';
  *   const headers = {
  *     'Content-Type': 'application/json'
  *   };

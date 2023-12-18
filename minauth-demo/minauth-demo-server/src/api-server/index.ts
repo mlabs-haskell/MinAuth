@@ -23,7 +23,7 @@ const passport = setupPassport();
 
 // ====== Plugin server config.
 const pluginServerConfig = {
-  url: 'http://localhost',
+  url: 'http://127.0.0.1',
   port: 3001,
   demoEnableProxy: true
 };
@@ -47,9 +47,15 @@ const pluginServerProxyConfig: Filter | Options | null =
 app.use(bodyParser.json());
 
 // allow demo client
+const allowedOrigins = [
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004'
+];
+
 app.use(
   cors({
-    origin: 'http://localhost:3002'
+    origin: allowedOrigins
   })
 );
 
@@ -59,7 +65,7 @@ if (pluginServerProxyConfig) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://127.0.0.1:${PORT}`);
 });
 
 app.post(

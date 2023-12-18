@@ -19,7 +19,7 @@ const MinAuthDemo: React.FC = () => {
       <Header />
       <div className="flex flex-col w-full max-w-4xl mt-5">
         <DropdownComponent
-          fetchUrl="http://localhost:3000/plugins/activePlugins"
+          fetchUrl="http://127.0.0.1:3000/plugins/activePlugins"
           onSelectedOptionChange={() => {}}
         />
         <MinAuthProverComponent logger={logger} />
