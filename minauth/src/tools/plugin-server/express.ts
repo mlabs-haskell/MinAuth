@@ -3,7 +3,6 @@ import * as expressCore from 'express-serve-static-core';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import * as TE from 'fp-ts/lib/TaskEither.js';
 import { pipe } from 'fp-ts/lib/function.js';
-import { JsonProof } from 'o1js';
 import { z } from 'zod';
 import { wrapTrivialExpressHandler } from '../../plugin/express.js';
 import { OutputValidity } from '../../plugin/plugintype.js';
@@ -27,18 +26,21 @@ import {
   useRootLogger,
   withExpressApp
 } from './types.js';
-
-interface VerifyProofData {
-  plugin: string;
-  publicInputArgs: unknown;
-  proof: JsonProof;
-}
+import { MinAuthProofSchema } from '../../common/proof.js';
 
 /** Handle a POST request to /verifyProof */
 const handleVerifyProof = (env: PluginRuntimeEnv) =>
   wrapTrivialExpressHandler((req) => {
-    const body = req.body as VerifyProofData;
-    env.logger.info(`Incoming request with body:\b ${body}`);
+    const parseResults = MinAuthProofSchema.safeParse(req.body);
+    if (!parseResults.success) {
+      env.logger.info(
+        `Failed to parse incoming MinAuthProof:\b ${parseResults.error}`
+      );
+      return TE.left('Failed to parse incoming MinAuthProof');
+    }
+    const body = parseResults.data;
+    env.logger.info(`Parsed incoming MinAuthProof with body:\b ${body}`);
+
     return pipe(
       verifyProof(body.proof, body.publicInputArgs, body.plugin)(env),
       TE.map((output) => {

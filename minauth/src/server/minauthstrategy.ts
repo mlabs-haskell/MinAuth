@@ -2,16 +2,7 @@
 import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
-import { JsonProof } from 'o1js';
-
-/**
- * The generic proof shape that can be verified by the plugin server.
- */
-export interface MinAuthProof {
-  plugin: string;
-  publicInputArgs: unknown;
-  proof: JsonProof;
-}
+import { MinAuthProof } from '../common/proof';
 
 /**
  * A result of a proof verification.

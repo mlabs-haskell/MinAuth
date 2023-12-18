@@ -20,7 +20,7 @@ import {
   fpInterfaceTag
 } from 'minauth/plugin/interfacekind.js';
 import { Either } from 'fp-ts/lib/Either.js';
-import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { MinAuthProof } from 'minauth/common/proof.js';
 import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import { safeFromString } from 'minauth/utils/fp/either.js';

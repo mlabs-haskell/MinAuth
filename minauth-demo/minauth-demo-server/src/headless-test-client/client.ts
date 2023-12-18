@@ -1,4 +1,4 @@
-import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { MinAuthProof } from 'minauth/common/proof.js';
 import axios, { isAxiosError } from 'axios';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import path from 'path';

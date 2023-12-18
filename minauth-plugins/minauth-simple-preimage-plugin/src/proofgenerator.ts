@@ -19,7 +19,7 @@ import {
   ProofGenerator,
   askConfig
 } from 'minauth/plugin/proofgenerator.js';
-import { MinAuthProof } from 'minauth/server/minauthstrategy.js';
+import { MinAuthProof } from 'minauth/common/proof.js';
 import { safeFromString } from 'minauth/utils/fp/either.js';
 import {
   askSublogger,
