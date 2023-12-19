@@ -6,13 +6,13 @@ import { Action, ActionError } from '../actions.js';
 import { pipe } from 'fp-ts/lib/function.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import * as fs from 'fs/promises';
-import { Logger } from 'minauth/plugin/logger.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 
 import {
   askLogger,
   askRecordField,
   tryCatch
-} from 'minauth/utils/fp/readertaskeither.js';
+} from 'minauth/dist/utils/fp/readertaskeither.js';
 
 /**
  * Options shared by all commands

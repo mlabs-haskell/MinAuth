@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import MinAuthStrategy, {
   AuthenticationResponse
-} from 'minauth/server/minauthstrategy.js';
+} from 'minauth/dist/server/minauthstrategy.js';
 import {
   JWTPayload,
   generateRefreshToken,

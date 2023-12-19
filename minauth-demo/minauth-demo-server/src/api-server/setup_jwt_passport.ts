@@ -4,7 +4,7 @@ import passportJWT from 'passport-jwt';
 import jwt from 'jsonwebtoken';
 import MinAuthStrategy, {
   AuthenticationResponse
-} from 'minauth/server/minauthstrategy.js';
+} from 'minauth/dist/server/minauthstrategy.js';
 
 // This is just for demonstration purposes, don't state you secrets publicly ;)
 const SECRET_KEY: string = 'YOUR_SECRET_KEY';

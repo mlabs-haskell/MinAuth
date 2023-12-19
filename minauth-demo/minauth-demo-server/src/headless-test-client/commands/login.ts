@@ -3,14 +3,14 @@ import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import * as R from 'fp-ts/lib/Record.js';
 import { pipe } from 'fp-ts/lib/function.js';
 
-import MerkleMembershipsGenerator from 'minauth-merkle-membership-plugin/proofgenerator.js';
-import SimplePreImageGenerator from 'minauth-simple-preimage-plugin/proofgenerator.js';
+import MerkleMembershipsGenerator from 'minauth-merkle-membership-plugin/dist/proofgenerator.js';
+import SimplePreImageGenerator from 'minauth-simple-preimage-plugin/dist/proofgenerator.js';
 
 import { loginAction } from '../actions.js';
 import {
   UntypedProofGenerator,
   asUntypedProofGenerator
-} from 'minauth/plugin/proofgenerator.js';
+} from 'minauth/dist/plugin/proofgenerator.js';
 import {
   CommandHandler,
   CommonOptions,

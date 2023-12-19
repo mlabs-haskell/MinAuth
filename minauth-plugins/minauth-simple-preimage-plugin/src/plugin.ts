@@ -5,20 +5,20 @@ import {
   OutputValidity,
   outputInvalid,
   outputValid
-} from 'minauth/plugin/plugintype.js';
+} from 'minauth/dist/plugin/plugintype.js';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from './hash-preimage-proof.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { TsInterfaceType } from 'minauth/plugin/interfacekind.js';
+import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as fs from 'fs/promises';
 import {
   wrapZodDec,
   combineEncDec,
   noOpEncoder
-} from 'minauth/plugin/encodedecoder.js';
-import { Logger } from 'minauth/plugin/logger.js';
+} from 'minauth/dist/plugin/encodedecoder.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 
 /**
  * The plugin configuration schema.

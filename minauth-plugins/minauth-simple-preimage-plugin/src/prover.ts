@@ -2,9 +2,9 @@ import { Field, JsonProof, Cache } from 'o1js';
 import {
   IMinAuthProver,
   IMinAuthProverFactory
-} from 'minauth/plugin/plugintype.js';
-import { TsInterfaceType } from 'minauth/plugin/interfacekind.js';
-import { Logger } from 'minauth/plugin/logger.js';
+} from 'minauth/dist/plugin/plugintype.js';
+import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 import ProvePreimageProgram from './hash-preimage-proof.js';
 import z from 'zod';
 

@@ -14,7 +14,7 @@ import {
   findM,
   fromFailablePromise,
   liftZodParseResult
-} from 'minauth/utils/fp/taskeither.js';
+} from 'minauth/dist/utils/fp/taskeither.js';
 import {
   AccountUpdate,
   Field,

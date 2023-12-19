@@ -1,4 +1,4 @@
-import { MinAuthProof } from 'minauth/common/proof.js';
+import { MinAuthProof } from 'minauth/dist/common/proof.js';
 import axios, { isAxiosError } from 'axios';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import path from 'path';
@@ -10,10 +10,10 @@ import {
   tryCatch,
   tryCatchIO,
   useLogger
-} from 'minauth/utils/fp/readertaskeither.js';
+} from 'minauth/dist/utils/fp/readertaskeither.js';
 import { Option } from 'fp-ts/lib/Option.js';
 import * as O from 'fp-ts/lib/Option.js';
-import { Logger } from 'minauth/plugin/logger.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 
 export type ClientEnv = Readonly<{
   serverUrl: string;

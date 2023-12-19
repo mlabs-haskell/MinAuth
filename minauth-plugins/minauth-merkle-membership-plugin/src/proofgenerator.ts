@@ -9,22 +9,22 @@ import {
   GenerateProofError,
   ProofGenerator,
   askConfig
-} from 'minauth/plugin/proofgenerator.js';
+} from 'minauth/dist/plugin/proofgenerator.js';
 import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder.js';
+} from 'minauth/dist/plugin/encodedecoder.js';
 import {
   FpInterfaceType,
   fpInterfaceTag
-} from 'minauth/plugin/interfacekind.js';
+} from 'minauth/dist/plugin/interfacekind.js';
 import { Either } from 'fp-ts/lib/Either.js';
-import { MinAuthProof } from 'minauth/common/proof.js';
+import { MinAuthProof } from 'minauth/dist/common/proof.js';
 import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
-import { safeFromString } from 'minauth/utils/fp/either.js';
-import { tapLogger } from 'minauth/utils/fp/readertaskeither.js';
+import { safeFromString } from 'minauth/dist/utils/fp/either.js';
+import { tapLogger } from 'minauth/dist/utils/fp/readertaskeither.js';
 
 // TODO/FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {

@@ -8,24 +8,24 @@ import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder.js';
+} from 'minauth/dist/plugin/encodedecoder.js';
 import {
   FpInterfaceType,
   fpInterfaceTag
-} from 'minauth/plugin/interfacekind.js';
+} from 'minauth/dist/plugin/interfacekind.js';
 import {
   GenerateProof,
   GenerateProofError,
   ProofGenerator,
   askConfig
-} from 'minauth/plugin/proofgenerator.js';
-import { MinAuthProof } from 'minauth/common/proof.js';
-import { safeFromString } from 'minauth/utils/fp/either.js';
+} from 'minauth/dist/plugin/proofgenerator.js';
+import { MinAuthProof } from 'minauth/dist/common/proof.js';
+import { safeFromString } from 'minauth/dist/utils/fp/either.js';
 import {
   askSublogger,
   tapLogger,
   tryCatch
-} from 'minauth/utils/fp/readertaskeither.js';
+} from 'minauth/dist/utils/fp/readertaskeither.js';
 
 import { PluginRouter, SimplePreimageProver } from './prover.js';
 

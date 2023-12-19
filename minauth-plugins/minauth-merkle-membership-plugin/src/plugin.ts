@@ -7,7 +7,7 @@ import {
   OutputValidity,
   outputInvalid,
   outputValid
-} from 'minauth/plugin/plugintype.js';
+} from 'minauth/dist/plugin/plugintype.js';
 import {
   MinaTreesProvider,
   MinaTreesProviderConfiguration,
@@ -23,10 +23,10 @@ import {
   fromFailablePromise,
   guard,
   safeGetFieldParam
-} from 'minauth/utils/fp/taskeither.js';
+} from 'minauth/dist/utils/fp/taskeither.js';
 import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
 import * as NE from 'fp-ts/lib/NonEmptyArray.js';
-import { FpInterfaceType } from 'minauth/plugin/interfacekind.js';
+import { FpInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as E from 'fp-ts/lib/Either.js';
 import * as O from 'fp-ts/lib/Option.js';
 import * as A from 'fp-ts/lib/Array.js';
@@ -34,9 +34,9 @@ import {
   Decoder,
   EncodeDecoder,
   wrapZodDec
-} from 'minauth/plugin/encodedecoder.js';
-import { Logger } from 'minauth/plugin/logger.js';
-import { wrapTrivialExpressHandler } from 'minauth/plugin/express.js';
+} from 'minauth/dist/plugin/encodedecoder.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
+import { wrapTrivialExpressHandler } from 'minauth/dist/plugin/express.js';
 
 /**
  * The type of the public input of the Minauth plugin.

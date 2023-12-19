@@ -7,7 +7,7 @@
   "scripts": {
     "run-client": "node ./dist/headless-test-client/index.js",
     "serve-api": "node ./dist/api-server/index.js",
-    "serve-plugin-server": "node ./node_modules/minauth/tools/plugin-server/index.js",
+    "serve-plugin-server": "node ./node_modules/minauth/dist/tools/plugin-server/index.js",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "test": "jest",
     "build": "tsc"
@@ -26,9 +26,9 @@
     "fp-ts": "^2.16.1",
     "http-proxy-middleware": "^2.0.6",
     "jsonwebtoken": "^9.0.2",
-    "minauth": "file:../../minauth/dist",
-    "minauth-merkle-membership-plugin": "file:../../minauth-plugins/minauth-merkle-membership-plugin/dist",
-    "minauth-simple-preimage-plugin": "file:../../minauth-plugins/minauth-simple-preimage-plugin/dist",
+    "minauth": "0.9.0-alpha.13",
+    "minauth-merkle-membership-plugin": "0.9.0-alpha.13",
+    "minauth-simple-preimage-plugin": "0.9.0-alpha.13",
     "o1js": "0.14.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
