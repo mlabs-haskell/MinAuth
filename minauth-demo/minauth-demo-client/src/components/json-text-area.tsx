@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 interface JsonTextareaProps {
+  id?: string;
   json: string;
   onJsonChange?: (json: string) => void;
   readOnly?: boolean;
 }
 
 const JsonTextarea: React.FC<JsonTextareaProps> = ({
+  id,
   json,
   onJsonChange,
   readOnly
@@ -17,21 +19,16 @@ const JsonTextarea: React.FC<JsonTextareaProps> = ({
   // Function to validate and format JSON
   const validateAndFormatJson = (inputJson: string): string | null => {
     try {
+      // Attempt to parse the input JSON string
       const parsedJson = JSON.parse(inputJson);
-      if (
-        typeof parsedJson === 'object' &&
-        parsedJson !== null &&
-        !Array.isArray(parsedJson)
-      ) {
-        const safeJson = JSON.parse(
-          JSON.stringify(parsedJson, Object.keys(parsedJson))
-        );
-        return JSON.stringify(safeJson, null, 2);
-      }
+
+      // Reformat the parsed JSON with indentation for readability
+      return JSON.stringify(parsedJson, null, 2);
     } catch (error) {
-      // Invalid JSON
+      // Log the error if the JSON is invalid
+      console.error('Invalid JSON input:', error);
     }
-    return null;
+    return null; // Return null if JSON is invalid
   };
 
   useEffect(() => {
@@ -65,6 +62,8 @@ const JsonTextarea: React.FC<JsonTextareaProps> = ({
 
   return (
     <textarea
+      {...(id && { id })} // Conditionally include the id attribute
+      id={id}
       value={text}
       onChange={handleChange}
       style={{

@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { mkRequest } from './request';
+import { ApiResponse, ApiResponseSchema, mkRequest } from './request';
 import { MinAuthProof } from 'minauth/dist/common/proof';
 
 const submitURL = 'http://127.0.0.1:3000/login';
+const refreshURL = 'http://127.0.0.1:3000/token';
 
 export const AuthSchema = z.object({
   token: z.string(),
@@ -10,28 +11,44 @@ export const AuthSchema = z.object({
   message: z.string()
 });
 
-export type AuthResponse = z.infer<typeof AuthSchema>;
+export type AuthData = z.infer<typeof AuthSchema>;
+export type AuthResponse = ApiResponse<typeof AuthSchema>;
 
 export const getAuth = async (submissionData: MinAuthProof) => {
   const res = await mkRequest(submitURL, AuthSchema, { body: submissionData });
   return res;
 };
 
-export const parseAuthResponse = (response: unknown): AuthResponse | null => {
-  const result = AuthSchema.safeParse(response);
-  if (result.success) {
-    return result.data;
+export const parseAuthData = (
+  response: ApiResponse<typeof AuthSchema>
+): AuthData | null => {
+  if (response.type === 'ok') {
+    const result = AuthSchema.safeParse(response.data);
+    if (result.success) {
+      return result.data;
+    }
   }
   return null;
 };
 
-export const mkAuthorizedRequestGet = async (
+export const mkAuthorizedRequest = async (
   url: string,
-  auth: AuthResponse
-) => {
+  auth: AuthData,
+  props?: { body?: unknown }
+): Promise<ApiResponse<z.ZodTypeAny>> => {
   const headers = {
     Authorization: `Bearer ${auth.token}`
   };
 
-  return await mkRequest(url, z.unknown(), { headers });
+  return await mkRequest(
+    url,
+    z.unknown(),
+    props?.body ? { headers, body: props?.body } : { headers }
+  );
+};
+
+export const refreshAuth = async (auth: AuthData): Promise<AuthResponse> => {
+  const schema = ApiResponseSchema(AuthSchema);
+  const resp = await mkAuthorizedRequest(refreshURL, auth, { body: auth });
+  return schema.parse(resp);
 };

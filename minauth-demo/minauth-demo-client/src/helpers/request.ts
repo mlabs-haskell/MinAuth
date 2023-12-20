@@ -3,12 +3,33 @@
  */
 import { z } from 'zod';
 
-// Custom Error Type
-export type ErrorResponse = {
-  type: 'network-error' | 'validation-error';
-  message: string;
-  details?: unknown; // Additional details about the error (optional)
-};
+// Define a Zod schema for ErrorResponse
+export const ErrorResponseSchema = z.object({
+  type: z.union([z.literal('network-error'), z.literal('validation-error')]),
+  message: z.string(),
+  server_response: z.unknown().optional(),
+  details: z.unknown().optional()
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const OkResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    type: z.literal('ok'),
+    data: dataSchema,
+    server_response: z.unknown()
+  });
+
+export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.union([OkResponseSchema(dataSchema), ErrorResponseSchema]);
+
+// Infer types from the schemas
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+export type OkResponse<T extends z.ZodTypeAny> = z.infer<
+  ReturnType<typeof OkResponseSchema<T>>
+>;
+export type ApiResponse<T extends z.ZodTypeAny> = z.infer<
+  ReturnType<typeof ApiResponseSchema<T>>
+>;
 
 export async function mkRequest<U extends z.ZodSchema>(
   url: string,
@@ -17,7 +38,7 @@ export async function mkRequest<U extends z.ZodSchema>(
     headers?: Record<string, string>;
     body?: unknown;
   }
-): Promise<z.infer<U> | ErrorResponse> {
+): Promise<ApiResponse<U>> {
   let { headers } = opts ?? {};
   const { body } = opts ?? {};
   try {
@@ -43,27 +64,48 @@ export async function mkRequest<U extends z.ZodSchema>(
             body: JSON.stringify(body)
           });
 
-    if (!response.ok) {
+    const respbody = await response.json();
+    console.log('wtf', respbody);
+    // Extract headers
+    const respheaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      respheaders[key] = value;
+    });
+
+    const respObj = {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      headers: respheaders,
+      redirected: response.redirected,
+      url: response.url,
+      body: respbody
+    };
+    console.log('wtf', respObj);
+
+    if (!respObj.ok) {
       return {
         type: 'network-error',
-        message: `HTTP error! status: ${response.status}`
+        message: `HTTP error! status: ${response.status}`,
+        server_response: respObj
       };
     }
 
-    const jsonData = await response.json();
-
-    // Validate the response with Zod schema
-    return schema.parse(jsonData);
-  } catch (error: unknown) {
-    let message = 'An error occurred';
-    if (error instanceof z.ZodError) {
-      // Handle Zod validation errors
+    const parseRes = schema.safeParse(respObj.body);
+    if (!parseRes.success) {
       return {
         type: 'validation-error',
         message: 'Validation error',
-        details: error.errors
+        details: parseRes.error.errors,
+        server_response: respObj
       };
-    } else if (error instanceof Error) {
+    } else {
+      return { data: parseRes.data, server_response: respObj, type: 'ok' };
+    }
+  } catch (error: unknown) {
+    let message = 'An error occurred';
+    // handle schema.parse errors
+    if (error instanceof Error) {
       // Handle general errors
       message = error.message;
     }

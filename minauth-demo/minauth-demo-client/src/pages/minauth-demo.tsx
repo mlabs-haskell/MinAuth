@@ -5,13 +5,24 @@ import { ILogObj, Logger } from 'tslog';
 import DropdownComponent from '@/components/dropdown';
 import JsonTextarea from '@/components/json-text-area';
 import { MinAuthProof } from 'minauth/dist/common/proof';
-import { AuthResponse, parseAuthResponse } from '@/helpers/jwt';
+import { AuthResponse, parseAuthData, refreshAuth } from '@/helpers/jwt';
 import { requestProtectedResource } from '@/api/resource';
+import {
+  SimplePreimageRolesResponse,
+  SimplePreimageRolesSchema,
+  simplePreimageGetRoles,
+  simplePreimageSetRoles
+} from '@/helpers/demo-admin';
+import { ApiResponse } from '@/helpers/request';
+import { z } from 'zod';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
 const MinAuthDemo: React.FC = () => {
-  const [logger, setLogger] = useState<Logger<ILogObj> | undefined>(undefined);
+  const logger = new Logger<ILogObj>({
+    name: 'minauth-demo-component',
+    stylePrettyLogs: false
+  });
   const [proverFormData, setProverFormData] = useState<FormDataChange>();
   const [authenticationData, setAuthenticationData] =
     useState<AuthResponse | null>(null);
@@ -19,9 +30,8 @@ const MinAuthDemo: React.FC = () => {
     null
   );
 
-  const [resourceResponse, setResourceResponse] = useState<unknown | null>(
-    null
-  );
+  const [resourceResponse, setResourceResponse] =
+    useState<ApiResponse<z.ZodTypeAny> | null>(null);
 
   const handleSubmissionDataChange = (
     newSubmissionData: MinAuthProof | null
@@ -38,16 +48,7 @@ const MinAuthDemo: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    setLogger(
-      new Logger({
-        name: 'minauth-demo-component',
-        stylePrettyLogs: false
-      })
-    );
-  }, []);
-
-  const handleRequestedResource = (res: unknown) => {
+  const handleRequestedResource = (res: ApiResponse<z.ZodUnknown>) => {
     setResourceResponse(res);
   };
 
@@ -61,11 +62,16 @@ const MinAuthDemo: React.FC = () => {
             fetchUrl="http://127.0.0.1:3000/plugins/activePlugins"
             onSelectedOptionChange={() => {}}
           />
+          <SimplePreimageAdminConfigComponent
+            logger={logger?.getSubLogger({
+              name: 'SimplePreimageAdminConfigComponent'
+            })}
+          />
           <MinAuthProverComponent
             onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
             onSubmissionDataChange={handleSubmissionDataChange}
             onAuthenticationResponse={(response) => {
-              setAuthenticationData(parseAuthResponse(response));
+              setAuthenticationData(response);
             }}
             logger={logger}
           />
@@ -82,7 +88,11 @@ const MinAuthDemo: React.FC = () => {
                 auth={authenticationData}
                 onResponse={handleRequestedResource}
               />
-              <RevokeProofButton />
+              <RefreshAuthButton
+                auth={authenticationData}
+                onResponse={setAuthenticationData}
+              />
+              {/* <RevokeProofButton /> */}
             </div>
           </div>
           <ResponseSummary protectedResourceResponse={resourceResponse} />
@@ -112,15 +122,41 @@ const AuthenticationStatus = (props: { authenticationData: unknown }) => {
   );
 };
 
-const RequestResourceButton = (props: {
+const RefreshAuthButton = (props: {
   auth: AuthResponse | null;
-  onResponse: (res: unknown) => void;
+  onResponse: (res: AuthResponse) => void;
 }) => {
   const request = async () => {
     if (props.auth === null) {
       return;
     }
-    const res = requestProtectedResource(props.auth);
+    const authData = parseAuthData(props.auth);
+    if (!authData) return;
+    const res = await refreshAuth(authData);
+    props.onResponse(res);
+  };
+  return (
+    <button
+      className="resource-request-btn"
+      onClick={request}
+      disabled={props.auth === null}
+    >
+      Refresh authentication
+    </button>
+  );
+};
+
+const RequestResourceButton = (props: {
+  auth: AuthResponse | null;
+  onResponse: (res: ApiResponse<z.ZodUnknown>) => void;
+}) => {
+  const request = async () => {
+    if (props.auth === null) {
+      return;
+    }
+    const authData = parseAuthData(props.auth);
+    if (!authData) return;
+    const res = await requestProtectedResource(authData);
     props.onResponse(res);
   };
   return (
@@ -134,7 +170,9 @@ const RequestResourceButton = (props: {
   );
 };
 
-const ResponseSummary = (props: { protectedResourceResponse: unknown }) => {
+const ResponseSummary = (props: {
+  protectedResourceResponse: ApiResponse<z.ZodUnknown> | null;
+}) => {
   return (
     <div className="response-summary">
       <JsonTextarea
@@ -145,10 +183,84 @@ const ResponseSummary = (props: { protectedResourceResponse: unknown }) => {
   );
 };
 
-const RevokeProofButton = () => {
+/**
+ * Get, set, and display the roles for the SimplePreimage plugin.
+ */
+const SimplePreimageAdminConfigComponent = (props: {
+  logger: Logger<ILogObj>;
+}) => {
+  const [simplePreimageRoles, setSimplePreimageRoles] =
+    useState<SimplePreimageRolesResponse | null>(null);
+
+  const [textAreaText, setTextAreaText] = useState<string>('');
+
+  // roles as read from the server response
+  const serverReadRoles = (resp: SimplePreimageRolesResponse | null) => {
+    return resp !== null && resp.type === 'ok' ? resp.data : resp;
+  };
+
+  const textAreaReadRoles = () => {
+    try {
+      const parseRes = SimplePreimageRolesSchema.safeParse(
+        JSON.parse(textAreaText)
+      );
+      return parseRes.success ? parseRes.data : null;
+    } catch (e: unknown) {
+      props.logger.error(e);
+      return null;
+    }
+  };
+
+  const setRoles = async () => {
+    const roles = textAreaReadRoles();
+    if (roles === null) return;
+    const resp = await simplePreimageSetRoles(roles);
+    if (resp.type !== 'ok') {
+      props.logger.error(
+        'Server responded with errors on setRoles requests',
+        resp
+      );
+    } else {
+      props.logger.info('New roles set.');
+      await refresh();
+    }
+  };
+
+  const refresh = async () => {
+    const resp = await simplePreimageGetRoles();
+    setSimplePreimageRoles(resp);
+    props.logger.info('SimplePreimageRoles response received', resp);
+  };
+
+  useEffect(() => {
+    props.logger.info('Initialize SimplePreimageRoles');
+    refresh();
+  }, []); // ignore the warning, this is intentional
+
   return (
-    <button className="revoke-proof-btn">Revoke Proof Verification</button>
+    <div className="simple-preimage-admin">
+      <label htmlFor="simple-preimage-config-textarea">
+        {' '}
+        Simple Preimage Demo Admin Config
+      </label>
+      <JsonTextarea
+        id="simple-preimage-config-textarea"
+        json={JSON.stringify(serverReadRoles(simplePreimageRoles), null, 2)}
+        onJsonChange={setTextAreaText}
+      />
+      <button onClick={setRoles}> Refresh </button>
+      <button onClick={refresh} disabled={textAreaReadRoles() === null}>
+        {' '}
+        Set Roles{' '}
+      </button>
+    </div>
   );
 };
+
+/* const RevokeProofButton = () => {
+ *   return (
+ *     <button className="revoke-proof-btn">Revoke Proof Verification</button>
+ *   );
+ * }; */
 
 export default MinAuthDemo;

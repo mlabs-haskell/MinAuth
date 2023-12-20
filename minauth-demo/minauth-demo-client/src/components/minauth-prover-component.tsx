@@ -12,7 +12,6 @@ import {
   Configuration
 } from 'minauth-simple-preimage-plugin/dist/prover.js';
 import { Field, JsonProof, Poseidon } from 'o1js';
-import { ErrorResponse } from '@/helpers/request';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 
 const pluginsBaseURL = 'http://127.0.0.1:3000/plugins';
@@ -36,7 +35,11 @@ const schema: RJSFSchema = {
   type: 'object',
   required: ['password'],
   properties: {
-    password: { type: 'string', title: 'Password', pattern: '^[0-9]\\d*$' }
+    password: {
+      type: 'string',
+      title: 'Password (BigInt)',
+      pattern: '^[0-9]\\d*$'
+    }
   }
 };
 
@@ -47,7 +50,7 @@ const validator: ValidatorType<ProverFormData, RJSFSchema, any> =
   });
 
 export const ProverFormDataSchema = z.object({
-  password: z.string()
+  password: z.string().regex(/^[0-9]\d*$/)
 });
 export type ProverFormData = z.infer<typeof ProverFormDataSchema>;
 
@@ -63,7 +66,7 @@ export type FormDataChange = ProverFormData | z.ZodError<ProverFormData>;
 interface MinAuthProverComponentProps {
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
-  onAuthenticationResponse?: (response: AuthResponse | ErrorResponse) => void;
+  onAuthenticationResponse?: (response: AuthResponse) => void;
   logger?: Logger<ILogObj>;
 }
 
@@ -123,7 +126,6 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
       props.logger?.error('Prover not initialized');
       return null;
     }
-    console.log('proverFormData', proverFormData);
     const preimage = new Field(proverFormData.password);
     const hash = Poseidon.hash([preimage]);
 
