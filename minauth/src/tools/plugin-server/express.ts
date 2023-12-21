@@ -70,6 +70,7 @@ const handleValidateOutput =
     launchTE(
       pipe(
         liftZodParseResult(validateOutputDataSchema.safeParse(req.body)),
+        TE.tapIO((body) => () => env.logger.info(`parsed body: ${body}`)),
         TE.chain((body: ValidateOutputData) =>
           validateOutput(body.plugin, body.output)(env)
         ),
