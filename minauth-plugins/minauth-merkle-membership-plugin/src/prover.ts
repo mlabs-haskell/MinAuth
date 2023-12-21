@@ -211,7 +211,7 @@ export class MembershipsProver
 
   static initialize(
     cfg: MembershipsProverConfiguration,
-    compile: boolean = true
+    { compile = true } = {}
   ): TaskEither<string, MembershipsProver> {
     return pipe(
       compile

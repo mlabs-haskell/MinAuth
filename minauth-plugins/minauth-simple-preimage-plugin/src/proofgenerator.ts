@@ -89,7 +89,6 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     RTE.let(
       'simplePreimageConfig',
       ({ pluginRouterLogger, config, logger }) => ({
-        compile: true,
         logger: logger,
         pluginRoutes: new PluginRouter(config.serverUrl, pluginRouterLogger)
       })

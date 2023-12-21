@@ -101,12 +101,14 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
             pluginsBaseURL,
             props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
               new Logger({ name: 'PluginRouter logger' })
-          ),
-          compile: false
+          )
         };
 
         props.logger?.info('initializing prover');
-        const prover = await SimplePreimageProver.initialize(spreConfiguration);
+        const prover = await SimplePreimageProver.initialize(
+          spreConfiguration,
+          { compile: false }
+        );
         props.logger?.info('compiling the prover');
         setProver(prover);
         const { verificationKey } = await SimplePreimageProver.compile();

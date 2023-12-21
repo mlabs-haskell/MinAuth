@@ -1,6 +1,6 @@
 {
   "name": "minauth-merkle-membership-plugin",
-  "version": "0.9.0-alpha.13",
+  "version": "0.9.0-alpha.14",
   "description": "",
   "type": "module",
   "files": [
@@ -15,7 +15,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "fp-ts": "^2.16.1",
-    "minauth": "0.9.0-alpha.13",
+    "minauth": "0.9.0-alpha.14",
     "zod": "^3.22.2"
   },
   "peerDependencies": {

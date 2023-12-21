@@ -81,7 +81,6 @@ type Roles = z.infer<typeof RolesSchema>;
 export type Configuration = {
   logger: Logger;
   pluginRoutes: PluginRouter;
-  compile?: boolean;
 };
 
 /**
@@ -140,9 +139,10 @@ export class SimplePreimageProver
 
   /** Initialize the prover */
   static async initialize(
-    config: Configuration
+    config: Configuration,
+    { compile = true } = {}
   ): Promise<SimplePreimageProver> {
-    const { logger, pluginRoutes, compile } = config;
+    const { logger, pluginRoutes } = config;
     if (compile) {
       logger.info('compiling the circuit');
       await SimplePreimageProver.compile();
