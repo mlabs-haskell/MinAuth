@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import { ApiResponse, mkRequest } from './request';
 
-const getRolesURL = 'http://127.0.0.1:3000/plugins/simple-preimage/roles';
+const getRolesURL = 'http://127.0.0.1:3000/plugins/simple-preimage/admin/roles';
 const postRolesURL =
   'http://127.0.0.1:3000/plugins/simple-preimage/admin/roles';
 
@@ -21,7 +21,6 @@ export type SimplePreimageRolesResponse = ApiResponse<
 export const simplePreimageGetRoles =
   async (): Promise<SimplePreimageRolesResponse> => {
     const resp = await mkRequest(getRolesURL, SimplePreimageRolesSchema);
-    console.log('resp2', JSON.stringify(resp, null, 2));
     return resp;
   };
 

@@ -5,19 +5,29 @@ interface JsonTextareaProps {
   json: string;
   onJsonChange?: (json: string) => void;
   readOnly?: boolean;
+  refreshCounter?: number;
 }
 
 const JsonTextarea: React.FC<JsonTextareaProps> = ({
   id,
   json,
   onJsonChange,
-  readOnly
+  readOnly,
+  refreshCounter
 }) => {
   const [text, setText] = useState<string>('');
   const [isValidJson, setIsValidJson] = useState<boolean>(true);
 
+  // eslint-disable-next-line
+  const [counter, setCounter] = useState<number>(0);
+
+  useEffect(() => {
+    if (refreshCounter !== undefined) setCounter(refreshCounter);
+  }, [refreshCounter]);
+
   // Function to validate and format JSON
   const validateAndFormatJson = (inputJson: string): string | null => {
+    if (!inputJson) return null; // Return null if input is empty
     try {
       // Attempt to parse the input JSON string
       const parsedJson = JSON.parse(inputJson);
@@ -37,9 +47,10 @@ const JsonTextarea: React.FC<JsonTextareaProps> = ({
       setText(formattedJson);
       setIsValidJson(true);
     } else {
+      setText('');
       setIsValidJson(false);
     }
-  }, [json]);
+  }, [json, counter]);
 
   useEffect(() => {
     if (isValidJson && onJsonChange !== undefined) {

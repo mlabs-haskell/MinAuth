@@ -123,8 +123,7 @@ export class SimplePreimagePlugin
    * but rather by the plugin admin and that it is not persisted.
    */
   readonly customRoutes = Router()
-    .get('/roles', (_, res) => res.status(200).json(this.roles))
-    .post('/admin/setRoles', (req, res) => {
+    .post('/admin/roles', (req, res) => {
       try {
         // Assuming the new roles are sent in the request body
         this.roles = rolesSchema.parse(req.body);
@@ -133,7 +132,8 @@ export class SimplePreimagePlugin
         // Handle errors, such as invalid input
         res.status(400).json({ message: 'Error updating roles' });
       }
-    });
+    })
+    .get('/admin/roles', (_, res) => res.status(200).json(this.roles));
 
   /**
    * Check if produced output is still valid. If the roles dictionary was edited

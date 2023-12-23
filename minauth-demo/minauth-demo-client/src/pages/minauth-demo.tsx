@@ -192,11 +192,14 @@ const SimplePreimageAdminConfigComponent = (props: {
   const [simplePreimageRoles, setSimplePreimageRoles] =
     useState<SimplePreimageRolesResponse | null>(null);
 
+  const [counter, setCounter] = useState<number>(0);
+
   const [textAreaText, setTextAreaText] = useState<string>('');
 
   // roles as read from the server response
   const serverReadRoles = (resp: SimplePreimageRolesResponse | null) => {
-    return resp !== null && resp.type === 'ok' ? resp.data : resp;
+    if (resp === null) return {};
+    return resp.type === 'ok' ? resp.data : resp.server_response;
   };
 
   const textAreaReadRoles = () => {
@@ -227,8 +230,10 @@ const SimplePreimageAdminConfigComponent = (props: {
   };
 
   const refresh = async () => {
+    props.logger.debug('Refreshing SimplePreimageRoles');
     const resp = await simplePreimageGetRoles();
     setSimplePreimageRoles(resp);
+    setCounter(counter + 1);
     props.logger.info('SimplePreimageRoles response received', resp);
   };
 
@@ -247,9 +252,10 @@ const SimplePreimageAdminConfigComponent = (props: {
         id="simple-preimage-config-textarea"
         json={JSON.stringify(serverReadRoles(simplePreimageRoles), null, 2)}
         onJsonChange={setTextAreaText}
+        refreshCounter={counter}
       />
-      <button onClick={setRoles}> Refresh </button>
-      <button onClick={refresh} disabled={textAreaReadRoles() === null}>
+      <button onClick={refresh}> Refresh </button>
+      <button onClick={setRoles} disabled={textAreaReadRoles() === null}>
         {' '}
         Set Roles{' '}
       </button>

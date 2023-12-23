@@ -27,7 +27,7 @@ const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key';
 // Using constant salt as we don't have users.
 // If you had users, you would use a unique salt per user.
 const SALT = process.env.SALT || 'minauth_default_salt';
-const JWT_EXPIRES_IN = '1h';
+const JWT_EXPIRES_IN = '100';
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const DATABASE_FILENAME = './tokenstore.db';
