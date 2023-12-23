@@ -24,8 +24,10 @@ const parsed_env = dotenv.config();
 log.info('Environment variables:', parsed_env.parsed);
 
 const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key';
+// Using constant salt as we don't have users.
+// If you had users, you would use a unique salt per user.
+const SALT = process.env.SALT || 'minauth_default_salt';
 const JWT_EXPIRES_IN = '1h';
-const SCRYPT_SALT_LENGTH = 16;
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const DATABASE_FILENAME = './tokenstore.db';
@@ -74,7 +76,7 @@ export const setupPassport = (): passport.Authenticator => {
         if (jwtPayload) {
           return done(null, jwtPayload);
         } else {
-          console.log('JWT verification failed');
+          log.info('JWT verification failed');
           return done(null, false);
         }
       })
@@ -136,7 +138,9 @@ export const getAuthResponseByToken = async ({
   refreshToken: string;
 }): Promise<AuthenticationResponse | null> => {
   try {
+    log.debug('refresh token:', refreshToken);
     const hashed = await hashString(refreshToken);
+    log.debug('Hashed token:', hashed);
     const db = await openDB();
     const row = await db.get(
       'SELECT auth_response FROM refresh_tokens WHERE token_hash = ?',
@@ -159,10 +163,9 @@ export const getAuthResponseByToken = async ({
  */
 const hashString = async (token: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const salt = crypto.randomBytes(SCRYPT_SALT_LENGTH).toString('hex');
     crypto.scrypt(
       token,
-      salt,
+      SALT,
       SCRYPT_KEY_LENGTH,
       SCRYPT_PARAMS,
       (err, derivedKey) => {
@@ -170,7 +173,7 @@ const hashString = async (token: string): Promise<string> => {
           log.error('Error hashing string:', err.message);
           reject(err);
         } else {
-          resolve(salt + ':' + derivedKey.toString('hex'));
+          resolve(SALT + ':' + derivedKey.toString('hex'));
         }
       }
     );
