@@ -23,16 +23,18 @@ import { Logger } from 'minauth/dist/plugin/logger.js';
 /**
  * The plugin configuration schema.
  */
+export const rolesSchema = z.record(
+  // FIXME: the key should be a valid poseidon hash
+  /** Hash preimage of which is used to authorize operations */
+  z.string(),
+  /** An auxilliary name for the hash - for example
+   *  a name of a role in the system */
+  z.string()
+);
+
 export const configurationSchema = z
   .object({
-    roles: z.record(
-      // FIXME: the key should be a valid poseidon hash
-      /** Hash preimage of which is used to authorize operations */
-      z.string(),
-      /** An auxilliary name for the hash - for example
-       *  a name of a role in the system */
-      z.string()
-    )
+    roles: rolesSchema
   })
   .or(
     z.object({
@@ -125,7 +127,7 @@ export class SimplePreimagePlugin
     .post('/admin/setRoles', (req, res) => {
       try {
         // Assuming the new roles are sent in the request body
-        this.roles = req.body;
+        this.roles = rolesSchema.parse(req.body);
         res.status(200).json({ message: 'Roles updated successfully' });
       } catch (error) {
         // Handle errors, such as invalid input
@@ -141,10 +143,13 @@ export class SimplePreimagePlugin
    * with unique identifiers.
    */
   async checkOutputValidity(output: Output): Promise<OutputValidity> {
+    this.logger.debug('Checking validity of ', output);
     if (!this.roles.hasOwnProperty(output.provedHash)) {
+      this.logger.debug('Proved hash no longer exists.');
       return Promise.resolve(outputInvalid('Proved hash is no longer valid.'));
     }
     if (this.roles[output.provedHash] !== output.role) {
+      this.logger.debug('Proved hash no longer exists.');
       return Promise.resolve(
         outputInvalid('The role assigned to the hash is no longer valid.')
       );

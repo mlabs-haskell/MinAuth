@@ -11,8 +11,14 @@ export const AuthSchema = z.object({
   message: z.string()
 });
 
+// export const RefreshSchema = z.object({
+export const RefreshSchema = z.object({
+  token: z.string()
+});
+
 export type AuthData = z.infer<typeof AuthSchema>;
 export type AuthResponse = ApiResponse<typeof AuthSchema>;
+export type RefreshResponse = ApiResponse<typeof RefreshSchema>;
 
 export const getAuth = async (submissionData: MinAuthProof) => {
   const res = await mkRequest(submitURL, AuthSchema, { body: submissionData });
@@ -48,7 +54,12 @@ export const mkAuthorizedRequest = async (
 };
 
 export const refreshAuth = async (auth: AuthData): Promise<AuthResponse> => {
-  const schema = ApiResponseSchema(AuthSchema);
+  const schema = ApiResponseSchema(RefreshSchema);
   const resp = await mkAuthorizedRequest(refreshURL, auth, { body: auth });
-  return schema.parse(resp);
+  const parsed: RefreshResponse = schema.parse(resp);
+  if (parsed.type !== 'ok') {
+    return parsed;
+  }
+  // rebuild authdata with the new token.
+  return { ...parsed, data: { ...auth, token: parsed.data.token } };
 };

@@ -143,6 +143,7 @@ export class SimplePreimageProver
     { compile = true } = {}
   ): Promise<SimplePreimageProver> {
     const { logger, pluginRoutes } = config;
+    logger.info('SimplePreimageProver.initialize');
     if (compile) {
       logger.info('compiling the circuit');
       await SimplePreimageProver.compile();
