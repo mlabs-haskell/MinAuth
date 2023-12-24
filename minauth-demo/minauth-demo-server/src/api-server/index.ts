@@ -1,4 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, {
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response
+} from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
@@ -46,10 +51,26 @@ const allowedOrigins = [
 ];
 
 // Middleware setup
-app.use(bodyParser.json());
+
 app.use(cors({ origin: allowedOrigins }));
 if (pluginServerProxyConfig) {
+  // Exclude proxied routes from consuming requests bodies by bodyparser.json midleware.
+  const excludePath = (
+    path: string,
+    middleware: RequestHandler
+  ): RequestHandler => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith(path)) {
+        next();
+      } else {
+        middleware(req, res, next);
+      }
+    };
+  };
+  app.use(excludePath('/plugins', bodyParser.json()));
   app.use('/plugins', createProxyMiddleware(pluginServerProxyConfig));
+} else {
+  app.use(bodyParser.json());
 }
 
 // Server start
