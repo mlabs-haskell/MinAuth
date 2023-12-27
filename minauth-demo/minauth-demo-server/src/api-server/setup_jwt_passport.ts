@@ -13,11 +13,11 @@ import MinAuthStrategy, {
   AuthenticationResponse
 } from 'minauth/dist/server/minauthstrategy.js';
 import dotenv from 'dotenv';
-import { Logger } from 'tslog';
+import { Logger, ILogObj } from 'tslog';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 
-const log = new Logger();
+const log = new Logger<ILogObj>();
 
 // Load environment variables
 const parsed_env = dotenv.config();
@@ -27,10 +27,11 @@ const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key';
 // Using constant salt as we don't have users.
 // If you had users, you would use a unique salt per user.
 const SALT = process.env.SALT || 'minauth_default_salt';
-const JWT_EXPIRES_IN = '100';
+const JWT_EXPIRES_IN = 100;
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const DATABASE_FILENAME = './tokenstore.db';
+const VERIFIER_URL: string = 'http://127.0.0.1:3001/verifyProof';
 
 /**
  * Open a connection to the SQLite database, creating the database and the required table if they don't exist.
@@ -81,7 +82,7 @@ export const setupPassport = (): passport.Authenticator => {
         }
       })
     )
-    .use(new MinAuthStrategy());
+    .use(new MinAuthStrategy({ logger: log, verifierUrl: VERIFIER_URL }));
 
   return passport;
 };
@@ -200,15 +201,16 @@ export const invalidateRefreshToken = async (token: string): Promise<void> => {
 };
 
 /**
- * Hashes an AuthenticationResponse using scrypt and returns the hash.
+ * Hashes an AuthenticationResponse using sha256 (default for passport-jwt) and returns the hash.
  * @param {AuthenticationResponse} authResponse - The authentication response to hash.
  * @returns {Promise<string>} A promise that resolves to the hash string.
  */
-export const hashAuthResp = async (
-  authResponse: AuthenticationResponse
-): Promise<string> => {
-  return await hashString(JSON.stringify(authResponse));
-};
+export const hashAuthResp = (authResponse: AuthenticationResponse): string =>
+  crypto
+    .createHash('sha256')
+    .update(JSON.stringify(authResponse))
+    .digest()
+    .toString('hex');
 
 export const signJWTPayload = (payload: JWTPayload): string =>
   jwt.sign(payload, SECRET_KEY, { expiresIn: JWT_EXPIRES_IN });

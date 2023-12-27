@@ -85,9 +85,11 @@ app.post(
   async (req: Request, res: Response) => {
     try {
       const authResp = req.user as AuthenticationResponse;
+      log.debug('authResp:', authResp);
       const jwtPayload: JWTPayload = {
-        authRespHash: await hashAuthResp(authResp)
+        authRespHash: hashAuthResp(authResp)
       };
+      log.debug('jwtPayload:', jwtPayload);
       const token = signJWTPayload(jwtPayload);
       const { refreshToken } = await storeAuthResponse(authResp);
 
@@ -135,9 +137,8 @@ app.post(
         res.status(401).json({ message: 'output no longer valid' });
         return;
       }
-
       const token = signJWTPayload({
-        authRespHash: await hashAuthResp(authResp)
+        authRespHash: hashAuthResp(authResp)
       });
       res.status(200).json({ token });
     } catch (error) {
@@ -152,11 +153,13 @@ app.get(
   '/protected',
   passport.authenticate('jwt', { session: false }),
   (_: Request, res: Response) => {
+    log.info('GET /protected');
     res.send({ message: `You are accessing a protected route.` });
   }
 );
 
 // Health check route
 app.get('/health', (_: Request, res: Response) => {
+  log.info('GET /health');
   res.status(200).json({ message: 'OK' });
 });
