@@ -149,13 +149,19 @@ const RefreshAuthButton = (props: {
 const RequestResourceButton = (props: {
   auth: AuthResponse | null;
   onResponse: (res: ApiResponse<z.ZodUnknown>) => void;
+  log?: Logger<ILogObj>;
 }) => {
   const request = async () => {
     if (props.auth === null) {
+      props.log?.debug('Cancelling request, no auth data');
       return;
     }
     const authData = parseAuthData(props.auth);
-    if (!authData) return;
+    if (!authData) {
+      props.log?.debug('Cancelling request, invalid auth data');
+      return;
+    }
+    props.log?.debug('Requesting protected resource');
     const res = await requestProtectedResource(authData);
     props.onResponse(res);
   };

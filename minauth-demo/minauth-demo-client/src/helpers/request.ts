@@ -2,6 +2,9 @@
  * This file contains the functions for making HTTP requests.
  */
 import { z } from 'zod';
+import { Logger } from 'tslog';
+
+const log = new Logger();
 
 // Define a Zod schema for ErrorResponse
 export const ErrorResponseSchema = z.object({
@@ -52,6 +55,8 @@ export async function mkRequest<U extends z.ZodSchema>(
       }
     }
 
+    log.debug('mkRequest: url:', url, 'headers:', headers, 'body:', body);
+
     const response =
       body == undefined
         ? await fetch(url, {
@@ -63,9 +68,9 @@ export async function mkRequest<U extends z.ZodSchema>(
             headers: headers,
             body: JSON.stringify(body)
           });
+    // actually fetch will throw an error if the request fails
 
     const respbody = await response.json();
-    console.log('wtf', respbody);
     // Extract headers
     const respheaders: Record<string, string> = {};
     response.headers.forEach((value, key) => {
@@ -81,7 +86,6 @@ export async function mkRequest<U extends z.ZodSchema>(
       url: response.url,
       body: respbody
     };
-    console.log('wtf', respObj);
 
     if (!respObj.ok) {
       return {
@@ -104,6 +108,7 @@ export async function mkRequest<U extends z.ZodSchema>(
     }
   } catch (error: unknown) {
     let message = 'An error occurred';
+    log.debug('error:', error);
     // handle schema.parse errors
     if (error instanceof Error) {
       // Handle general errors
