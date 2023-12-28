@@ -7,6 +7,7 @@ import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import ProvePreimageProgram from './hash-preimage-proof.js';
 import z from 'zod';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 export class PluginRouter {
   private baseUrl: string;
@@ -129,7 +130,7 @@ export class SimplePreimageProver
   }
 
   /** Compile the underlying zk circuit */
-  static async compile(): Promise<{ verificationKey: string }> {
+  static async compile(): Promise<{ verificationKey: VerificationKey }> {
     // disable cache because of bug in o1js 0.14.1:
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,

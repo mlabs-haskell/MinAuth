@@ -4,11 +4,8 @@ import { pipe } from 'fp-ts/lib/function.js';
 import { Field, Poseidon } from 'o1js';
 import { z } from 'zod';
 
-import {
-  Decoder,
-  EncodeDecoder,
-  wrapZodDec
-} from 'minauth/dist/plugin/encodedecoder.js';
+import { fieldEncDec } from 'minauth/dist/utils/fp/fieldEncDec.js';
+import { Decoder, wrapZodDec } from 'minauth/dist/plugin/encodedecoder.js';
 import {
   FpInterfaceType,
   fpInterfaceTag
@@ -20,7 +17,6 @@ import {
   askConfig
 } from 'minauth/dist/plugin/proofgenerator.js';
 import { MinAuthProof } from 'minauth/dist/common/proof.js';
-import { safeFromString } from 'minauth/dist/utils/fp/either.js';
 import {
   askSublogger,
   tapLogger,
@@ -41,19 +37,6 @@ export type Conf = { password: Field; serverUrl: string };
 
 // FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
 // TODO move to minauth-mina-utils (which is not yet created)
-const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
-  __interface_tag: 'fp',
-
-  decode: (i: unknown) =>
-    pipe(
-      wrapZodDec('fp', z.string()).decode(i),
-      E.chain(
-        safeFromString(Field.from, (err) => `failed to decode Field: ${err}`)
-      )
-    ),
-
-  encode: (i: Field) => i.toString()
-};
 
 const confDec: Decoder<FpInterfaceType, Conf> = {
   __interface_tag: fpInterfaceTag,

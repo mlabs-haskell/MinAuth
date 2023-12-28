@@ -14,6 +14,7 @@ import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
 import { FpInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as z from 'zod';
 import { fromFailablePromise } from 'minauth/dist/utils/fp/taskeither.js';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 /**
  * Configuration for the prover.
@@ -199,7 +200,7 @@ export class MembershipsProver
   static readonly __interface_tag = 'fp';
 
   /** Compile the underlying zk circuit */
-  static compile(): TaskEither<string, { verificationKey: string }> {
+  static compile(): TaskEither<string, { verificationKey: VerificationKey }> {
     // disable cache because of bug in o1js 0.14.1:
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,

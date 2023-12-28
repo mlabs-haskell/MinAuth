@@ -37,6 +37,7 @@ import {
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { wrapTrivialExpressHandler } from 'minauth/dist/plugin/express.js';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 /**
  * The type of the public input of the Minauth plugin.
@@ -206,7 +207,7 @@ export class MerkleMembershipsPlugin
 {
   readonly __interface_tag = 'fp';
 
-  readonly verificationKey: string;
+  readonly verificationKey: VerificationKey;
   private readonly storageProvider: TreesProvider;
 
   readonly logger: Logger;
@@ -323,7 +324,7 @@ export class MerkleMembershipsPlugin
   }
 
   constructor(
-    verificationKey: string,
+    verificationKey: VerificationKey,
     storageProvider: TreesProvider,
     logger: Logger
   ) {

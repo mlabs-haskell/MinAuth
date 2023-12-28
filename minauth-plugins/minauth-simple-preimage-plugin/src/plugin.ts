@@ -19,6 +19,7 @@ import {
   noOpEncoder
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 /**
  * The plugin configuration schema.
@@ -75,7 +76,7 @@ export class SimplePreimagePlugin
   /**
    *  A memoized zk-circuit verification key
    */
-  readonly verificationKey: string;
+  readonly verificationKey: VerificationKey;
 
   /**
    *  The mapping between hashes and role
@@ -101,7 +102,7 @@ export class SimplePreimagePlugin
     }
 
     this.logger.debug('Proof verification...');
-    const valid = await verify(proof, this.verificationKey);
+    const valid = await verify(proof, this.verificationKey.data);
     if (!valid) {
       this.logger.info('Proof verification failed.');
       throw new Error('Invalid proof!');
@@ -161,7 +162,7 @@ export class SimplePreimagePlugin
    * This ctor is meant ot be called by the `initialize` function.
    */
   constructor(
-    verificationKey: string,
+    verificationKey: VerificationKey,
     roles: Record<string, string>,
     logger: Logger
   ) {
