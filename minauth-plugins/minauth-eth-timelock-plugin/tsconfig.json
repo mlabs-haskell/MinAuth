@@ -13,7 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "./dist",
+    "outDir": "./build",
     "rootDir": "./src",
     "skipLibCheck": true,
     "sourceMap": true,
