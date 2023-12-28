@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract ERC721TimeLock {
     uint256 public constant HASH_BIT_SIZE = 256; // Example size for the hash
+    uint256 public lockPeriod; // State variable to store lock period (in seconds)
+
 
     event TokenLocked(address indexed user, address indexed tokenAddress, uint256 tokenId, uint256 unlockTime, bytes32 hash);
     event TokenUnlocked(address indexed user, address indexed tokenAddress, uint256 tokenId, bytes32 hash);
@@ -16,18 +18,21 @@ contract ERC721TimeLock {
         bytes32 hash;
     }
 
-    mapping(address => LockedToken[]) public lockedTokens;
+        mapping(address => LockedToken[]) public lockedTokens;
 
-    function lockToken(address _tokenAddress, uint256 _tokenId, uint256 _lockPeriod, bytes32 _hash) external {
+    constructor(uint256 _lockPeriod) {
         require(_lockPeriod > 0, "Lock period must be greater than 0");
+        lockPeriod = _lockPeriod;
+    }
+
+    function lockToken(address _tokenAddress, uint256 _tokenId, bytes32 _hash) external {
         require(_hash > 0, "Hash must be non-zero"); // Additional validation for hash
 
         // Check if the token exists by calling ownerOf
         address tokenOwner = IERC721(_tokenAddress).ownerOf(_tokenId);
         require(tokenOwner != address(0), "ERC721: operator query for nonexistent token");
 
-
-        uint256 unlockTime = block.timestamp + _lockPeriod;
+        uint256 unlockTime = block.timestamp + lockPeriod;
         IERC721(_tokenAddress).transferFrom(msg.sender, address(this), _tokenId);
 
         lockedTokens[msg.sender].push(LockedToken({
