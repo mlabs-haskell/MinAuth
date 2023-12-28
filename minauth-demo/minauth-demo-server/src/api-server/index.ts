@@ -1,109 +1,165 @@
-import express, { Request, Response } from 'express';
+import express, {
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response
+} from 'express';
 import bodyParser from 'body-parser';
-import MinAuthStrategy, {
-  AuthenticationResponse
-} from 'minauth/server/minauthstrategy.js';
+import cors from 'cors';
+import { createProxyMiddleware, Options } from 'http-proxy-middleware';
+import axios from 'axios';
+import { Logger } from 'tslog';
 import {
   JWTPayload,
-  generateRefreshToken,
-  hashAuthResp,
-  refreshTokenStore,
   setupPassport,
-  signJWTPayload
+  signJWTPayload,
+  storeAuthResponse,
+  getAuthResponseByToken,
+  invalidateRefreshToken,
+  hashAuthResp
 } from './setup_jwt_passport.js';
-import axios from 'axios';
+import MinAuthStrategy, {
+  AuthenticationResponse
+} from 'minauth/dist/server/minauthstrategy.js';
 
 const app = express();
 const PORT: number = 3000;
+const log = new Logger();
 
-// The authentication will be done with the help of passport.js library
+// Set up passport.js for authentication
 const passport = setupPassport();
 
-// ====== The express.js server setup.
+// Plugin server configuration
+const pluginServerConfig = {
+  url: 'http://127.0.0.1',
+  port: 3001,
+  demoEnableProxy: true
+};
+const pluginServerUrl = `${pluginServerConfig.url}:${pluginServerConfig.port}`;
 
-// Middleware to parse JSON requests
-app.use(bodyParser.json());
+// Optional proxy middleware configuration
+const pluginServerProxyConfig: Options | null =
+  pluginServerConfig.demoEnableProxy
+    ? { target: pluginServerUrl, changeOrigin: true, logLevel: 'debug' }
+    : null;
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004'
+];
+
+// Middleware setup
+
+app.use(cors({ origin: allowedOrigins }));
+if (pluginServerProxyConfig) {
+  // Exclude proxied routes from consuming requests bodies by bodyparser.json midleware.
+  const excludePath = (
+    path: string,
+    middleware: RequestHandler
+  ): RequestHandler => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith(path)) {
+        next();
+      } else {
+        middleware(req, res, next);
+      }
+    };
+  };
+  app.use(excludePath('/plugins', bodyParser.json()));
+  app.use('/plugins', createProxyMiddleware(pluginServerProxyConfig));
+} else {
+  app.use(bodyParser.json());
+}
+
+// Server start
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  log.info(`Server is running on http://127.0.0.1:${PORT}`);
 });
 
+// Login route
 app.post(
   '/login',
   passport.authenticate(MinAuthStrategy.name, { session: false }),
-  (req: Request, res: Response) => {
-    const authResp = req.user as AuthenticationResponse;
+  async (req: Request, res: Response) => {
+    try {
+      const authResp = req.user as AuthenticationResponse;
+      log.debug('authResp:', authResp);
+      const jwtPayload: JWTPayload = {
+        authRespHash: hashAuthResp(authResp)
+      };
+      log.debug('jwtPayload:', jwtPayload);
+      const token = signJWTPayload(jwtPayload);
+      const { refreshToken } = await storeAuthResponse(authResp);
 
-    console.log(authResp);
-
-    const jwtPayload: JWTPayload = { authRespHash: hashAuthResp(authResp) };
-
-    const token = signJWTPayload(jwtPayload);
-    const refreshToken = generateRefreshToken();
-
-    // Store the refresh token
-    refreshTokenStore[refreshToken] = authResp;
-
-    res.json({
-      message: 'success',
-      token,
-      refreshToken
-    });
+      res.json({ message: 'success', token, refreshToken });
+    } catch (error) {
+      log.error('Login error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 );
 
-const validateOutput = (plugin: string, output: unknown): Promise<boolean> =>
-  axios
-    .post('http://127.0.0.1:3001/validateOutput', {
+// Validate output from plugin
+const validateOutput = async (
+  plugin: string,
+  output: unknown
+): Promise<boolean> => {
+  try {
+    const response = await axios.post(`${pluginServerUrl}/validateOutput`, {
       plugin,
       output
-    })
-    .then(({ status }) => status == 200);
+    });
+    return response.status === 200;
+  } catch (error) {
+    log.error('Validation error:', error);
+    return false;
+  }
+};
 
-// TODO: Prevent the reuse of jwt.
-// TODO: invalidate a refresh token once the latest jwt expires. This can be easily implemented with redis
+// Token refresh route
 app.post(
   '/token',
   passport.authenticate('jwt', { session: false }),
   async (req: Request, res: Response) => {
-    const refreshToken = req.body.refreshToken;
+    try {
+      const { refreshToken } = req.body;
+      const authResp = await getAuthResponseByToken({ refreshToken });
 
-    if (!(refreshToken && refreshToken in refreshTokenStore)) {
-      res.status(401).json({ message: 'invalid refresh token' });
-      return;
+      if (!refreshToken || !authResp) {
+        res.status(401).json({ message: 'invalid refresh token' });
+        return;
+      }
+
+      if (!(await validateOutput(authResp.plugin, authResp.output))) {
+        await invalidateRefreshToken(refreshToken);
+        res.status(401).json({ message: 'output no longer valid' });
+        return;
+      }
+      const token = signJWTPayload({
+        authRespHash: hashAuthResp(authResp)
+      });
+      res.status(200).json({ token });
+    } catch (error) {
+      log.error('Token error:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
-
-    const authResp = refreshTokenStore[refreshToken];
-
-    const { authRespHash } = req.user as JWTPayload;
-
-    console.log(JSON.stringify(authResp));
-
-    if (hashAuthResp(authResp) !== authRespHash) {
-      res.status(401).json({ message: 'invalid refresh token' });
-      return;
-    }
-
-    const validationResult = await validateOutput(
-      authResp.plugin,
-      authResp.output
-    );
-
-    if (!validationResult) {
-      delete refreshTokenStore[refreshToken];
-      res.status(401).json({ message: 'output no longer valid' });
-      return;
-    }
-
-    const token = signJWTPayload({ authRespHash });
-    res.status(200).json({ token });
   }
 );
 
+// Protected route example
 app.get(
   '/protected',
   passport.authenticate('jwt', { session: false }),
   (_: Request, res: Response) => {
+    log.info('GET /protected');
     res.send({ message: `You are accessing a protected route.` });
   }
 );
+
+// Health check route
+app.get('/health', (_: Request, res: Response) => {
+  log.info('GET /health');
+  res.status(200).json({ message: 'OK' });
+});

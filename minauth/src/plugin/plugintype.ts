@@ -16,6 +16,7 @@ import {
 } from './encodedecoder.js';
 import { Logger } from './logger.js';
 import { fromFailablePromise } from '../utils/fp/taskeither.js';
+import { VerificationKey } from '../common/verificationkey.js';
 
 // Interfaces used on the server side.
 
@@ -88,7 +89,7 @@ export interface IMinAuthPlugin<
   // Plugin will be internally responsible for the zk circuit.
 
   /** The verification key of the underlying zk circuit. */
-  readonly verificationKey: string;
+  readonly verificationKey: VerificationKey;
 }
 
 /** Type parameter extraction (inference) helpers. */
@@ -240,10 +241,10 @@ export interface IMinAuthProverFactory<
 > extends WithInterfaceTag<InterfaceType> {
   initialize(
     cfg: Configuration,
-    compile: boolean
+    { compile }: { compile: boolean }
   ): RetType<InterfaceType, ProverType>;
 
-  compile(): RetType<InterfaceType, { verificationKey: string }>;
+  compile(): RetType<InterfaceType, { verificationKey: VerificationKey }>;
 }
 
 // ts -> fp

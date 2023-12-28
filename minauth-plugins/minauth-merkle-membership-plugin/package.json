@@ -1,27 +1,25 @@
 {
-    "name": "minauth-merkle-membership-plugin",
-    "version": "0.9.0-alpha.8",
-    "description": "",
-    "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "files": [
-        "dist/**/*"
-    ],
-    "scripts": {
-        "build": "tsc",
-        "lint": "eslint . --ext .ts",
-        "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "dependencies": {
-        "express": "^4.18.2",
-        "fp-ts": "^2.16.1",
-        "minauth": "file:../../minauth/dist",
-        "zod": "^3.22.2"
-    },
+  "name": "minauth-merkle-membership-plugin",
+  "version": "0.9.0-alpha.20",
+  "description": "",
+  "type": "module",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "fp-ts": "^2.16.1",
+    "minauth": "0.9.0-alpha.20",
+    "zod": "^3.22.2"
+  },
   "peerDependencies": {
-    "o1js": "0.14.2"
+    "o1js": "0.15.1"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",

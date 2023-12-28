@@ -2,13 +2,13 @@ import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import { pipe } from 'fp-ts/lib/function.js';
 
-import { Logger } from 'minauth/plugin/logger.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 import {
   askSublogger,
   tapLogger,
   useLogger,
   withRTE
-} from 'minauth/utils/fp/readertaskeither.js';
+} from 'minauth/dist/utils/fp/readertaskeither.js';
 
 import {
   Client,
@@ -23,7 +23,7 @@ import {
   GenerateProofEnv,
   GenerateProofError,
   ProofGenerator
-} from 'minauth/plugin/proofgenerator.js';
+} from 'minauth/dist/plugin/proofgenerator.js';
 
 export type ActionEnv = Readonly<{
   logger: Logger;

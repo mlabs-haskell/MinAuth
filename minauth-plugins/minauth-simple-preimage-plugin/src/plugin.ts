@@ -5,34 +5,37 @@ import {
   OutputValidity,
   outputInvalid,
   outputValid
-} from 'minauth/plugin/plugintype.js';
+} from 'minauth/dist/plugin/plugintype.js';
 import ProvePreimageProgram, {
   ProvePreimageProofClass
 } from './hash-preimage-proof.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { TsInterfaceType } from 'minauth/plugin/interfacekind.js';
+import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as fs from 'fs/promises';
 import {
   wrapZodDec,
   combineEncDec,
   noOpEncoder
-} from 'minauth/plugin/encodedecoder.js';
-import { Logger } from 'minauth/plugin/logger.js';
+} from 'minauth/dist/plugin/encodedecoder.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 /**
  * The plugin configuration schema.
  */
+export const rolesSchema = z.record(
+  // FIXME: the key should be a valid poseidon hash
+  /** Hash preimage of which is used to authorize operations */
+  z.string(),
+  /** An auxilliary name for the hash - for example
+   *  a name of a role in the system */
+  z.string()
+);
+
 export const configurationSchema = z
   .object({
-    roles: z.record(
-      // FIXME: the key should be a valid poseidon hash
-      /** Hash preimage of which is used to authorize operations */
-      z.string(),
-      /** An auxilliary name for the hash - for example
-       *  a name of a role in the system */
-      z.string()
-    )
+    roles: rolesSchema
   })
   .or(
     z.object({
@@ -73,12 +76,12 @@ export class SimplePreimagePlugin
   /**
    *  A memoized zk-circuit verification key
    */
-  readonly verificationKey: string;
+  readonly verificationKey: VerificationKey;
 
   /**
    *  The mapping between hashes and role
    */
-  private readonly roles: Record<string, string>;
+  private roles: Record<string, string>;
 
   /** The plugin's logger */
   private readonly logger: Logger;
@@ -99,7 +102,7 @@ export class SimplePreimagePlugin
     }
 
     this.logger.debug('Proof verification...');
-    const valid = await verify(proof, this.verificationKey);
+    const valid = await verify(proof, this.verificationKey.data);
     if (!valid) {
       this.logger.info('Proof verification failed.');
       throw new Error('Invalid proof!');
@@ -116,10 +119,22 @@ export class SimplePreimagePlugin
 
   /**
    * Provide an endpoint returning a list of roles recognized by the plugin.
+   * Additionally, provide an endpoint to update the roles
+   * NOTE. the setRoles endpoint should not be used by the client
+   * but rather by the plugin admin and that it is not persisted.
    */
-  readonly customRoutes = Router().get('/roles', (_, res) =>
-    res.status(200).json(this.roles)
-  );
+  readonly customRoutes = Router()
+    .post('/admin/roles', (req, res) => {
+      try {
+        // Assuming the new roles are sent in the request body
+        this.roles = rolesSchema.parse(req.body);
+        res.status(200).json({ message: 'Roles updated successfully' });
+      } catch (error) {
+        // Handle errors, such as invalid input
+        res.status(400).json({ message: 'Error updating roles' });
+      }
+    })
+    .get('/admin/roles', (_, res) => res.status(200).json(this.roles));
 
   /**
    * Check if produced output is still valid. If the roles dictionary was edited
@@ -129,10 +144,13 @@ export class SimplePreimagePlugin
    * with unique identifiers.
    */
   async checkOutputValidity(output: Output): Promise<OutputValidity> {
+    this.logger.debug('Checking validity of ', output);
     if (!this.roles.hasOwnProperty(output.provedHash)) {
+      this.logger.debug('Proved hash no longer exists.');
       return Promise.resolve(outputInvalid('Proved hash is no longer valid.'));
     }
     if (this.roles[output.provedHash] !== output.role) {
+      this.logger.debug('Proved hash no longer exists.');
       return Promise.resolve(
         outputInvalid('The role assigned to the hash is no longer valid.')
       );
@@ -144,7 +162,7 @@ export class SimplePreimagePlugin
    * This ctor is meant ot be called by the `initialize` function.
    */
   constructor(
-    verificationKey: string,
+    verificationKey: VerificationKey,
     roles: Record<string, string>,
     logger: Logger
   ) {

@@ -3,7 +3,7 @@ import * as ZkProgram from './merklemembershipsprogram.js';
 import {
   IMinAuthProver,
   IMinAuthProverFactory
-} from 'minauth/plugin/plugintype.js';
+} from 'minauth/dist/plugin/plugintype.js';
 import * as A from 'fp-ts/lib/Array.js';
 import axios from 'axios';
 import { TaskEither } from 'fp-ts/lib/TaskEither.js';
@@ -11,9 +11,10 @@ import { pipe } from 'fp-ts/lib/function.js';
 import * as TE from 'fp-ts/lib/TaskEither.js';
 import * as NE from 'fp-ts/lib/NonEmptyArray.js';
 import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
-import { FpInterfaceType } from 'minauth/plugin/interfacekind.js';
+import { FpInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as z from 'zod';
-import { fromFailablePromise } from 'minauth/utils/fp/taskeither.js';
+import { fromFailablePromise } from 'minauth/dist/utils/fp/taskeither.js';
+import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 
 /**
  * Configuration for the prover.
@@ -199,7 +200,7 @@ export class MembershipsProver
   static readonly __interface_tag = 'fp';
 
   /** Compile the underlying zk circuit */
-  static compile(): TaskEither<string, { verificationKey: string }> {
+  static compile(): TaskEither<string, { verificationKey: VerificationKey }> {
     // disable cache because of bug in o1js 0.14.1:
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,
@@ -211,7 +212,7 @@ export class MembershipsProver
 
   static initialize(
     cfg: MembershipsProverConfiguration,
-    compile: boolean = true
+    { compile = true } = {}
   ): TaskEither<string, MembershipsProver> {
     return pipe(
       compile

@@ -3,7 +3,7 @@ import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
 import { Decoder } from './encodedecoder.js';
 import { FpInterfaceType } from './interfacekind.js';
 import { Logger } from './logger.js';
-import { MinAuthProof } from '../server/minauthstrategy.js';
+import { MinAuthProof } from '../common/proof.js';
 import { askRecordField } from '../utils/fp/readertaskeither.js';
 
 export type GenerateProofEnv<Conf> = Readonly<{

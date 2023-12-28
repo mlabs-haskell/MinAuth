@@ -1,30 +1,34 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.module.rules.push({
-        test: /\.worker\.(js|ts)$/,
-        loader: 'worker-loader'
-        // You may need additional options here depending on your requirements
-      });
-    }
-    return config; // Ensure you return the config
-  },
+const nextConfig = {
+  reactStrictMode: false,
 
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      o1js: require('path').resolve('node_modules/o1js')
+    };
+    config.experiments = { ...config.experiments, topLevelAwait: true };
+    return config;
+  },
+  // To enable o1js for the web, we must set the COOP and COEP headers.
+  // See here for more information: https://docs.minaprotocol.com/zkapps/how-to-write-a-zkapp-ui#enabling-coop-and-coep-headers
   async headers() {
     return [
       {
-        // Apply these headers to all routes in your application.
         source: '/(.*)',
         headers: [
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' }
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin'
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp'
+          }
         ]
       }
     ];
-  },
-
-  compiler: {
-    styledComponents: true
   }
 };
+
+module.exports = nextConfig;

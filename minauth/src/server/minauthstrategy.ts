@@ -2,16 +2,8 @@
 import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
-import { JsonProof } from 'o1js';
-
-/**
- * The generic proof shape that can be verified by the plugin server.
- */
-export interface MinAuthProof {
-  plugin: string;
-  publicInputArgs: unknown;
-  proof: JsonProof;
-}
+import { MinAuthProof, MinAuthProofSchema } from '../common/proof.js';
+import { Logger } from '../plugin/logger.js';
 
 /**
  * A result of a proof verification.
@@ -31,13 +23,14 @@ type VerificationResult =
  */
 const verifyProof = (
   verifierUrl: string,
-  data: MinAuthProof
+  data: MinAuthProof,
+  log: Logger
 ): Promise<VerificationResult> => {
-  console.log('Calling for proof verification with:', data);
+  log.info('Calling for proof verification with:', data);
   return axios.post(verifierUrl, data).then(
     (resp) => {
       if (resp.status == 200) {
-        console.log('Received response:', resp);
+        log.info('Received response:', resp);
         const { output } = resp.data as {
           output: unknown;
         };
@@ -58,6 +51,11 @@ export type AuthenticationResponse = {
   output: unknown;
 };
 
+export interface MinAuthStrategyConfig {
+  logger: Logger;
+  verifierUrl: string;
+}
+
 /**
  * Minauth's integration with passport.js.
  * This implementation uses the plugin server to verify the proof.
@@ -66,25 +64,26 @@ class MinAuthStrategy extends Strategy {
   name = 'MinAuthStrategy';
 
   readonly verifyProof: (_: MinAuthProof) => Promise<VerificationResult>;
+  readonly log: Logger;
 
-  public constructor(
-    verifierUrl: string = 'http://127.0.0.1:3001/verifyProof'
-  ) {
+  public constructor(config: MinAuthStrategyConfig) {
     super();
-
-    this.verifyProof = (data) => verifyProof(verifierUrl, data);
+    this.log = config.logger;
+    this.verifyProof = (data) =>
+      verifyProof(config.verifierUrl, data, config.logger);
   }
 
   async authenticate(req: Request): Promise<void> {
-    console.log('authenticating (strategy) with req:', req.body);
-    const loginData = req.body as MinAuthProof; // TODO validate the body
+    this.log.info('authenticating (strategy) with req:', req.body);
+    const loginData = MinAuthProofSchema.parse(req.body);
+
     // forward the proof verification to the plugin server
     const result = await this.verifyProof(loginData);
 
     if (result.__tag == 'success') {
       const { output } = result;
 
-      console.debug('proof verification output:', output);
+      this.log.debug('proof verification output:', output);
 
       const authResp: AuthenticationResponse = {
         plugin: loginData.plugin,
@@ -95,9 +94,9 @@ class MinAuthStrategy extends Strategy {
     } else {
       const { error } = result;
 
-      console.log(`unable to authenticate using minAuth: ${error}`);
+      this.log.info(`unable to authenticate using minAuth: ${error}`);
 
-      this.fail(400);
+      this.fail({ message: 'Proof validation was not succesful' }, 401);
     }
   }
 }

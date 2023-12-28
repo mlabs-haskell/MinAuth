@@ -60,24 +60,26 @@ runTestGroup({
         shouldSuccess: true
       },
       kind: 'simplePreimage',
-      config: {
-        password: Field.from('1')
-      }
-    },
-    {
-      name: 'bad password',
-      outcome: {
-        shouldSuccess: false,
-        errorSubset: {
-          __tag: 'clientError',
-          error: {
-            __tag: 'badRequest'
+          config: {
+              password: Field.from('1'),
+              serverUrl: 'http://localhost:3000'
           }
-        }
       },
-      kind: 'simplePreimage',
-      config: {
-        password: Field.from('424242')
+      {
+          name: 'bad password',
+          outcome: {
+              shouldSuccess: false,
+              errorSubset: {
+                  __tag: 'clientError',
+                  error: {
+                      __tag: 'badRequest'
+                  }
+              }
+          },
+          kind: 'simplePreimage',
+          config: {
+              password: Field.from('424242'),
+          serverUrl: 'http://localhost:3000'
       }
     },
     {
@@ -108,11 +110,3 @@ runTestGroup({
     }
   ]
 });
-
-// Some thoughts on revoking tests: we have to somehow invalidate the public
-// inputs used by the plugin. Conveniently both simple password and merkle
-// memberships plugin have their public inputs stored on the server side, so we
-// can potentially introduce a plugin custom routes for testing, which allows
-// the client to manually invalidate the public input. On the client side,
-// the invalidation request needs to be added to the `fullWorkflowAction` action
-// defined in `action.ts`.
