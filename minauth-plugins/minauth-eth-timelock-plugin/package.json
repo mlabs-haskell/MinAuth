@@ -1,0 +1,72 @@
+{
+  "name": "eth-timelock-plugin",
+  "version": "0.9.0-alpha.20",
+  "description": "",
+  "type": "module",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^2.1.15",
+    "@types/node": "^20.10.5",
+    "dotenv": "^16.3.1",
+    "web3": "^4.3.0",
+    "express": "^4.18.2",
+    "fp-ts": "^2.16.1",
+    "minauth": "0.9.0-alpha.20",
+    "web3": "^4.3.0",
+    "zod": "^3.22.2"
+  },
+  "peerDependencies": {
+    "o1js": "0.15.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/express": "^4.17.17",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "ganache-cli": "^6.12.2",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.3",
+    "truffle": "^5.11.5",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "keywords": [
+    "authentication",
+    "blockchain",
+    "cryptography",
+    "express",
+    "mina",
+    "minauth",
+    "o1js",
+    "passport",
+    "security",
+    "typescript",
+    "zero-knowledge"
+  ],
+  "author": {
+    "name": "Michał Adamczyk",
+    "email": "michal@mlabs.city",
+    "url": "https://github.com/adamczykm"
+  },
+  "contributors": [
+    {
+      "name": "Michał Adamczyk",
+      "email": "michal@mlabs.city",
+      "url": "https://github.com/adamczykm"
+    }
+  ],
+  "license": "Apache-2.0"
+}
