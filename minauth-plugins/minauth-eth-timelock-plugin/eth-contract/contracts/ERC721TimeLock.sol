@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
@@ -28,9 +28,9 @@ contract ERC721TimeLock {
     function lockToken(address _tokenAddress, uint256 _tokenId, bytes32 _hash) external {
         require(_hash > 0, "Hash must be non-zero"); // Additional validation for hash
 
-        // Check if the token exists by calling ownerOf
-        address tokenOwner = IERC721(_tokenAddress).ownerOf(_tokenId);
-        require(tokenOwner != address(0), "ERC721: operator query for nonexistent token");
+        // Check if the token exists by calling ownerOf - no need bc of erc721 approval
+        /* address tokenOwner = IERC721(_tokenAddress).ownerOf(_tokenId); */
+        /* require(tokenOwner != address(0), "ERC721: operator query for nonexistent token"); */
 
         uint256 unlockTime = block.timestamp + lockPeriod;
         IERC721(_tokenAddress).transferFrom(msg.sender, address(this), _tokenId);
