@@ -1,25 +1,28 @@
 import { ethers } from 'ethers';
-import { ERC721TimeLock } from './typechain/contracts/ERC721TimeLock';
+import { ERC721TimeLock as ERC721TimeLockContract } from './typechain/contracts/ERC721TimeLock';
 import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721TimeLock__factory';
 import { MerkleTree } from './merkle-tree';
 import { IERC721_ABI } from './ierc721-abi.js';
 import { Field } from 'o1js';
 
-export interface IEthContract {
+export interface IErc721TimeLock {
   fetchEligibleCommitments(): Promise<{ commitments: string[] }>;
   buildCommitmentTree(): Promise<MerkleTree>;
   lockToken(tokenId: number, hash: string): Promise<void>;
   unlockToken(index: number): Promise<void>;
+
+  get lockContractAddress(): string;
+  get erc721ContractAddress(): string;
 }
 
-export class EthContract implements IEthContract {
-  private contract: ERC721TimeLock;
+export class Erc721TimeLock implements IErc721TimeLock {
+  private contract: ERC721TimeLockContract;
   private nftContract: ethers.Contract;
 
   constructor(
     private readonly signer: ethers.JsonRpcSigner,
     readonly lockContractAddress: string,
-    readonly erc721Address: string,
+    readonly erc721ContractAddress: string,
     readonly provider: ethers.BrowserProvider | ethers.JsonRpcProvider
   ) {
     this.contract = ERC721TimeLock__factory.connect(
@@ -27,7 +30,7 @@ export class EthContract implements IEthContract {
       provider
     );
     this.nftContract = new ethers.Contract(
-      erc721Address,
+      erc721ContractAddress,
       IERC721_ABI,
       this.signer
     );
@@ -35,16 +38,15 @@ export class EthContract implements IEthContract {
 
   // ... static initialize method ...
   static async initialize(
-    lockContractAddress: string,
-    nftContractAddress: string,
+    addresses: { lockContractAddress: string; nftContractAddress: string },
     provider: ethers.BrowserProvider | ethers.JsonRpcProvider
   ) {
     const signer = await provider.getSigner();
 
-    return new EthContract(
+    return new Erc721TimeLock(
       signer,
-      lockContractAddress,
-      nftContractAddress,
+      addresses.lockContractAddress,
+      addresses.nftContractAddress,
       provider
     );
   }
@@ -89,7 +91,7 @@ export class EthContract implements IEthContract {
 
     // Lock the token
     const lockTx = await this.contract.lockToken(
-      this.erc721Address,
+      this.erc721ContractAddress,
       tokenId,
       ethers.encodeBytes32String(hash)
     );

@@ -23,14 +23,21 @@ import {
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
-import { EthContract } from './EthContract.js';
+import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
+import { ethers } from 'ethers';
 
 /**
  * The plugin configuration schema.
+ * `timeLockContractAddress` - an address to the ethereum contract handling
+ * time-locking NFTs and hashes.
+ * `erc721ContractAddress` - an address to the ethereum contract for NFTs
+ * that configured to be used with this plugin (in future might be extended to
+ * support multiple such addresses)
  */
 export const ConfigurationSchema = z.object({
-  ethereumContractAddress: z.string(),
-  ethereumProvider: z.string()
+  timeLockContractAddress: z.string(),
+  erc721ContractAddress: z.string(),
+  ethereumJsonRpcProvider: z.string()
 });
 
 export type Configuration = z.infer<typeof ConfigurationSchema>;
@@ -136,13 +143,16 @@ export class EthTimelockPlugin
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
   /**
-   * The plugin exposes a single endpoint that
-   * returns the ethereum ERC721 time-lock contract address.
+   * The plugin exposes eth contract addresses via http endpoints.
    * The prover should directly interact with the contract to build the proof.
    */
-  readonly customRoutes = Router().get('/contract-address', async (_, res) => {
-    res.send(this.ethContract.contractAddress);
-  });
+  readonly customRoutes = Router()
+    .get('/timelock-address', async (_, res) => {
+      res.send(this.ethContract.lockContractAddress);
+    })
+    .get('/erc721-address', async (_, res) => {
+      res.send(this.ethContract.erc721ContractAddress);
+    });
 
   /**
    * Check if produced output is still valid.
@@ -174,7 +184,7 @@ export class EthTimelockPlugin
    * This ctor is meant to be called by the `initialize` function.
    */
   constructor(
-    private readonly ethContract: EthContract,
+    private readonly ethContract: IErc721TimeLock,
     readonly verificationKey: VerificationKey,
     readonly configuration: Configuration,
     private readonly logger: Logger
@@ -192,12 +202,21 @@ export class EthTimelockPlugin
     const { verificationKey } = await Program.compile({
       cache: Cache.None
     });
-    const ethContract = EthContract.initialize(
-      configuration.ethereumContractAddress,
-      configuration.ethereumProvider
+
+    const provider = new ethers.JsonRpcProvider(
+      configuration.ethereumJsonRpcProvider
     );
+
+    const erc721timelock = await Erc721TimeLock.initialize(
+      {
+        lockContractAddress: configuration.timeLockContractAddress,
+        nftContractAddress: configuration.erc721ContractAddress
+      },
+      provider
+    );
+
     return new EthTimelockPlugin(
-      ethContract,
+      erc721timelock,
       verificationKey,
       configuration,
       logger

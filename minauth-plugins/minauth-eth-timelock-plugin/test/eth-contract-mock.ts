@@ -1,12 +1,19 @@
-import { IEthContract, convertToField } from '../src/ethcontract';
+import { IErc721TimeLock, convertToField } from '../src/erc721timelock';
 import { MerkleTree } from '../src/merkle-tree';
 import { Field, Poseidon } from 'o1js';
 
-export class MockEthContract implements IEthContract {
+export class MockEthContract implements IErc721TimeLock {
   private commitments: string[];
   private merkleTree: MerkleTree;
 
   private tokenMap: number[] = [];
+
+  get lockContractAddress() {
+    return '0x0';
+  }
+  get erc721ContractAddress() {
+    return '0x0';
+  }
 
   private updateMerkleTree = () => {
     this.merkleTree = new MerkleTree(this.commitments.map(convertToField));
@@ -30,7 +37,7 @@ export class MockEthContract implements IEthContract {
     return Promise.resolve(this.merkleTree);
   }
 
-  async lockToken(tokenId: number, hash: string): Promise<void> {
+  async lockToken(_tokenId: number, hash: string): Promise<void> {
     this.tokenMap.push(this.commitments.length);
     this.commitments.push(hash);
     this.updateMerkleTree();

@@ -13,7 +13,8 @@ import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as z from 'zod';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
-import { EthContract } from './EthContract.js';
+import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
+import { BrowserProvider, JsonRpcProvider } from 'ethers';
 
 // TODO move to minauth
 export class PluginRouter {
@@ -76,7 +77,7 @@ export class PluginRouter {
  */
 export type EthTimelockProverConfiguration = {
   pluginRoutes: PluginRouter;
-  ethereumProvider: string;
+  ethereumProvider: BrowserProvider | JsonRpcProvider;
   logger: Logger;
 };
 
@@ -186,7 +187,7 @@ export class EthTimelockProver
 
   constructor(
     protected readonly logger: Logger,
-    protected readonly ethContract: EthContract,
+    protected readonly ethContract: IErc721TimeLock,
     protected readonly pluginRoutes: PluginRouter
   ) {}
 
@@ -214,10 +215,17 @@ export class EthTimelockProver
       logger.info('compiled');
     }
 
-    const ethAddress = await pluginRoutes.get('/contract-address', z.string());
+    const lockContractAddress = await pluginRoutes.get(
+      '/timelock-address',
+      z.string()
+    );
+    const nftContractAddress = await pluginRoutes.get(
+      '/erc721-address',
+      z.string()
+    );
 
-    const ethContract = EthContract.initialize(
-      ethAddress,
+    const ethContract = await Erc721TimeLock.initialize(
+      { lockContractAddress, nftContractAddress },
       cfg.ethereumProvider
     );
     return new EthTimelockProver(logger, ethContract, pluginRoutes);
