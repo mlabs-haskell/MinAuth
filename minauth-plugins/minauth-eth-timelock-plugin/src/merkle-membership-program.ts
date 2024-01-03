@@ -1,4 +1,11 @@
-import { Field, MerkleWitness, Poseidon, Struct, ZkProgram } from 'o1js';
+import {
+  CircuitString,
+  Field,
+  MerkleWitness,
+  Poseidon,
+  Struct,
+  ZkProgram
+} from 'o1js';
 
 // TODO how can this be made dynamic
 export const TREE_HEIGHT = 10;
@@ -7,7 +14,7 @@ export class TreeWitness extends MerkleWitness(TREE_HEIGHT) {}
 
 export class PrivateInput extends Struct({
   witness: TreeWitness,
-  secret: Field
+  secret: CircuitString
 }) {}
 
 export class PublicInput extends Struct({
@@ -26,7 +33,7 @@ export const Program = ZkProgram({
       privateInputs: [PrivateInput],
       method(publicInput: PublicInput, privateInput: PrivateInput): void {
         privateInput.witness
-          .calculateRoot(Poseidon.hash([privateInput.secret]))
+          .calculateRoot(privateInput.secret.hash)
           .assertEquals(publicInput.merkleRoot);
       }
     }

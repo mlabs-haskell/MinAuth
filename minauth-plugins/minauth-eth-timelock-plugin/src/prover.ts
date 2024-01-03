@@ -1,143 +1,170 @@
-import { Field, JsonProof, MerkleTree, SelfProof, Cache } from 'o1js';
-import * as ZkProgram from './merklemembershipsprogram.js';
+/**
+ * This module contains a prover counter-part to the Minauth ERC721 time-lock plugin.
+ * It interacts with an Ethereum smart contract pointed by the plugin (the verifier)
+ * to obtain public inputs for the zkproof used as the Minauth authorization mean.
+ */
+import { Field, JsonProof, Cache, CircuitString } from 'o1js';
+import * as ZkProgram from './merkle-membership-program.js';
 import {
   IMinAuthProver,
   IMinAuthProverFactory
 } from 'minauth/dist/plugin/plugintype.js';
-import * as A from 'fp-ts/lib/Array.js';
-import axios from 'axios';
-import { TaskEither } from 'fp-ts/lib/TaskEither.js';
-import { pipe } from 'fp-ts/lib/function.js';
-import * as TE from 'fp-ts/lib/TaskEither.js';
-import * as NE from 'fp-ts/lib/NonEmptyArray.js';
-import { NonEmptyArray } from 'fp-ts/lib/NonEmptyArray.js';
-import { FpInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
+import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import * as z from 'zod';
-import { fromFailablePromise } from 'minauth/dist/utils/fp/taskeither.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
+import { EthContract } from './EthContract.js';
+
+// TODO move to minauth
+export class PluginRouter {
+  constructor(
+    private logger: Logger,
+    private baseUrl: string,
+    private customRouteMapping?: (s: string) => string
+  ) {}
+
+  private async request<T>(
+    method: 'GET' | 'POST',
+    pluginRoute: string,
+    schema: z.ZodType<T>,
+    body?: unknown
+  ): Promise<T> {
+    try {
+      const url = this.customRouteMapping
+        ? this.customRouteMapping(pluginRoute)
+        : `${this.baseUrl}${pluginRoute}`;
+      this.logger.debug(`Requesting ${method} ${pluginRoute}`);
+      const response = await fetch(`${url}`, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify(body) : null
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const validationResult = schema.safeParse(data);
+      if (!validationResult.success) {
+        throw new Error('Validation failed');
+      }
+
+      return validationResult.data;
+    } catch (error) {
+      this.logger.error('Error in fetch operation:', error);
+      throw error;
+    }
+  }
+
+  async get<T>(pluginRoute: string, schema: z.ZodType<T>): Promise<T> {
+    return this.request('GET', pluginRoute, schema);
+  }
+
+  async post<T>(
+    pluginRoute: string,
+    schema: z.ZodType<T>,
+    value: T
+  ): Promise<void> {
+    this.request('POST', pluginRoute, schema, value);
+  }
+}
 
 /**
  * Configuration for the prover.
  */
-export type MembershipsProverConfiguration = {
-  baseUrl: string;
+export type EthTimelockProverConfiguration = {
+  pluginRoutes: PluginRouter;
+  ethereumProvider: string;
+  logger: Logger;
 };
 
-export type MembershipsPublicInputArgs = Array<{
-  /** The root of the merkle tree that the prover is trying to prove membership
-   *  in. */
-  treeRoot: Field;
-  /** Note that the leaf index is not part of the proof public input,
-   *  but it is required to build one. */
-  leafIndex: bigint;
-}>;
-
-type ZkProof = SelfProof<ZkProgram.PublicInput, ZkProgram.PublicOutput>;
+/**
+ * The part of the proof inputs that can be automatically fetched.
+ * NOTE: The Merkle tree root is the only public information that the proof will reveal.
+ */
+type ProofAutoInput = {
+  merkleRoot: Field;
+  treeWitness: ZkProgram.TreeWitness;
+};
 
 /**
- * With this class you can build proofs and interact with `MerkleMembershipsPlugin`.
- * The zk-circuit will check knowledge of a secret and its witness in merkle trees.
- * Proving this knowledge can be understood as proving membership in a set of users.
- * Because of recursion one can prove membership in multiple sets in one proof.
+ * This is the hash that corresponds to the secret preimage.
+ * It will not be revealed by the proof nor send anywhere.
+ *
+ * TODO: this is a symptopm of a bad design of the prover interface,
+ *       to be addressed later.
  */
-export class MembershipsProver
+export type EthTimelockProverPublicInputArgs = {
+  hash: Field;
+};
+
+/**
+ * With this class you can build proofs and interact with `EthTimelockPlugin`.
+ * The plugin monitors the state of an Ethereum contract.
+ * The Ethereum contract implements an NFT timelock scheme.
+ * One can lock an NFT for a given period of time along with a hash.
+ * All the hashes behind the locked NFTs are stored in a merkle tree.
+ * The plugin allows one to prove that they have the preimage of the hash
+ * and thus have the right to get the authorization.
+ * When use against suffiently large merkle tree provides a level
+ * of privacy - the proof does not reveal which hash nor the merkle witness
+ * for the hash.
+ * Some care must be taken to avoid timing attacks.
+ */
+export class EthTimelockProver
   implements
     IMinAuthProver<
-      FpInterfaceType,
-      MembershipsPublicInputArgs,
-      Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
-      Array<Field>
+      TsInterfaceType,
+      EthTimelockProverPublicInputArgs,
+      ProofAutoInput,
+      CircuitString
     >
 {
   /** This class uses the functionl style interface of the plugin. */
-  readonly __interface_tag = 'fp';
-
-  private readonly cfg: MembershipsProverConfiguration;
+  readonly __interface_tag = 'ts';
 
   /**
    * Build a proof for given inputs.
    * Note that even though TreeWitness is passed as public input, it should not be known to the verifier.
    * TODO fix the above
    */
-  prove(
-    publicInput: Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
-    secretInput: Array<Field>
-  ): TaskEither<string, JsonProof> {
-    const computeBaseProof = ([[root, witness], secret]: [
-      [ZkProgram.PublicInput, ZkProgram.TreeWitness],
-      Field
-    ]): TaskEither<string, ZkProof> =>
-      // lay the base layer of the recursive proof
-      fromFailablePromise(
-        () =>
-          ZkProgram.Program.baseCase(
-            root,
-            new ZkProgram.PrivateInput({ witness, secret })
-          ),
-        'failed in base case'
-      );
+  async prove(
+    autoInput: ProofAutoInput,
+    secretPreimage: CircuitString
+  ): Promise<JsonProof> {
+    this.logger.debug('Building proof started.');
+    const publicInput = new ZkProgram.PublicInput({
+      merkleRoot: autoInput.merkleRoot
+    });
 
-    // For each pair of inputs (secret and public) add another layer of the recursive proof
-    const computeRecursiveProof =
-      (l: Array<[[ZkProgram.PublicInput, ZkProgram.TreeWitness], Field]>) =>
-      (sp: ZkProof): TaskEither<string, ZkProof> =>
-        A.foldLeft(
-          // Pattern matching, not actually folding
-          () => TE.right(sp),
-          (
-            [[root, witness], secret]: [
-              [ZkProgram.PublicInput, ZkProgram.TreeWitness],
-              Field
-            ],
-            tail
-          ) =>
-            pipe(
-              fromFailablePromise(
-                () =>
-                  ZkProgram.Program.inductiveCase(
-                    root,
-                    sp,
-                    new ZkProgram.PrivateInput({ witness, secret })
-                  ),
-                'failed in inductive case'
-              ),
-              TE.chain((proof) => computeRecursiveProof(tail)(proof))
-            )
-        )(l);
+    const secretInput = new ZkProgram.PrivateInput({
+      witness: autoInput.treeWitness,
+      secret: secretPreimage
+    });
 
-    // actually compute the proof
-    const computeFinalProof = (
-      pl: NonEmptyArray<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>,
-      sl: NonEmptyArray<Field>
-    ): TaskEither<string, ZkProof> => {
-      const l = NE.zip(pl, sl);
-      const h = NE.head(l);
-      const t = NE.tail(l);
-      return pipe(computeBaseProof(h), TE.chain(computeRecursiveProof(t)));
-    };
-
-    return pipe(
-      TE.Do,
-      TE.tap(() =>
-        publicInput.length != secretInput.length
-          ? TE.left('unmatched public/secret input list')
-          : TE.right(undefined)
-      ),
-      TE.bind('publicInputNE', () =>
-        TE.fromOption(() => 'public input list empty')(
-          NE.fromArray(publicInput)
-        )
-      ),
-      TE.bind('secretInputNE', () =>
-        TE.fromOption(() => 'private input list empty')(
-          NE.fromArray(secretInput)
-        )
-      ),
-      TE.chain(({ publicInputNE, secretInputNE }) =>
-        computeFinalProof(publicInputNE, secretInputNE)
-      ),
-      TE.map((finalProof) => finalProof.toJSON())
+    const proof = await ZkProgram.Program.proveMembership(
+      publicInput,
+      secretInput
     );
+    this.logger.debug('Building proof finished.');
+    return proof.toJSON();
+  }
+
+  async buildInputAndProve(secretPreimageString: string) {
+    let secretPreimage = null;
+    try {
+      secretPreimage = CircuitString.fromString(secretPreimageString);
+    } catch (e) {
+      throw new Error('Could not encode secret preimage');
+    }
+
+    const hash = secretPreimage.hash();
+
+    const autoInput = await this.fetchPublicInputs({ hash });
+
+    return await this.prove(autoInput, secretPreimage);
   }
 
   /**
@@ -145,91 +172,62 @@ export class MembershipsProver
    * In this case these are Merkle trees related to the roots
    * passed as arguments.
    */
-  fetchPublicInputs(
-    args: MembershipsPublicInputArgs
-  ): TaskEither<string, Array<[ZkProgram.PublicInput, ZkProgram.TreeWitness]>> {
-    const getRootAndWitness = async (
-      treeRoot: Field,
-      leafIndex: bigint
-    ): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> => {
-      // fetch the leaves of the tree
-      const url = `${this.cfg.baseUrl}/getLeaves/${treeRoot
-        .toBigInt()
-        .toString()}`;
-      const resp = await axios.get(url);
+  async fetchPublicInputs(
+    args: EthTimelockProverPublicInputArgs
+  ): Promise<ProofAutoInput> {
+    const commitmentTree = await this.ethContract.buildCommitmentTree();
+    const witness = commitmentTree.getWitness(args.hash);
 
-      if (resp.status == 200) {
-        // successfully fetched the leaves
-        const leaves: Array<string | null> = await z
-          .array(z.string().nullable())
-          .parseAsync(resp.data);
-        // build the tree and the witness
-        const tree = new MerkleTree(ZkProgram.TREE_HEIGHT);
-        leaves.forEach((leaf, index) => {
-          if (leaf !== null) tree.setLeaf(BigInt(index), Field.from(leaf));
-        });
-        const witness = new ZkProgram.TreeWitness(tree.getWitness(leafIndex));
-        return [new ZkProgram.PublicInput({ merkleRoot: treeRoot }), witness];
-      } else {
-        // failed to fetch the leaves
-        const body: { error: string } = resp.data;
-        throw `error while getting root and witness: ${body.error}`;
-      }
+    return {
+      merkleRoot: commitmentTree.root,
+      treeWitness: witness
     };
-
-    return fromFailablePromise(
-      () =>
-        // foreach merkle root return the tree root and the witness
-        Promise.all(
-          A.map(
-            (args: {
-              treeRoot: Field;
-              leafIndex: bigint;
-            }): Promise<[ZkProgram.PublicInput, ZkProgram.TreeWitness]> =>
-              getRootAndWitness(args.treeRoot, args.leafIndex)
-          )(args)
-        ),
-      'unable to fetch inputs'
-    );
   }
 
-  constructor(cfg: MembershipsProverConfiguration) {
-    this.cfg = cfg;
-  }
+  constructor(
+    protected readonly logger: Logger,
+    protected readonly ethContract: EthContract,
+    protected readonly pluginRoutes: PluginRouter
+  ) {}
 
-  static readonly __interface_tag = 'fp';
+  static readonly __interface_tag = 'ts';
 
   /** Compile the underlying zk circuit */
-  static compile(): TaskEither<string, { verificationKey: VerificationKey }> {
+  static async compile(): Promise<{ verificationKey: VerificationKey }> {
     // disable cache because of bug in o1js 0.14.1:
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,
     // but use a serialized one - it will hang during verification.
-    return fromFailablePromise(() =>
-      ZkProgram.Program.compile({ cache: Cache.None })
-    );
+    return await ZkProgram.Program.compile({ cache: Cache.None });
   }
 
-  static initialize(
-    cfg: MembershipsProverConfiguration,
+  /** Initialize the prover */
+  static async initialize(
+    cfg: EthTimelockProverConfiguration,
     { compile = true } = {}
-  ): TaskEither<string, MembershipsProver> {
-    return pipe(
-      compile
-        ? TE.tryCatch(
-            MembershipsProver.compile(),
-            (e) => 'Error compiling: ' + String(e)
-          )
-        : TE.right({ verificationKey: '' }),
-      () => TE.right(new MembershipsProver(cfg))
+  ): Promise<EthTimelockProver> {
+    const { logger, pluginRoutes } = cfg;
+    logger.info('EthTimelockPlugin.initialize');
+    if (compile) {
+      logger.info('compiling the circuit');
+      await EthTimelockProver.compile();
+      logger.info('compiled');
+    }
+
+    const ethAddress = await pluginRoutes.get('/contract-address', z.string());
+
+    const ethContract = EthContract.initialize(
+      ethAddress,
+      cfg.ethereumProvider
     );
+    return new EthTimelockProver(logger, ethContract, pluginRoutes);
   }
 }
 
-MembershipsProver satisfies IMinAuthProverFactory<
-  FpInterfaceType,
-  MembershipsProver,
-  MembershipsProverConfiguration
+EthTimelockProver satisfies IMinAuthProverFactory<
+  TsInterfaceType,
+  EthTimelockProver,
+  EthTimelockProverConfiguration
 >;
 
-export default MembershipsProver;
+export default EthTimelockProver;

@@ -1,7 +1,10 @@
 /**
- * TODO plugin module description
+ * This module contains an example of a plugin for the minauth library
+ * that interacts with an Ethereum smart contract indirectly via a
+ * ethers.js client. See the plugin's class documentation for more details.
  */
-import { Cache, JsonProof, verify, Field, ZkProgram } from 'o1js';
+import crypto from 'crypto';
+import { Cache, Field, JsonProof, verify, ZkProgram } from 'o1js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
@@ -9,11 +12,10 @@ import {
   outputInvalid,
   outputValid
 } from 'minauth/dist/plugin/plugintype.js';
-import { Program, TREE_HEIGHT } from './merkle-membership-program.js';
+import { Program } from './merkle-membership-program.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
-import * as fs from 'fs/promises';
 import {
   wrapZodDec,
   combineEncDec,
@@ -21,43 +23,48 @@ import {
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
+import { EthContract } from './EthContract.js';
 
 /**
  * The plugin configuration schema.
- * NOTE. This is made public via the plugin's custom routes.
  */
 export const ConfigurationSchema = z.object({
-  /** Alternatively, the "roles" can be loaded from a file */
-  loadRolesFrom: z.string()
+  ethereumContractAddress: z.string(),
+  ethereumProvider: z.string()
 });
 
 export type Configuration = z.infer<typeof ConfigurationSchema>;
 
 /**
- * No public input fetching is required for this plugin.
+ * For simplicity sake we don't use additional public inputs arguments.
+ * One could for example pick a contract here (from predefined set).
  */
 export type PublicInputArgs = unknown;
 
 /**
  * The plugin's output schema.
  */
-export const OutputSchema = z.object({ merkleRoot: z.string() });
+export const OutputSchema = z.object({
+  merkleRoot: z.string(),
+  contractConfigurationHash: z.string()
+});
 
 /**
  * The output of the plugin is the merkle root for which the proof
- * is accepted.
+ * is accepted and the hash of the configuration used to verify the proof.
  */
 export type Output = z.infer<typeof OutputSchema>;
 
 /**
- * Somewhat trivial example of a plugin.
- * The plugin keeps a fixed set of hashes.
- * Each hash is associated with a role in the system.
- * One can prove that they have the role by providing the secret
- * preimage of the hash.
- *
- * NOTE. Although one can always generate valid zkproof its output must
- *       match the list kept by the server.
+ * The Ethereum contract implements an NFT timelock scheme.
+ * One can lock an NFT for a given period of time along with a hash.
+ * All the hashes behind the locked NFTs are stored in a merkle tree.
+ * The plugin allows one to prove that they have the preimage of the hash
+ * and thus have the right to get the authorization.
+ * When use against suffiently large merkle tree provides a level
+ * of privacy - the proof does not reveal which hash nor the merkle witness
+ * for the hash.
+ * Some care must be taken to avoid timing attacks.
  */
 export class EthTimelockPlugin
   implements IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>
@@ -68,27 +75,28 @@ export class EthTimelockPlugin
   readonly __interface_tag = 'ts';
 
   /**
-   *  A memoized zk-circuit verification key
+   * A utility function that hashes (SHA256) the current configuration.
    */
-  readonly verificationKey: VerificationKey;
-
-  /** The plugin's logger */
-  private readonly logger: Logger;
+  readonly configurationHash = () => {
+    const contractConfigurationHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(this.configuration))
+      .digest('hex');
+    return contractConfigurationHash;
+  };
 
   /**
    * Verify a proof and return the role.
    */
   async verifyAndGetOutput(
-    publicInputsArgs: PublicInputArgs,
+    _publicInputsArgs: PublicInputArgs,
     serializedProof: JsonProof
   ): Promise<Output> {
     try {
       // fetch valid commitments from the eth contract
-      const { commitments } = await ethContract.fetchEligibleCommitments();
-      const merkleTree = new MerkleTree(TREE_HEIGHT, commitments);
+      const merkleTree = await this.ethContract.buildCommitmentTree();
       this.logger.info(
-        `Fetched ${commitments.length} commitments with merkle root ${merkleTree.root}.`,
-        commitments
+        `Fetched ${merkleTree.leafCount} commitments with merkle root ${merkleTree.root}.`
       );
       const proof = ZkProgram.Proof(Program).fromJSON(serializedProof);
 
@@ -110,7 +118,12 @@ export class EthTimelockPlugin
       // preimage of one of the hashes stored in Eth contract.
       this.logger.info('Proof verification succeeded.');
 
-      return { merkleRoot: proof.publicInput.merkleRoot.toString() };
+      // hash the configuration and pin it to the output
+
+      return {
+        merkleRoot: proof.publicInput.merkleRoot.toString(),
+        contractConfigurationHash: this.configurationHash()
+      };
     } catch (error) {
       this.logger.error('Error verifying proof: ', error);
       throw error;
@@ -123,58 +136,49 @@ export class EthTimelockPlugin
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
   /**
-   * Provide an endpoint returning a list of roles recognized by the plugin.
-   * Additionally, provide an endpoint to update the roles
-   * NOTE. the setRoles endpoint should not be used by the client
-   * but rather by the plugin admin and that it is not persisted.
+   * The plugin exposes a single endpoint that
+   * returns the ethereum ERC721 time-lock contract address.
+   * The prover should directly interact with the contract to build the proof.
    */
-  readonly customRoutes = Router()
-    .post('/admin/roles', (req, res) => {
-      try {
-        // Assuming the new roles are sent in the request body
-        this.roles = rolesSchema.parse(req.body);
-        res.status(200).json({ message: 'Roles updated successfully' });
-      } catch (error) {
-        // Handle errors, such as invalid input
-        res.status(400).json({ message: 'Error updating roles' });
-      }
-    })
-    .get('/admin/roles', (_, res) => res.status(200).json(this.roles));
+  readonly customRoutes = Router().get('/contract-address', async (_, res) => {
+    res.send(this.ethContract.contractAddress);
+  });
 
   /**
-   * Check if produced output is still valid. If the roles dictionary was edited
-   * it may become invalid. Notice that the proof and output consumer must not
-   * allow  output forgery as this will accept forged outputs without verification.
-   * To prevent it the plugin could take the reponsibility by having a cache of outputs
-   * with unique identifiers.
+   * Check if produced output is still valid.
+   * It DOES NOT verify the proof.
+   * It assumes that the output was produced by the plugin.
+   * So use it only to check if produced output is still valid.
+   * Not to re-verifiy the proof.
+   * In case of this plugin it means that the merkle tree has not changed.
    */
   async checkOutputValidity(output: Output): Promise<OutputValidity> {
     this.logger.debug('Checking validity of ', output);
-    if (!this.roles.hasOwnProperty(output.provedHash)) {
-      this.logger.debug('Proved hash no longer exists.');
-      return Promise.resolve(outputInvalid('Proved hash is no longer valid.'));
+    let outputRoot = Field.from(0);
+    try {
+      outputRoot = Field.from(output.merkleRoot);
+    } catch (error) {
+      return outputInvalid('Invalid merkle root.');
     }
-    if (this.roles[output.provedHash] !== output.role) {
-      this.logger.debug('Proved hash no longer exists.');
-      return Promise.resolve(
-        outputInvalid('The role assigned to the hash is no longer valid.')
-      );
+    const tree = await this.ethContract.buildCommitmentTree();
+    if (tree.root !== outputRoot) {
+      return outputInvalid('Merkle root has changed.');
+    }
+    if (this.configurationHash() !== output.contractConfigurationHash) {
+      return outputInvalid('Configuration has changed.');
     }
     return Promise.resolve(outputValid);
   }
 
   /**
-   * This ctor is meant ot be called by the `initialize` function.
+   * This ctor is meant to be called by the `initialize` function.
    */
   constructor(
-    verificationKey: VerificationKey,
-    roles: Record<string, string>,
-    logger: Logger
-  ) {
-    this.verificationKey = verificationKey;
-    this.roles = roles;
-    this.logger = logger;
-  }
+    private readonly ethContract: EthContract,
+    readonly verificationKey: VerificationKey,
+    readonly configuration: Configuration,
+    private readonly logger: Logger
+  ) {}
 
   static readonly __interface_tag = 'ts';
 
@@ -188,13 +192,16 @@ export class EthTimelockPlugin
     const { verificationKey } = await Program.compile({
       cache: Cache.None
     });
-    const roles =
-      'roles' in configuration
-        ? configuration.roles
-        : await fs
-            .readFile(configuration.loadRolesFrom, 'utf-8')
-            .then(JSON.parse);
-    return new EthTimelockPlugin(verificationKey, roles, logger);
+    const ethContract = EthContract.initialize(
+      configuration.ethereumContractAddress,
+      configuration.ethereumProvider
+    );
+    return new EthTimelockPlugin(
+      ethContract,
+      verificationKey,
+      configuration,
+      logger
+    );
   }
 
   static readonly configurationDec = wrapZodDec('ts', ConfigurationSchema);
@@ -208,7 +215,7 @@ export class EthTimelockPlugin
   );
 }
 
-// sanity check
+// verify the factory interface implementation
 EthTimelockPlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
   EthTimelockPlugin,

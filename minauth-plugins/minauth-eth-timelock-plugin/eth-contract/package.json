@@ -2,6 +2,7 @@
   "name": "eth-contract",
   "version": "1.0.0",
   "description": "",
+  "type":"module",
   "main": "index.js",
   "directories": {
     "test": "test"
