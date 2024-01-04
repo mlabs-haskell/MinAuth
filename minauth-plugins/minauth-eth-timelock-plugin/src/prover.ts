@@ -3,7 +3,7 @@
  * It interacts with an Ethereum smart contract pointed by the plugin (the verifier)
  * to obtain public inputs for the zkproof used as the Minauth authorization mean.
  */
-import { Field, JsonProof, Cache } from 'o1js';
+import { Field, JsonProof, Cache, Poseidon } from 'o1js';
 import * as ZkProgram from './merkle-membership-program.js';
 import {
   IMinAuthProver,
@@ -21,7 +21,7 @@ import {
   commitmentHexToField,
   mkUserSecret,
   userCommitmentHex
-} from './common.js';
+} from './commitment-types.js';
 
 // TODO move to minauth
 export class PluginRouter {
@@ -153,10 +153,22 @@ export class Erc721TimelockProver
       secret: mkUserSecret(userSecretInput).secretHash
     });
 
-    const proof = await ZkProgram.Program.proveMembership(
-      publicInput,
-      secretInput
-    );
+    let proof = null;
+    try {
+      proof = await ZkProgram.Program.proveMembership(publicInput, secretInput);
+    } catch (e) {
+      this.logger.error('Error in proof generation:', e);
+      this.logger.debug(
+        'Secret input:',
+        secretInput,
+        'Public input:',
+        publicInput,
+        'Commitment:',
+        Poseidon.hash([secretInput.secret])
+      );
+
+      throw e;
+    }
     this.logger.debug('Building proof finished.');
     return proof.toJSON();
   }
@@ -186,7 +198,15 @@ export class Erc721TimelockProver
   ): Promise<ProofAutoInput> {
     const commitmentTree = await this.ethContract.buildCommitmentTree();
     const commitmentField = commitmentHexToField(args.userCommitment);
-    const witness = commitmentTree.getWitness(commitmentField.commitment);
+
+    let witness = null;
+    try {
+      witness = commitmentTree.getWitness(commitmentField.commitment);
+    } catch (e) {
+      const msg = `Could not build the witness for the commitment ${args.userCommitment.commitmentHex}`;
+      this.logger.error(msg);
+      throw new Error(msg);
+    }
 
     return {
       merkleRoot: commitmentTree.root,

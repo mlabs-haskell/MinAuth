@@ -108,7 +108,7 @@ export class Erc721TimelockPlugin
       const proof = ZkProgram.Proof(Program).fromJSON(serializedProof);
 
       // the proof was generated for another merkle root
-      if (proof.publicInput.merkleRoot !== merkleTree.root) {
+      if (!proof.publicInput.merkleRoot.equals(merkleTree.root)) {
         const msg =
           'Invalid merkle root. ${proof.publicInput.merkleRoot} !== ${merkleTree.root}';
         this.logger.info(msg);
@@ -184,7 +184,7 @@ export class Erc721TimelockPlugin
    * This ctor is meant to be called by the `initialize` function.
    */
   constructor(
-    private readonly ethContract: IErc721TimeLock,
+    readonly ethContract: IErc721TimeLock,
     readonly verificationKey: VerificationKey,
     readonly configuration: Configuration,
     private readonly logger: Logger

@@ -1,9 +1,9 @@
 import { ethers } from 'ethers';
-import { ERC721TimeLock as ERC721TimeLockContract } from './typechain/contracts/ERC721TimeLock';
-import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721TimeLock__factory';
-import { MerkleTree } from './merkle-tree';
+import { ERC721TimeLock as ERC721TimeLockContract } from './typechain/contracts/ERC721TimeLock.js';
+import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721TimeLock__factory.js';
+import { MerkleTree } from './merkle-tree.js';
 import { IERC721_ABI } from './ierc721-abi.js';
-import { UserCommitmentHex, commitmentHexToField } from './common';
+import { UserCommitmentHex, commitmentHexToField } from './commitment-types.js';
 
 export interface IErc721TimeLock {
   fetchEligibleCommitments(): Promise<{ commitments: UserCommitmentHex[] }>;

@@ -5,10 +5,11 @@ import { Cache } from 'o1js';
 import { MockErc721TimeLock } from './eth-contract-mock.js';
 import { log } from './logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 
 let verificationKey: VerificationKey | null = null;
 
-export const pluginTestPair = async (n: number) => {
+export const pluginTestPair = async (n: number, logger?: Logger) => {
   if (verificationKey === null) {
     verificationKey = (
       await Program.compile({
@@ -17,7 +18,7 @@ export const pluginTestPair = async (n: number) => {
     ).verificationKey;
   }
 
-  const erc721timelock = new MockErc721TimeLock(n);
+  const erc721timelock = new MockErc721TimeLock(n, undefined, logger);
 
   const configuration = {
     timeLockContractAddress: '0x00000000',

@@ -1,6 +1,6 @@
 import { MerkleTree } from '../src/merkle-tree';
 import { Field } from 'o1js';
-import { TREE_HEIGHT } from '../src/merkle-membership-program';
+import { describe, expect, beforeAll, test } from '@jest/globals';
 
 describe('MerkleTree', () => {
   let leaves: Field[];
@@ -28,10 +28,10 @@ describe('MerkleTree', () => {
   });
 
   test('should generate a witness for a leaf', () => {
-    const leaf = leaves[0];
-    const witness = merkleTree.getWitness(leaf);
-    expect(witness).toBeDefined();
-    // Further checks can be added depending on the structure of TreeWitness
+    for (const leaf of leaves) {
+      const witness = merkleTree.getWitness(leaf);
+      expect(witness).toBeDefined();
+    }
   });
 
   test('should throw an error for a non-existent leaf', () => {

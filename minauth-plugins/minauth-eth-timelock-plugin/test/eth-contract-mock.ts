@@ -7,7 +7,8 @@ import {
   commitmentHexToField,
   mkUserSecret,
   userCommitmentHex
-} from '../src/common';
+} from '../src/commitment-types.js';
+import { Logger } from 'minauth/dist/plugin/logger';
 
 export class MockErc721TimeLock implements IErc721TimeLock {
   private commitments: UserCommitmentHex[];
@@ -25,16 +26,29 @@ export class MockErc721TimeLock implements IErc721TimeLock {
 
   private updateMerkleTree = () => {
     this.merkleTree = new MerkleTree(
-      this.commitments.map((x) => commitmentHexToField(x).commitment)
+      this.commitments.map((x) => commitmentHexToField(x).commitment),
+      this.logger
+    );
+    this.logger?.debug(
+      'MockErc721TimeLock merkle root updated:',
+      this.merkleTree.root.toString()
     );
   };
 
-  constructor(n: number, ethereumProvider?: BrowserProvider | JsonRpcProvider) {
+  constructor(
+    n: number,
+    ethereumProvider?: BrowserProvider | JsonRpcProvider,
+    private readonly logger?: Logger
+  ) {
     // Initialize commitments to correspond to users secret inputs of 0..n-1
     this.commitments = Array.from({ length: n }, (_, i) =>
       userCommitmentHex(mkUserSecret({ secret: String(i) }))
     );
     this.updateMerkleTree();
+    this.logger?.debug(
+      'MockErc721TimeLock merkle root ',
+      this.merkleTree.root.toString()
+    );
 
     if (!ethereumProvider) {
       this.ethereumProvider = !ethereumProvider

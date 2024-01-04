@@ -4,7 +4,8 @@ const config: JestConfigWithTsJest = {
   preset: 'ts-jest/presets/default-esm',
   globals: {
     'ts-jest': {
-      useESM: true
+      useESM: true,
+      tsconfig: 'tsconfig.test.json'
     }
   },
   moduleNameMapper: {

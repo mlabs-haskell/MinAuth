@@ -1,4 +1,5 @@
 import { MockErc721TimeLock } from '../test/eth-contract-mock'; // Adjust the import path as necessary
+import { describe, expect, beforeEach, test } from '@jest/globals';
 
 describe('MockErc721TimeLock', () => {
   let mockContract: MockErc721TimeLock;
@@ -14,7 +15,7 @@ describe('MockErc721TimeLock', () => {
   });
 
   test('locking a token should add a commitment', async () => {
-    const newHash = '0x123';
+    const newHash = { commitmentHex: '0x1234' };
     await mockContract.lockToken(123, newHash);
 
     const { commitments } = await mockContract.fetchEligibleCommitments();
@@ -23,7 +24,7 @@ describe('MockErc721TimeLock', () => {
   });
 
   test('unlocking a token should remove the corresponding commitment', async () => {
-    const newHash = '0x123';
+    const newHash = { commitmentHex: '0x1234' };
     await mockContract.lockToken(456, newHash); // Lock a token first
     await mockContract.unlockToken(0);
 
