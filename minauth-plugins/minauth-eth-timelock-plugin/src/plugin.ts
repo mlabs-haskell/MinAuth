@@ -73,7 +73,7 @@ export type Output = z.infer<typeof OutputSchema>;
  * for the hash.
  * Some care must be taken to avoid timing attacks.
  */
-export class EthTimelockPlugin
+export class Erc721TimelockPlugin
   implements IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>
 {
   /**
@@ -198,7 +198,7 @@ export class EthTimelockPlugin
   static async initialize(
     configuration: Configuration,
     logger: Logger
-  ): Promise<EthTimelockPlugin> {
+  ): Promise<Erc721TimelockPlugin> {
     const { verificationKey } = await Program.compile({
       cache: Cache.None
     });
@@ -215,7 +215,7 @@ export class EthTimelockPlugin
       provider
     );
 
-    return new EthTimelockPlugin(
+    return new Erc721TimelockPlugin(
       erc721timelock,
       verificationKey,
       configuration,
@@ -235,10 +235,10 @@ export class EthTimelockPlugin
 }
 
 // verify the factory interface implementation
-EthTimelockPlugin satisfies IMinAuthPluginFactory<
+Erc721TimelockPlugin satisfies IMinAuthPluginFactory<
   TsInterfaceType,
-  EthTimelockPlugin,
+  Erc721TimelockPlugin,
   Configuration
 >;
 
-export default EthTimelockPlugin;
+export default Erc721TimelockPlugin;

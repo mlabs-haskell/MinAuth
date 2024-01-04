@@ -4,12 +4,12 @@
   "description": "",
   "type": "module",
   "files": [
-    "build/**/*"
+    "dist/**/*"
   ],
   "scripts": {
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
+    "prettier-format": "prettier --config .prettierrc './**/*.ts' --write",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest"
   },
   "dependencies": {

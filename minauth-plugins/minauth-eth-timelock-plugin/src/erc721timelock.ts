@@ -3,16 +3,17 @@ import { ERC721TimeLock as ERC721TimeLockContract } from './typechain/contracts/
 import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721TimeLock__factory';
 import { MerkleTree } from './merkle-tree';
 import { IERC721_ABI } from './ierc721-abi.js';
-import { Field } from 'o1js';
+import { UserCommitmentHex, commitmentHexToField } from './common';
 
 export interface IErc721TimeLock {
-  fetchEligibleCommitments(): Promise<{ commitments: string[] }>;
+  fetchEligibleCommitments(): Promise<{ commitments: UserCommitmentHex[] }>;
   buildCommitmentTree(): Promise<MerkleTree>;
-  lockToken(tokenId: number, hash: string): Promise<void>;
+  lockToken(tokenId: number, hash: UserCommitmentHex): Promise<void>;
   unlockToken(index: number): Promise<void>;
 
   get lockContractAddress(): string;
   get erc721ContractAddress(): string;
+  get ethereumProvider(): ethers.BrowserProvider | ethers.JsonRpcProvider;
 }
 
 export class Erc721TimeLock implements IErc721TimeLock {
@@ -23,11 +24,11 @@ export class Erc721TimeLock implements IErc721TimeLock {
     private readonly signer: ethers.JsonRpcSigner,
     readonly lockContractAddress: string,
     readonly erc721ContractAddress: string,
-    readonly provider: ethers.BrowserProvider | ethers.JsonRpcProvider
+    readonly ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider
   ) {
     this.contract = ERC721TimeLock__factory.connect(
       lockContractAddress,
-      provider
+      ethereumProvider
     );
     this.nftContract = new ethers.Contract(
       erc721ContractAddress,
@@ -39,22 +40,24 @@ export class Erc721TimeLock implements IErc721TimeLock {
   // ... static initialize method ...
   static async initialize(
     addresses: { lockContractAddress: string; nftContractAddress: string },
-    provider: ethers.BrowserProvider | ethers.JsonRpcProvider
+    ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider
   ) {
-    const signer = await provider.getSigner();
+    const signer = await ethereumProvider.getSigner();
 
     return new Erc721TimeLock(
       signer,
       addresses.lockContractAddress,
       addresses.nftContractAddress,
-      provider
+      ethereumProvider
     );
   }
 
   /**
    * Fetch the TokenLocked and TokenUnlocked events to get the hashes of currently locked tokens.
    */
-  async fetchEligibleCommitments(): Promise<{ commitments: string[] }> {
+  async fetchEligibleCommitments(): Promise<{
+    commitments: UserCommitmentHex[];
+  }> {
     // Fetch TokenLocked events
     const lockedFilter = this.contract.filters.TokenLocked();
     const lockedEvents = await this.contract.queryFilter(lockedFilter);
@@ -72,7 +75,10 @@ export class Erc721TimeLock implements IErc721TimeLock {
       currentlyLockedTokens.delete(event.args.tokenId.toString());
     }
 
-    const commitments = Array.from(currentlyLockedTokens.values());
+    const commitments = Array.from(currentlyLockedTokens.values()).map(
+      (hash) => ({ commitmentHex: hash })
+    );
+
     return { commitments };
   }
 
@@ -81,7 +87,10 @@ export class Erc721TimeLock implements IErc721TimeLock {
    * @param tokenId The ID of the token to be locked.
    * @param hash The hash representing the token's commitment.
    */
-  async lockToken(tokenId: number, hash: string): Promise<void> {
+  async lockToken(
+    tokenId: number,
+    { commitmentHex }: UserCommitmentHex
+  ): Promise<void> {
     // Approve the ERC721TimeLock contract to transfer the token
     const approvalTx = await this.nftContract.approve(
       this.lockContractAddress,
@@ -93,7 +102,8 @@ export class Erc721TimeLock implements IErc721TimeLock {
     const lockTx = await this.contract.lockToken(
       this.erc721ContractAddress,
       tokenId,
-      ethers.encodeBytes32String(hash)
+      // 0x.. is compatible with `BytesLike`
+      commitmentHex
     );
     await lockTx.wait();
   }
@@ -113,18 +123,9 @@ export class Erc721TimeLock implements IErc721TimeLock {
    */
   buildCommitmentTree = async () => {
     const { commitments } = await this.fetchEligibleCommitments();
-
-    const merkleTree = new MerkleTree(commitments.map(convertToField));
+    const merkleTree = new MerkleTree(
+      commitments.map((x) => commitmentHexToField(x).commitment)
+    );
     return merkleTree;
   };
-}
-
-export function convertToField(commitment: string): Field {
-  // Ensure the commitment string starts with '0x'
-  if (!commitment.startsWith('0x')) {
-    commitment = '0x' + commitment;
-  }
-
-  const bigintCommitment = BigInt(commitment);
-  return new Field(bigintCommitment);
 }

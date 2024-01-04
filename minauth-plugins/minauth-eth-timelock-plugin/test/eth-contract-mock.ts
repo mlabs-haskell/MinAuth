@@ -1,12 +1,20 @@
-import { IErc721TimeLock, convertToField } from '../src/erc721timelock';
+import { JsonRpcProvider } from 'ethers/lib.commonjs/providers/provider-jsonrpc';
+import { IErc721TimeLock } from '../src/erc721timelock';
 import { MerkleTree } from '../src/merkle-tree';
-import { Field, Poseidon } from 'o1js';
+import { BrowserProvider, ethers } from 'ethers';
+import {
+  UserCommitmentHex,
+  commitmentHexToField,
+  mkUserSecret,
+  userCommitmentHex
+} from '../src/common';
 
-export class MockEthContract implements IErc721TimeLock {
-  private commitments: string[];
+export class MockErc721TimeLock implements IErc721TimeLock {
+  private commitments: UserCommitmentHex[];
   private merkleTree: MerkleTree;
-
   private tokenMap: number[] = [];
+
+  readonly ethereumProvider: BrowserProvider | JsonRpcProvider;
 
   get lockContractAddress() {
     return '0x0';
@@ -16,20 +24,28 @@ export class MockEthContract implements IErc721TimeLock {
   }
 
   private updateMerkleTree = () => {
-    this.merkleTree = new MerkleTree(this.commitments.map(convertToField));
+    this.merkleTree = new MerkleTree(
+      this.commitments.map((x) => commitmentHexToField(x).commitment)
+    );
   };
 
-  constructor(n: number) {
-    // Initialize commitments
+  constructor(n: number, ethereumProvider?: BrowserProvider | JsonRpcProvider) {
+    // Initialize commitments to correspond to users secret inputs of 0..n-1
     this.commitments = Array.from({ length: n }, (_, i) =>
-      hex(Poseidon.hash([new Field(i)]).toString())
+      userCommitmentHex(mkUserSecret({ secret: String(i) }))
     );
     this.updateMerkleTree();
 
-    // Initialize a MerkleTree with the commitments
+    if (!ethereumProvider) {
+      this.ethereumProvider = !ethereumProvider
+        ? new ethers.JsonRpcProvider('http://127.0.0.1:8545')
+        : ethereumProvider;
+    }
   }
 
-  async fetchEligibleCommitments(): Promise<{ commitments: string[] }> {
+  async fetchEligibleCommitments(): Promise<{
+    commitments: UserCommitmentHex[];
+  }> {
     return Promise.resolve({ commitments: this.commitments });
   }
 
@@ -37,7 +53,7 @@ export class MockEthContract implements IErc721TimeLock {
     return Promise.resolve(this.merkleTree);
   }
 
-  async lockToken(_tokenId: number, hash: string): Promise<void> {
+  async lockToken(_tokenId: number, hash: UserCommitmentHex): Promise<void> {
     this.tokenMap.push(this.commitments.length);
     this.commitments.push(hash);
     this.updateMerkleTree();
@@ -53,12 +69,4 @@ export class MockEthContract implements IErc721TimeLock {
       throw new Error('Invalid index for unlockToken');
     }
   }
-}
-
-function hex(decimalStr: string): string {
-  const decimalInt = parseInt(decimalStr, 10);
-  if (isNaN(decimalInt)) {
-    throw new Error('Invalid decimal string');
-  }
-  return '0x' + decimalInt.toString(16);
 }

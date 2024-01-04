@@ -1,11 +1,11 @@
-import { MockIErc721TimeLock } from '../test/eth-contract-mock'; // Adjust the import path as necessary
+import { MockErc721TimeLock } from '../test/eth-contract-mock'; // Adjust the import path as necessary
 
-describe('MockIErc721TimeLock', () => {
-  let mockContract: MockIErc721TimeLock;
+describe('MockErc721TimeLock', () => {
+  let mockContract: MockErc721TimeLock;
   const initialCommitmentCount = 5;
 
   beforeEach(() => {
-    mockContract = new MockIErc721TimeLock(initialCommitmentCount);
+    mockContract = new MockErc721TimeLock(initialCommitmentCount);
   });
 
   test('initial state should have correct number of commitments', async () => {

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
-    "prettier-format": "prettier --config .prettierrc 'plugins/**/*.ts' --write",
+    "prettier-format": "prettier --config .prettierrc './**/*.ts' --write",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -37,7 +37,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "o1js": "0.15.1"
+    "o1js": "0.15.2"
   },
   "keywords": [
     "authentication",

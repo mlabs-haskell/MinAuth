@@ -3,7 +3,7 @@
  * It interacts with an Ethereum smart contract pointed by the plugin (the verifier)
  * to obtain public inputs for the zkproof used as the Minauth authorization mean.
  */
-import { Field, JsonProof, Cache, CircuitString } from 'o1js';
+import { Field, JsonProof, Cache } from 'o1js';
 import * as ZkProgram from './merkle-membership-program.js';
 import {
   IMinAuthProver,
@@ -15,6 +15,13 @@ import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
 import { BrowserProvider, JsonRpcProvider } from 'ethers';
+import {
+  UserCommitmentHex,
+  UserSecretInput,
+  commitmentHexToField,
+  mkUserSecret,
+  userCommitmentHex
+} from './common.js';
 
 // TODO move to minauth
 export class PluginRouter {
@@ -75,7 +82,7 @@ export class PluginRouter {
 /**
  * Configuration for the prover.
  */
-export type EthTimelockProverConfiguration = {
+export type Erc721TimelockProverConfiguration = {
   pluginRoutes: PluginRouter;
   ethereumProvider: BrowserProvider | JsonRpcProvider;
   logger: Logger;
@@ -97,12 +104,12 @@ type ProofAutoInput = {
  * TODO: this is a symptopm of a bad design of the prover interface,
  *       to be addressed later.
  */
-export type EthTimelockProverPublicInputArgs = {
-  hash: Field;
+export type Erc721TimelockProverPublicInputArgs = {
+  userCommitment: UserCommitmentHex;
 };
 
 /**
- * With this class you can build proofs and interact with `EthTimelockPlugin`.
+ * With this class you can build proofs and interact with `Erc721TimelockPlugin`.
  * The plugin monitors the state of an Ethereum contract.
  * The Ethereum contract implements an NFT timelock scheme.
  * One can lock an NFT for a given period of time along with a hash.
@@ -114,13 +121,13 @@ export type EthTimelockProverPublicInputArgs = {
  * for the hash.
  * Some care must be taken to avoid timing attacks.
  */
-export class EthTimelockProver
+export class Erc721TimelockProver
   implements
     IMinAuthProver<
       TsInterfaceType,
-      EthTimelockProverPublicInputArgs,
+      Erc721TimelockProverPublicInputArgs,
       ProofAutoInput,
-      CircuitString
+      UserSecretInput
     >
 {
   /** This class uses the functionl style interface of the plugin. */
@@ -128,12 +135,13 @@ export class EthTimelockProver
 
   /**
    * Build a proof for given inputs.
-   * Note that even though TreeWitness is passed as public input, it should not be known to the verifier.
+   * In order to obtain the secret hash use `buildSecretHash` from a secret user string.
+   * NOTE that even though TreeWitness is passed as public input, it should not be known to the verifier.
    * TODO fix the above
    */
   async prove(
     autoInput: ProofAutoInput,
-    secretPreimage: CircuitString
+    userSecretInput: UserSecretInput
   ): Promise<JsonProof> {
     this.logger.debug('Building proof started.');
     const publicInput = new ZkProgram.PublicInput({
@@ -142,7 +150,7 @@ export class EthTimelockProver
 
     const secretInput = new ZkProgram.PrivateInput({
       witness: autoInput.treeWitness,
-      secret: secretPreimage
+      secret: mkUserSecret(userSecretInput).secretHash
     });
 
     const proof = await ZkProgram.Program.proveMembership(
@@ -153,19 +161,19 @@ export class EthTimelockProver
     return proof.toJSON();
   }
 
-  async buildInputAndProve(secretPreimageString: string) {
+  async buildInputAndProve(userSecretInput: UserSecretInput) {
     let secretPreimage = null;
     try {
-      secretPreimage = CircuitString.fromString(secretPreimageString);
+      secretPreimage = mkUserSecret(userSecretInput);
     } catch (e) {
       throw new Error('Could not encode secret preimage');
     }
 
-    const hash = secretPreimage.hash();
+    const userCommitment = userCommitmentHex(secretPreimage);
 
-    const autoInput = await this.fetchPublicInputs({ hash });
+    const autoInput = await this.fetchPublicInputs({ userCommitment });
 
-    return await this.prove(autoInput, secretPreimage);
+    return await this.prove(autoInput, userSecretInput);
   }
 
   /**
@@ -174,10 +182,11 @@ export class EthTimelockProver
    * passed as arguments.
    */
   async fetchPublicInputs(
-    args: EthTimelockProverPublicInputArgs
+    args: Erc721TimelockProverPublicInputArgs
   ): Promise<ProofAutoInput> {
     const commitmentTree = await this.ethContract.buildCommitmentTree();
-    const witness = commitmentTree.getWitness(args.hash);
+    const commitmentField = commitmentHexToField(args.userCommitment);
+    const witness = commitmentTree.getWitness(commitmentField.commitment);
 
     return {
       merkleRoot: commitmentTree.root,
@@ -187,8 +196,7 @@ export class EthTimelockProver
 
   constructor(
     protected readonly logger: Logger,
-    protected readonly ethContract: IErc721TimeLock,
-    protected readonly pluginRoutes: PluginRouter
+    protected readonly ethContract: IErc721TimeLock
   ) {}
 
   static readonly __interface_tag = 'ts';
@@ -204,14 +212,14 @@ export class EthTimelockProver
 
   /** Initialize the prover */
   static async initialize(
-    cfg: EthTimelockProverConfiguration,
+    cfg: Erc721TimelockProverConfiguration,
     { compile = true } = {}
-  ): Promise<EthTimelockProver> {
+  ): Promise<Erc721TimelockProver> {
     const { logger, pluginRoutes } = cfg;
-    logger.info('EthTimelockPlugin.initialize');
+    logger.info('Erc721TimelockPlugin.initialize');
     if (compile) {
       logger.info('compiling the circuit');
-      await EthTimelockProver.compile();
+      await Erc721TimelockProver.compile();
       logger.info('compiled');
     }
 
@@ -228,14 +236,14 @@ export class EthTimelockProver
       { lockContractAddress, nftContractAddress },
       cfg.ethereumProvider
     );
-    return new EthTimelockProver(logger, ethContract, pluginRoutes);
+    return new Erc721TimelockProver(logger, ethContract);
   }
 }
 
-EthTimelockProver satisfies IMinAuthProverFactory<
+Erc721TimelockProver satisfies IMinAuthProverFactory<
   TsInterfaceType,
-  EthTimelockProver,
-  EthTimelockProverConfiguration
+  Erc721TimelockProver,
+  Erc721TimelockProverConfiguration
 >;
 
-export default EthTimelockProver;
+export default Erc721TimelockProver;
