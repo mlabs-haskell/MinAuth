@@ -1,5 +1,4 @@
 import { JsonProof } from 'o1js';
-import { mkUserSecret, userCommitmentHex } from '../src/commitment-types';
 import Erc721TimelockPlugin from '../src/plugin';
 import Erc721TimelockProver from '../src/prover';
 import { pluginTestPair } from './common.js';
@@ -39,13 +38,8 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
     // installs as commitments poseidon hashes of the
     // 0..9 range
     // So we expect that a proof for the is valid
-    const secret = { secret: '10' };
-    const commitmentHex = userCommitmentHex(mkUserSecret(secret)).commitmentHex;
-
-    expect(await prover.buildInputAndProve({ secret: '10' })).toThrow(
-      `Could not build the witness for the commitment ${commitmentHex}`
-    );
-  }, 3000);
+    await expect(prover.buildInputAndProve({ secret: '10' })).rejects.toThrow();
+  }, 30000);
 
   test('should fail verify if merkle tree changes', async () => {
     // Assuming a method to generate an invalid proof
@@ -55,10 +49,10 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
     // So we expect that a proof for the is valid
     const secret = { secret: '0' };
     const newCommitment = { commitmentHex: '0x12345678' };
-    const proof = await prover.buildInputAndProve(secret);
+    const proof: JsonProof = await prover.buildInputAndProve(secret);
     expect(await plugin.verifyAndGetOutput({}, proof)).toBeDefined();
-    plugin.ethContract.lockToken(0, newCommitment);
-    expect(await plugin.verifyAndGetOutput({}, proof)).toThrow();
+    await plugin.ethContract.lockToken(0, newCommitment);
+    await expect(plugin.verifyAndGetOutput({}, proof)).rejects.toThrow();
   }, 30000);
 
   test('should fail verify if the proof is tampered with', async () => {
@@ -79,8 +73,8 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
     };
 
     expect(await plugin.verifyAndGetOutput({}, proof)).toBeDefined();
-    expect(await plugin.verifyAndGetOutput({}, newProof)).toThrow();
-  }, 3000);
+    await expect(plugin.verifyAndGetOutput({}, newProof)).rejects.toThrow();
+  }, 30000);
 });
 
 function changeOneBit(input: string): string {

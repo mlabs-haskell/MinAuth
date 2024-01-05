@@ -102,13 +102,16 @@ export class Erc721TimelockPlugin
     try {
       // fetch valid commitments from the eth contract
       const merkleTree = await this.ethContract.buildCommitmentTree();
-      this.logger.info(
+      this.logger.debug(
         `Fetched ${merkleTree.leafCount} commitments with merkle root ${merkleTree.root}.`
       );
       const proof = ZkProgram.Proof(Program).fromJSON(serializedProof);
+      this.logger.debug(
+        `Verifying proof for merkle root ${proof.publicInput.merkleRoot}...`
+      );
 
       // the proof was generated for another merkle root
-      if (!proof.publicInput.merkleRoot.equals(merkleTree.root)) {
+      if (!proof.publicInput.merkleRoot.equals(merkleTree.root).toBoolean()) {
         const msg =
           'Invalid merkle root. ${proof.publicInput.merkleRoot} !== ${merkleTree.root}';
         this.logger.info(msg);
