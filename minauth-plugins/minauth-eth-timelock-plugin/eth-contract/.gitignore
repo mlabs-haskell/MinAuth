@@ -1,0 +1,23 @@
+# Dependencies
+/node_modules
+
+# Environment files
+/.env
+
+# Hardhat artifacts and cache
+/artifacts
+/cache
+
+# TypeChain output
+/typechain
+/typechain-types
+
+# Solidity coverage files
+/coverage
+/coverage.json
+
+# Ignition files
+/ignition
+
+# Compiled contract output
+/build-info
