@@ -14,17 +14,18 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
   let prover: Erc721TimelockProver;
 
   beforeEach(async () => {
+    // Assuming a method to generate an invalid proof
+    // the mock used for the erc721 lock contract
+    // installs as commitments poseidon hashes of the
+    // 0..9 range
+    // So we expect that a proof for the is valid
+
     const { plugin: pl, prover: pr } = await pluginTestPair(10, log);
     plugin = pl;
     prover = pr;
   }, 60000);
 
   test('should verify a valid proof', async () => {
-    // Assuming a method to generate a valid proof
-    // the mock used for the erc721 lock contract
-    // installs as commitments poseidon hashes of the
-    // 0..9 range
-    // So we expect that a proof for the is valid
     const proof = await prover.buildInputAndProve({ secret: '0' });
     const output = await plugin.verifyAndGetOutput({}, proof);
 
@@ -33,20 +34,10 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
   }, 30000);
 
   test('should fail to build proof for an unexistent commitment', async () => {
-    // Assuming a method to generate an invalid proof
-    // the mock used for the erc721 lock contract
-    // installs as commitments poseidon hashes of the
-    // 0..9 range
-    // So we expect that a proof for the is valid
     await expect(prover.buildInputAndProve({ secret: '10' })).rejects.toThrow();
   }, 30000);
 
   test('should fail verify if merkle tree changes', async () => {
-    // Assuming a method to generate an invalid proof
-    // the mock used for the erc721 lock contract
-    // installs as commitments poseidon hashes of the
-    // 0..9 range
-    // So we expect that a proof for the is valid
     const secret = { secret: '0' };
     const newCommitment = { commitmentHex: '0x12345678' };
     const proof: JsonProof = await prover.buildInputAndProve(secret);
@@ -56,11 +47,6 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
   }, 30000);
 
   test('should fail verify if the proof is tampered with', async () => {
-    // Assuming a method to generate an invalid proof
-    // the mock used for the erc721 lock contract
-    // installs as commitments poseidon hashes of the
-    // 0..9 range
-    // So we expect that a proof for the is valid
     const secret = { secret: '0' };
     const proof: JsonProof = await prover.buildInputAndProve(secret);
 
@@ -74,6 +60,33 @@ describe('EthTimelockPlugin - Proof Submission and Verification', () => {
 
     expect(await plugin.verifyAndGetOutput({}, proof)).toBeDefined();
     await expect(plugin.verifyAndGetOutput({}, newProof)).rejects.toThrow();
+  }, 30000);
+
+  test('Should validate correct output', async () => {
+    const secret = { secret: '0' };
+    const proof: JsonProof = await prover.buildInputAndProve(secret);
+    const output = await plugin.verifyAndGetOutput({}, proof);
+
+    const outputValid = await plugin.checkOutputValidity(output);
+
+    expect(outputValid.isValid).toEqual(true);
+  }, 30000);
+
+  test('Should not validate incorrect output ', async () => {
+    const secret = { secret: '0' };
+    const proof: JsonProof = await prover.buildInputAndProve(secret);
+
+    const output = await plugin.verifyAndGetOutput({}, proof);
+
+    const newCommitment = { commitmentHex: '0x12345678' };
+    await plugin.ethContract.lockToken(0, newCommitment);
+    let outputValid = await plugin.checkOutputValidity(output);
+    expect(outputValid.isValid).toEqual(false);
+
+    await plugin.ethContract.unlockToken(0);
+
+    outputValid = await plugin.checkOutputValidity(output);
+    expect(outputValid.isValid).toEqual(true);
   }, 30000);
 });
 

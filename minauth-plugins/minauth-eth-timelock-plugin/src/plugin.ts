@@ -167,14 +167,14 @@ export class Erc721TimelockPlugin
    */
   async checkOutputValidity(output: Output): Promise<OutputValidity> {
     this.logger.debug('Checking validity of ', output);
-    let outputRoot = Field.from(0);
+    let outputRoot;
     try {
       outputRoot = Field.from(output.merkleRoot);
     } catch (error) {
       return outputInvalid('Invalid merkle root.');
     }
     const tree = await this.ethContract.buildCommitmentTree();
-    if (tree.root !== outputRoot) {
+    if (!tree.root.equals(outputRoot).toBoolean()) {
       return outputInvalid('Merkle root has changed.');
     }
     if (this.configurationHash() !== output.contractConfigurationHash) {
