@@ -1,13 +1,13 @@
 {
   "name": "minauth-erc721-timelock-plugin",
-  "version": "0.9.0-alpha.20",
+  "version": "0.9.0-alpha.21",
   "description": "",
   "type": "module",
   "files": [
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && copyfiles -u 1 eth-contract/contracts/*.sol dist/",
     "lint": "eslint . --ext .ts",
     "prettier-format": "prettier --config .prettierrc './**/*.ts' --write",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest"
@@ -32,6 +32,7 @@
     "@types/mocha": "^10.0.6",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.8.0",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.51.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-deprecation": "^2.0.0",
