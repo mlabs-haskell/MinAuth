@@ -6,6 +6,8 @@
   "main": "index.js",
   "scripts": {
     "run-client": "node ./dist/headless-test-client/index.js",
+    "hardhat-node": "npx hardhat node",
+    "deploy-eth-contracts": "cd eth-contract && npx ts-node scripts/cli.ts deploy-erc721timelock --lock-period 60 && npx ts-node scripts/cli.ts deploy-erc721mock -n 'minauth_nft' -s 'MNFT' && cd ..",
     "serve-api": "node ./dist/api-server/index.js",
     "serve-plugin-server": "node ./node_modules/minauth/dist/tools/plugin-server/index.js",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
@@ -27,6 +29,7 @@
     "http-proxy-middleware": "^2.0.6",
     "jsonwebtoken": "^9.0.2",
     "minauth": "0.9.0-alpha.20",
+    "minauth-erc721-timelock-plugin": "0.9.0-alpha.21",
     "minauth-merkle-membership-plugin": "0.9.0-alpha.20",
     "minauth-simple-preimage-plugin": "0.9.0-alpha.20",
     "o1js": "0.15.1",

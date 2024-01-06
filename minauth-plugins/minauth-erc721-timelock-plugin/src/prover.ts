@@ -214,6 +214,24 @@ export class Erc721TimelockProver
     };
   }
 
+  /**
+   * The plugin provides an auxiliary method to lock an NFT along with a commitment,
+   * indirectly via the Ethereum contract.
+   */
+  async lockNft(commitment: UserCommitmentHex, tokenId: number): Promise<void> {
+    // TODO: errors & tests
+    await this.ethContract.lockToken(tokenId, commitment);
+  }
+
+  /**
+   * The plugin provides an auxiliary method to unlock a locked NFT after
+   * the lock-up period is over.
+   */
+  async unlockNft(index: number): Promise<void> {
+    // TODO: errors & tests
+    await this.ethContract.unlockToken(index);
+  }
+
   constructor(
     protected readonly logger: Logger,
     protected readonly ethContract: IErc721TimeLock

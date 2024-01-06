@@ -136,3 +136,6 @@ result-*
 
 # tmp files
 .fixtures
+
+# minauth config
+minauth-config.json
