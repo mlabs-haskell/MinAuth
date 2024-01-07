@@ -61,7 +61,7 @@ const uiSchema = {
   }
 };
 
-export type FormDataChange = ProverFormData | z.ZodError<ProverFormData>;
+export type FormDataChange = unknown | z.ZodError;
 
 interface MinAuthProverComponentProps {
   onFormDataChange?: (formData: FormDataChange) => void;

@@ -15,6 +15,10 @@ import {
 } from '@/helpers/demo-admin';
 import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
+import Erc721TimelockProverComponent, {
+  Erc721TimelockAdminComponent
+} from '@/components/minauth-prover-component2';
+import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -23,15 +27,19 @@ const MinAuthDemo: React.FC = () => {
     name: 'minauth-demo-component',
     stylePrettyLogs: false
   });
+
+  const [selectedPlugin, setSelectedPlugin] = useState<string>('');
+
   const [proverFormData, setProverFormData] = useState<FormDataChange>();
   const [authenticationData, setAuthenticationData] =
     useState<AuthResponse | null>(null);
   const [submissionData, setSubmissionData] = useState<MinAuthProof | null>(
     null
   );
-
   const [resourceResponse, setResourceResponse] =
     useState<ApiResponse<z.ZodTypeAny> | null>(null);
+
+  const [prover, setProver] = useState<Erc721TimelockProver | null>(null);
 
   const handleSubmissionDataChange = (
     newSubmissionData: MinAuthProof | null
@@ -52,6 +60,59 @@ const MinAuthDemo: React.FC = () => {
     setResourceResponse(res);
   };
 
+  const simplePreimageComponent = () => {
+    return (
+      <div>
+        <SimplePreimageAdminConfigComponent
+          logger={logger?.getSubLogger({
+            name: 'SimplePreimageAdminConfigComponent'
+          })}
+        />
+        <MinAuthProverComponent
+          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+          onSubmissionDataChange={handleSubmissionDataChange}
+          onAuthenticationResponse={(response) => {
+            setAuthenticationData(response);
+          }}
+          logger={logger}
+        />
+      </div>
+    );
+  };
+
+  const erc721TimelockComponent = () => {
+    return (
+      <div>
+        <Erc721TimelockAdminComponent
+          prover={prover}
+          logger={logger?.getSubLogger({
+            name: 'Erc721TimelockAdminComponent'
+          })}
+        />
+        <Erc721TimelockProverComponent
+          updateProver={setProver}
+          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+          onSubmissionDataChange={handleSubmissionDataChange}
+          onAuthenticationResponse={(response) => {
+            setAuthenticationData(response);
+          }}
+          logger={logger}
+        />
+      </div>
+    );
+  };
+
+  const selectedPluginComponent = () => {
+    switch (selectedPlugin) {
+      case 'simple-preimage':
+        return simplePreimageComponent();
+      case 'erc721-timelock':
+        return erc721TimelockComponent();
+      default:
+        return <div> No plugin selected </div>;
+    }
+  };
+
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-gray-800 text-white p-5 my-8 mx-auto">
       <Header />
@@ -60,23 +121,18 @@ const MinAuthDemo: React.FC = () => {
         <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
           <DropdownComponent
             fetchUrl="http://127.0.0.1:3000/plugins/activePlugins"
-            onSelectedOptionChange={() => {}}
+            onSelectedOptionChange={setSelectedPlugin}
           />
-          <SimplePreimageAdminConfigComponent
-            logger={logger?.getSubLogger({
-              name: 'SimplePreimageAdminConfigComponent'
-            })}
-          />
-          <MinAuthProverComponent
-            onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
-            onSubmissionDataChange={handleSubmissionDataChange}
-            onAuthenticationResponse={(response) => {
-              setAuthenticationData(response);
-            }}
-            logger={logger}
-          />
-          <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
-          <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
+          {selectedPluginComponent()}
+
+          {/* Labels and json text areas to show information  */}
+
+          <div className="flex flex-col space-y-4">
+            <label htmlFor="prover-form-data">Prover Form Data</label>
+            <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
+            <label htmlFor="submission-data">Submission Data</label>
+            <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
+          </div>
         </div>
 
         {/* Second column */}

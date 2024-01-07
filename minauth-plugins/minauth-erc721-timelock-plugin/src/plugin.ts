@@ -4,7 +4,7 @@
  * ethers.js client. See the plugin's class documentation for more details.
  */
 import crypto from 'crypto';
-import { Cache, Field, JsonProof, verify, ZkProgram } from 'o1js';
+import { Cache, Field, JsonProof, verify } from 'o1js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
@@ -12,7 +12,10 @@ import {
   outputInvalid,
   outputValid
 } from 'minauth/dist/plugin/plugintype.js';
-import { Program } from './merkle-membership-program.js';
+import {
+  MerkleMembershipProgram,
+  MerkleMembershipProof
+} from './merkle-membership-program.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
@@ -33,6 +36,7 @@ import { ethers } from 'ethers';
  * `erc721ContractAddress` - an address to the ethereum contract for NFTs
  * that configured to be used with this plugin (in future might be extended to
  * support multiple such addresses)
+ * `ethereumJsonRpcProvider` - a json rpc provider for the ethereum network
  */
 export const ConfigurationSchema = z.object({
   timeLockContractAddress: z.string(),
@@ -105,7 +109,7 @@ export class Erc721TimelockPlugin
       this.logger.debug(
         `Fetched ${merkleTree.leafCount} commitments with merkle root ${merkleTree.root}.`
       );
-      const proof = ZkProgram.Proof(Program).fromJSON(serializedProof);
+      const proof = MerkleMembershipProof.fromJSON(serializedProof);
       this.logger.debug(
         `Verifying proof for merkle root ${proof.publicInput.merkleRoot}...`
       );
@@ -202,7 +206,7 @@ export class Erc721TimelockPlugin
     configuration: Configuration,
     logger: Logger
   ): Promise<Erc721TimelockPlugin> {
-    const { verificationKey } = await Program.compile({
+    const { verificationKey } = await MerkleMembershipProgram.compile({
       cache: Cache.None
     });
 

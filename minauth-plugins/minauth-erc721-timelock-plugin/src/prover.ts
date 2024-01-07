@@ -22,6 +22,7 @@ import {
   mkUserSecret,
   userCommitmentHex
 } from './commitment-types.js';
+import { MerkleMembershipProgram } from './merkle-membership-program.js';
 
 // TODO move to minauth
 export class PluginRouter {
@@ -155,7 +156,10 @@ export class Erc721TimelockProver
 
     let proof = null;
     try {
-      proof = await ZkProgram.Program.proveMembership(publicInput, secretInput);
+      proof = await MerkleMembershipProgram.proveMembership(
+        publicInput,
+        secretInput
+      );
     } catch (e) {
       this.logger.error('Error in proof generation:', e);
       this.logger.debug(
@@ -186,6 +190,15 @@ export class Erc721TimelockProver
     const autoInput = await this.fetchPublicInputs({ userCommitment });
 
     return await this.prove(autoInput, userSecretInput);
+  }
+
+  async fetchEligibleCommitments(): Promise<{
+    commitments: UserCommitmentHex[];
+  }> {
+    this.logger.debug('Fetching eligible commitments started.');
+    const r = await this.ethContract.fetchEligibleCommitments();
+    this.logger.debug('Fetching eligible commitments finished.', r);
+    return r;
   }
 
   /**
@@ -220,7 +233,11 @@ export class Erc721TimelockProver
    */
   async lockNft(commitment: UserCommitmentHex, tokenId: number): Promise<void> {
     // TODO: errors & tests
+    this.logger.debug(
+      'Locking NFT ${tokenId} with commitment ${commitment} started.'
+    );
     await this.ethContract.lockToken(tokenId, commitment);
+    this.logger.debug('Locking NFT finished.');
   }
 
   /**
@@ -229,7 +246,9 @@ export class Erc721TimelockProver
    */
   async unlockNft(index: number): Promise<void> {
     // TODO: errors & tests
+    this.logger.debug('Unlocking NFT at index ${index} started.');
     await this.ethContract.unlockToken(index);
+    this.logger.debug('Unlocking NFT finished.');
   }
 
   constructor(
@@ -245,7 +264,19 @@ export class Erc721TimelockProver
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,
     // but use a serialized one - it will hang during verification.
-    return await ZkProgram.Program.compile({ cache: Cache.None });
+    return await MerkleMembershipProgram.compile({ cache: Cache.None });
+  }
+
+  get ethereumProvider(): string {
+    return this.ethContract.ethereumProvider.toString();
+  }
+
+  get lockContractAddress(): string {
+    return this.ethContract.lockContractAddress;
+  }
+
+  get erc721ContractAddress(): string {
+    return this.ethContract.erc721ContractAddress;
   }
 
   /** Initialize the prover */
