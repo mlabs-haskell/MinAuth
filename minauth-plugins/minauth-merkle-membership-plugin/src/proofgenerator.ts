@@ -25,22 +25,9 @@ import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 import * as RTE from 'fp-ts/lib/ReaderTaskEither.js';
 import { safeFromString } from 'minauth/dist/utils/fp/either.js';
 import { tapLogger } from 'minauth/dist/utils/fp/readertaskeither.js';
+import { fieldEncDec } from 'minauth/dist/utils/fp/fieldEncDec.js';
 
 // TODO/FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
-const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
-  __interface_tag: 'fp',
-
-  decode: (i: unknown) =>
-    pipe(
-      wrapZodDec('fp', z.string()).decode(i),
-      E.chain(
-        safeFromString(Field.from, (err) => `failed to decode Field: ${err}`)
-      )
-    ),
-
-  encode: (i: Field) => i.toString()
-};
-
 const bigintEncDec: EncodeDecoder<FpInterfaceType, bigint> = {
   __interface_tag: 'fp',
 

@@ -6,6 +6,9 @@ import { z } from 'zod';
 import * as E from 'fp-ts/lib/Either.js';
 import { safeFromString } from './either';
 
+/**
+ * Encode/decode an o1js Field. (to string)
+ */
 export const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
   __interface_tag: 'fp',
 

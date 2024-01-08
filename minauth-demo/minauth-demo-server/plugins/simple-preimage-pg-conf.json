@@ -1,4 +1,5 @@
 {
+  "pluginName": "simple-preimage",
   "serverUrl": "http://127.0.0.1:3000",
   "password": "0"
 }

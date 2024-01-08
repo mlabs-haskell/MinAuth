@@ -23,62 +23,7 @@ import {
   userCommitmentHex
 } from './commitment-types.js';
 import { MerkleMembershipProgram } from './merkle-membership-program.js';
-
-// TODO move to minauth
-export class PluginRouter {
-  constructor(
-    private logger: Logger,
-    private baseUrl: string,
-    private customRouteMapping?: (s: string) => string
-  ) {}
-
-  private async request<T>(
-    method: 'GET' | 'POST',
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    body?: unknown
-  ): Promise<T> {
-    try {
-      const url = this.customRouteMapping
-        ? this.customRouteMapping(pluginRoute)
-        : `${this.baseUrl}${pluginRoute}`;
-      this.logger.debug(`Requesting ${method} ${pluginRoute}`);
-      const response = await fetch(`${url}`, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: method === 'POST' ? JSON.stringify(body) : null
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const validationResult = schema.safeParse(data);
-      if (!validationResult.success) {
-        throw new Error('Validation failed');
-      }
-
-      return validationResult.data;
-    } catch (error) {
-      this.logger.error('Error in fetch operation:', error);
-      throw error;
-    }
-  }
-
-  async get<T>(pluginRoute: string, schema: z.ZodType<T>): Promise<T> {
-    return this.request('GET', pluginRoute, schema);
-  }
-
-  async post<T>(
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    value: T
-  ): Promise<void> {
-    this.request('POST', pluginRoute, schema, value);
-  }
-}
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter.js';
 
 /**
  * Configuration for the prover.
