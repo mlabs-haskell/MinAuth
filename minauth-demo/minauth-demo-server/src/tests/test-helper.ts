@@ -216,7 +216,7 @@ const startPluginServer = async (
 };
 
 const startSomeServer = async (): Promise<cp.ChildProcess> => {
-  const p = cp.spawn('ts-node', ['src/api-server'], {
+  const p = cp.spawn('node', ['dist/api-server/index.js'], {
     stdio: 'inherit'
   });
 
