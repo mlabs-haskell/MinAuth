@@ -155,10 +155,10 @@ export class Erc721TimelockPlugin
    */
   readonly customRoutes = Router()
     .get('/timelock-address', async (_, res) => {
-      res.send(this.ethContract.lockContractAddress);
+      res.json(this.ethContract.lockContractAddress);
     })
     .get('/erc721-address', async (_, res) => {
-      res.send(this.ethContract.erc721ContractAddress);
+      res.json(this.ethContract.erc721ContractAddress);
     });
 
   /**
