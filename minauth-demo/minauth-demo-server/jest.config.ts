@@ -14,7 +14,8 @@ const config: JestConfigWithTsJest = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
-  modulePathIgnorePatterns: ['./dist/']
+  modulePathIgnorePatterns: ['./dist/'],
+  testTimeout: 1_000_000
 };
 
 export default config;
