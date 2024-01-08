@@ -8,7 +8,7 @@ runTestGroup({
   server: {
     loadPlugins: {
       SimplePreimagePlugin: {
-        kind: 'simplePreimage',
+        kind: 'simple-preimage',
         config: {
           roles: ((): Map<Field, string> => {
             const m = new Map<Field, string>();
@@ -22,7 +22,7 @@ runTestGroup({
         }
       },
       MerkleMembershipsPlugin: {
-        kind: 'merkleMemberships',
+        kind: 'merkle-memberships',
         config: {
           feePayer: O.none,
           trees: [

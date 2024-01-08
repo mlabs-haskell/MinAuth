@@ -15,15 +15,11 @@ import * as cp from 'child_process';
 import * as log from 'tslog';
 import '@relmify/jest-fp-ts';
 import axios from 'axios';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export type PluginKind = 'merkleMemberships' | 'simplePreimage';
+export type PluginKind = 'merkle-memberships' | 'simple-preimage';
 
 export type ChoosePluginConfig<P extends PluginKind> =
-  P extends 'merkleMemberships'
+  P extends 'merkle-memberships'
     ? {
         feePayer: Option<PrivateKey>;
         trees: {
@@ -31,16 +27,16 @@ export type ChoosePluginConfig<P extends PluginKind> =
           contract: Option<PrivateKey>;
         }[];
       }
-    : P extends 'simplePreimage'
+    : P extends 'simple-preimage'
     ? {
         roles: Map<Field, string>;
       }
     : never;
 
 export type ChooseProofGeneratorConfig<P extends PluginKind> =
-  P extends 'merkleMemberships'
+  P extends 'merkle-memberships'
     ? MerkleMembershipsPG.Conf
-    : P extends 'simplePreimage'
+    : P extends 'simple-preimage'
     ? SimplePreimagePG.Conf
     : never;
 
@@ -48,12 +44,12 @@ export type TestPluginServerConf = {
   loadPlugins: Record<
     string,
     | {
-        kind: 'simplePreimage';
-        config: ChoosePluginConfig<'simplePreimage'>;
+        kind: 'simple-preimage';
+        config: ChoosePluginConfig<'simple-preimage'>;
       }
     | {
-        kind: 'merkleMemberships';
-        config: ChoosePluginConfig<'merkleMemberships'>;
+        kind: 'merkle-memberships';
+        config: ChoosePluginConfig<'merkle-memberships'>;
       }
   >;
 };
@@ -70,11 +66,11 @@ export type TestOutcome =
 export type TestCase = { name: string; outcome: TestOutcome } & (
   | {
       kind: 'simplePreimage';
-      config: ChooseProofGeneratorConfig<'simplePreimage'>;
+      config: ChooseProofGeneratorConfig<'simple-preimage'>;
     }
   | {
       kind: 'merkleMemberships';
-      config: ChooseProofGeneratorConfig<'merkleMemberships'>;
+      config: ChooseProofGeneratorConfig<'merkle-memberships'>;
     }
 );
 
@@ -86,7 +82,7 @@ export type TestGroup = {
 
 const encodeMerkleMembershipsConfig = async (
   pluginFixtureDir: string,
-  rawCfg: ChoosePluginConfig<'merkleMemberships'>
+  rawCfg: ChoosePluginConfig<'merkle-memberships'>
 ): Promise<unknown> => {
   const trees = await Promise.all(
     rawCfg.trees.map(async ({ tree, contract }, treeIdx) => {
@@ -118,7 +114,7 @@ const encodeMerkleMembershipsConfig = async (
 
 const encodeSimplePreimageConfig = async (
   pluginFixtureDir: string,
-  rawConf: ChoosePluginConfig<'simplePreimage'>
+  rawConf: ChoosePluginConfig<'simple-preimage'>
 ): Promise<unknown> => {
   const rolesStoragePath = path.join(pluginFixtureDir, 'roles.json');
   const rolesStorageObj = Array.from(rawConf.roles.entries()).reduce(
@@ -140,8 +136,7 @@ const encodeServerConfig = async (
   fixtureDir: string,
   rawCfg: TestPluginServerConf
 ): Promise<PluginServer.Configuration> => {
-  const mkPluginDir = (name: string) =>
-    `${__dirname}/../plugins/${name}/server`;
+  const mkPluginModule = (name: string) => `./plugins/${name}/dist/plugin.js`;
 
   const plugins = await Array.from(Object.entries(rawCfg.loadPlugins)).reduce(
     (
@@ -159,11 +154,11 @@ const encodeServerConfig = async (
       acc.then(async (r) => {
         const pluginDir = path.join(fixtureDir, name);
         await fs.mkdir(path.join(fixtureDir, name));
-        const encodedConfig = await (cfg.kind === 'merkleMemberships'
+        const encodedConfig = await (cfg.kind === 'merkle-memberships'
           ? encodeMerkleMembershipsConfig(pluginDir, cfg.config)
           : encodeSimplePreimageConfig(pluginDir, cfg.config));
         r[name] = {
-          path: mkPluginDir(cfg.kind),
+          path: mkPluginModule(cfg.kind),
           config: encodedConfig
         };
         return r;
