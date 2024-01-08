@@ -60,26 +60,28 @@ runTestGroup({
         shouldSuccess: true
       },
       kind: 'simplePreimage',
-          config: {
-              password: Field.from('1'),
-              serverUrl: 'http://localhost:3000'
+      config: {
+        password: Field.from('1'),
+        serverUrl: 'http://localhost:3000',
+        pluginName: 'simplePreimage'
+      }
+    },
+    {
+      name: 'bad password',
+      outcome: {
+        shouldSuccess: false,
+        errorSubset: {
+          __tag: 'clientError',
+          error: {
+            __tag: 'badRequest'
           }
+        }
       },
-      {
-          name: 'bad password',
-          outcome: {
-              shouldSuccess: false,
-              errorSubset: {
-                  __tag: 'clientError',
-                  error: {
-                      __tag: 'badRequest'
-                  }
-              }
-          },
-          kind: 'simplePreimage',
-          config: {
-              password: Field.from('424242'),
-          serverUrl: 'http://localhost:3000'
+      kind: 'simplePreimage',
+      config: {
+        password: Field.from('424242'),
+        serverUrl: 'http://localhost:3000',
+        pluginName: 'simplePreimage'
       }
     },
     {
