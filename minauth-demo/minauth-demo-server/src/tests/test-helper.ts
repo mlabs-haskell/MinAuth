@@ -15,6 +15,10 @@ import * as cp from 'child_process';
 import * as log from 'tslog';
 import '@relmify/jest-fp-ts';
 import axios from 'axios';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export type PluginKind = 'merkleMemberships' | 'simplePreimage';
 
@@ -190,10 +194,14 @@ const startPluginServer = async (
 
   const env = { ...process.env, MINAUTH_CONFIG: serverConfigPath };
 
-  const p = cp.spawn('ts-node', ['src/library/tools/plugin-server'], {
-    stdio: 'inherit', // TODO redirect stdout to a file for debugging.
-    env
-  });
+  const p = cp.spawn(
+    'node',
+    ['./node_modules/minauth/dist/tools/plugin-server/index.js'],
+    {
+      stdio: 'inherit', // TODO redirect stdout to a file for debugging.
+      env
+    }
+  );
 
   // Waiting for the plugin server to fully initialize.
 
@@ -213,7 +221,7 @@ const startPluginServer = async (
 };
 
 const startSomeServer = async (): Promise<cp.ChildProcess> => {
-  const p = cp.spawn('ts-node', ['src/someServer'], {
+  const p = cp.spawn('ts-node', ['src/api-server'], {
     stdio: 'inherit'
   });
 

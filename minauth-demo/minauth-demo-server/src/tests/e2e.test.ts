@@ -62,8 +62,7 @@ runTestGroup({
       kind: 'simplePreimage',
       config: {
         password: Field.from('1'),
-        serverUrl: 'http://localhost:3000',
-        pluginName: 'simplePreimage'
+        serverUrl: 'http://localhost:3000'
       }
     },
     {
@@ -80,8 +79,7 @@ runTestGroup({
       kind: 'simplePreimage',
       config: {
         password: Field.from('424242'),
-        serverUrl: 'http://localhost:3000',
-        pluginName: 'simplePreimage'
+        serverUrl: 'http://localhost:3000'
       }
     },
     {
