@@ -72,7 +72,8 @@ runTestGroup({
         errorSubset: {
           __tag: 'clientError',
           error: {
-            __tag: 'badRequest'
+            __tag: 'badCredential',
+            respBody: 'Unauthorized'
           }
         }
       },
