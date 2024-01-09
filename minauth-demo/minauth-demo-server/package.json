@@ -10,7 +10,7 @@
     "deploy-eth-contracts": "cd eth-contract && npx ts-node scripts/cli.ts deploy-erc721timelock --lock-period 60 && npx ts-node scripts/cli.ts deploy-erc721mock -n 'minauth_nft' -s 'MNFT' && cd ..",
     "serve-api": "node ./dist/api-server/index.js",
     "serve-plugin-server": "node ./node_modules/minauth/dist/tools/plugin-server/index.js",
-    "run-backend": "concurrently 'npm run serve-plugin-server' 'npm run serve-api' 'npm run hardhat-node' -c red,green,yellow",
+    "run-backend": "concurrently 'npm run serve-plugin-server' 'npm run serve-api' 'npm run hardhat-node' 'npm run deploy-eth-contracts' -c magent,green,yellow,blue",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
     "build": "tsc"
@@ -32,7 +32,7 @@
     "minauth": "0.9.0-alpha.22",
     "minauth-erc721-timelock-plugin": "0.9.0-alpha.22",
     "minauth-merkle-membership-plugin": "0.9.0-alpha.22",
-    "minauth-simple-preimage-plugin": "0.9.0-alpha.22",
+    "minauth-simple-preimage-plugin": "0.9.0-alpha.23",
     "o1js": "0.15.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
