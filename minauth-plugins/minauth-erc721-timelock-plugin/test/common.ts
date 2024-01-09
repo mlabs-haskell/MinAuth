@@ -1,4 +1,4 @@
-import { Program } from '../src/merkle-membership-program.js';
+import { MerkleMembershipProgram } from '../src/merkle-membership-program.js';
 import { Erc721TimelockPlugin } from '../src/plugin.js';
 import { Erc721TimelockProver } from '../src/prover.js';
 import { Cache } from 'o1js';
@@ -12,7 +12,7 @@ let verificationKey: VerificationKey | null = null;
 export const pluginTestPair = async (n: number, logger?: Logger) => {
   if (verificationKey === null) {
     verificationKey = (
-      await Program.compile({
+      await MerkleMembershipProgram.compile({
         cache: Cache.None
       })
     ).verificationKey;

@@ -107,13 +107,16 @@ export class Erc721TimeLock implements IErc721TimeLock {
       throw e;
     }
 
+    const commitmentBytes = hexToUInt8Array(
+      commitmentHex.startsWith('0x') ? commitmentHex : '0x' + commitmentHex
+    );
+
     // Lock the token
     try {
       const lockTx = await this.contract.lockToken(
         this.erc721ContractAddress,
         tokenId,
-        // 0x.. is compatible with `BytesLike`
-        commitmentHex
+        commitmentBytes
       );
       await lockTx.wait();
     } catch (e) {
@@ -142,4 +145,33 @@ export class Erc721TimeLock implements IErc721TimeLock {
     );
     return merkleTree;
   };
+}
+
+function hexToUInt8Array(hexString: string): Uint8Array {
+  // Validate the input
+  if (!/^0x[a-fA-F0-9]+$/.test(hexString)) {
+    throw new Error('Invalid hexadecimal string');
+  }
+
+  // Remove the '0x' prefix
+  hexString = hexString.slice(2);
+
+  // Calculate the number of bytes in the hex string
+  const numBytes = hexString.length / 2;
+
+  // Check if the hex string represents more than 32 bytes
+  if (numBytes > 32) {
+    throw new Error('Hexadecimal string represents more than 32 bytes');
+  }
+
+  // Create a buffer of 32 bytes, filled with zeros
+  const bytes = new Uint8Array(32);
+
+  // Convert hex string to bytes
+  for (let i = 0; i < hexString.length; i += 2) {
+    const byteIndex = 31 - Math.floor(i / 2); // Start filling from the end
+    bytes[byteIndex] = parseInt(hexString.substr(i, 2), 16);
+  }
+
+  return bytes;
 }
