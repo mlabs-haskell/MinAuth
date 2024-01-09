@@ -219,7 +219,8 @@ export class Erc721TimelockPlugin
         lockContractAddress: configuration.timeLockContractAddress,
         nftContractAddress: configuration.erc721ContractAddress
       },
-      provider
+      provider,
+      logger
     );
 
     return new Erc721TimelockPlugin(

@@ -4,6 +4,7 @@ import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721T
 import { MerkleTree } from './merkle-tree.js';
 import { IERC721_ABI } from './ierc721-abi.js';
 import { UserCommitmentHex, commitmentHexToField } from './commitment-types.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 
 export interface IErc721TimeLock {
   fetchEligibleCommitments(): Promise<{ commitments: UserCommitmentHex[] }>;
@@ -24,7 +25,8 @@ export class Erc721TimeLock implements IErc721TimeLock {
     private readonly signer: ethers.JsonRpcSigner,
     readonly lockContractAddress: string,
     readonly erc721ContractAddress: string,
-    readonly ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider
+    readonly ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider,
+    private readonly logger?: Logger
   ) {
     this.contract = ERC721TimeLock__factory.connect(
       lockContractAddress,
@@ -40,7 +42,8 @@ export class Erc721TimeLock implements IErc721TimeLock {
   // ... static initialize method ...
   static async initialize(
     addresses: { lockContractAddress: string; nftContractAddress: string },
-    ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider
+    ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider,
+    logger?: Logger
   ) {
     const signer = await ethereumProvider.getSigner();
 
@@ -48,7 +51,8 @@ export class Erc721TimeLock implements IErc721TimeLock {
       signer,
       addresses.lockContractAddress,
       addresses.nftContractAddress,
-      ethereumProvider
+      ethereumProvider,
+      logger
     );
   }
 
@@ -92,20 +96,30 @@ export class Erc721TimeLock implements IErc721TimeLock {
     { commitmentHex }: UserCommitmentHex
   ): Promise<void> {
     // Approve the ERC721TimeLock contract to transfer the token
-    const approvalTx = await this.nftContract.approve(
-      this.lockContractAddress,
-      tokenId
-    );
-    await approvalTx.wait();
+    try {
+      const approvalTx = await this.nftContract.approve(
+        this.lockContractAddress,
+        tokenId
+      );
+      await approvalTx.wait();
+    } catch (e) {
+      this.logger?.error('Error approving nft transfer:', e);
+      throw e;
+    }
 
     // Lock the token
-    const lockTx = await this.contract.lockToken(
-      this.erc721ContractAddress,
-      tokenId,
-      // 0x.. is compatible with `BytesLike`
-      commitmentHex
-    );
-    await lockTx.wait();
+    try {
+      const lockTx = await this.contract.lockToken(
+        this.erc721ContractAddress,
+        tokenId,
+        // 0x.. is compatible with `BytesLike`
+        commitmentHex
+      );
+      await lockTx.wait();
+    } catch (e) {
+      this.logger?.error('Error locking token in timelock contract:', e);
+      throw e;
+    }
   }
 
   /**

@@ -248,7 +248,8 @@ export class Erc721TimelockProver
 
     const ethContract = await Erc721TimeLock.initialize(
       { lockContractAddress, nftContractAddress },
-      cfg.ethereumProvider
+      cfg.ethereumProvider,
+      logger
     );
     return new Erc721TimelockProver(logger, ethContract);
   }

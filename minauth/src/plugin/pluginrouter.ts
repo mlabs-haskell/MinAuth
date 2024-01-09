@@ -12,20 +12,20 @@ const defaultPluginRouterFetchOpts: PluginRouterFetchOpts = {
 export class PluginRouter {
   private constructor(
     private logger: Logger,
-    private baseUrl: string,
+    private serverUrl: string,
     private pluginName: string,
     private customRouteMapping?: (s: string) => string
   ) {}
 
   static async initialize(
     logger: Logger,
-    baseUrl: string,
+    serverUrl: string,
     pluginName: string,
     activePluginsRoute: string = '/plugins/activePlugins',
     customRouteMapping?: (s: string) => string
   ): Promise<PluginRouter> {
     const activePluginsResp = (
-      await fetch(`${baseUrl}${activePluginsRoute}`, {
+      await fetch(`${serverUrl}${activePluginsRoute}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -38,7 +38,7 @@ export class PluginRouter {
         `Plugin ${pluginName} is not active. Active plugins: ${activePlugins}`
       );
     }
-    return new PluginRouter(logger, baseUrl, pluginName, customRouteMapping);
+    return new PluginRouter(logger, serverUrl, pluginName, customRouteMapping);
   }
 
   private async request<T>(
@@ -54,7 +54,7 @@ export class PluginRouter {
         : '';
       const url = this.customRouteMapping
         ? this.customRouteMapping(pluginRoute)
-        : `${this.baseUrl}${pluginPath}${pluginRoute}`;
+        : `${this.serverUrl}${pluginPath}${pluginRoute}`;
       this.logger.debug(`Requesting ${method} ${pluginRoute}`);
       const response = await fetch(`${url}`, {
         method: method,

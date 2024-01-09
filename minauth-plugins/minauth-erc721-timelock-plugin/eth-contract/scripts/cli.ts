@@ -2,7 +2,9 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import { exec } from 'child_process';
 import path from 'path'
-
+import { contracts } from '../typechain-types/factories';
+import { ethers } from 'hardhat';
+import fs from 'fs'
 
 interface ERC721MockArgs {
   name: string;
@@ -16,6 +18,44 @@ interface ERC721TimeLockArgs {
 const ERC721MockIgnitionModule=path.join(__dirname,"../ignition/modules/erc721mockdeploy.ts");
 const ERC721TimeLockIgnitionModule=path.join(__dirname,"../ignition/modules/erc721timelockdeploy.ts");
 
+const networks:  Record<string, number> = {
+  development: 31337,
+  sepolia: 11155111
+}
+
+const address0 =  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+
+const ERC721Mock = {
+  name: 'ERC721Mock',
+  ignitionModule: path.join(__dirname, "../ignition/modules/erc721mockdeploy.ts"),
+}
+const ERC721MockContractName = 'ERC721Mock';
+
+function readDeployedAddresses(chainNumber: number): { [key: string]: { address: string } } {
+  // Construct the file path
+  const filePath = path.join(__dirname, `../ignition/deployments/chain-${chainNumber}/deployed-addresses.json`);
+
+  // Read the file
+  const fileContents = fs.readFileSync(filePath, 'utf8');
+
+  // Parse the JSON
+  const deployedAddresses = JSON.parse(fileContents);
+
+  // Transform the data into the desired format
+  const transformedData: { [key: string]: { address: string } } = {};
+
+  Object.keys(deployedAddresses).forEach(key => {
+    // Extract the contract name
+    const contractName = key.split('#')[1];
+    if (contractName) {
+      transformedData[contractName] = { address: deployedAddresses[key] };
+    }
+  });
+
+  return transformedData;
+}
+
+
 
 yargs(hideBin(process.argv))
   .option('network', {
@@ -24,6 +64,32 @@ yargs(hideBin(process.argv))
     type: 'string',
     default: 'localhost', // Default network, change as needed
     global: true
+  })
+  .command(
+    'mint',
+    'Mint an ERC721Mock token into an account[0]',
+    (yargs) => { return yargs },
+    async (argv) => {
+      const contractAddresses = readDeployedAddresses(networks[argv.network]);
+      const ERC721MockAddress = contractAddresses[ERC721Mock.name].address;
+
+
+        const [owner, otherAccount] = await ethers.getSigners();
+        const erc721Mock = new contracts.ERC721Mock__factory(owner).connect(owner);
+        await erc721Mock.mint(owner.address);
+    const deployCommand = `npx hardhat ignition call --network ${argv.network} --contract ${ERC721MockContractName} --method mint --parameters '["${address0}"]'`;
+
+    exec(deployCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        console.error(`Stderr: ${stderr}`);
+        return;
+      }
+      console.log(stdout);
+    });
   })
   .command<ERC721MockArgs>(
     'deploy-erc721mock',
