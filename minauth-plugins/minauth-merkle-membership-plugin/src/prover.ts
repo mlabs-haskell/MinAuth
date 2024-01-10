@@ -206,7 +206,9 @@ export class MembershipsProver
     // not build a proof locally,
     // but use a serialized one - it will hang during verification.
     return fromFailablePromise(() =>
-      ZkProgram.Program.compile({ cache: Cache.None })
+      ZkProgram.Program.compile({
+        cache: Cache.None
+      })
     );
   }
 
@@ -214,14 +216,12 @@ export class MembershipsProver
     cfg: MembershipsProverConfiguration,
     { compile = true } = {}
   ): TaskEither<string, MembershipsProver> {
-    return pipe(
+    return TE.apSecond(
+      TE.right<string, MembershipsProver>(new MembershipsProver(cfg))
+    )(
       compile
-        ? TE.tryCatch(
-            MembershipsProver.compile(),
-            (e) => 'Error compiling: ' + String(e)
-          )
-        : TE.right({ verificationKey: '' }),
-      () => TE.right(new MembershipsProver(cfg))
+        ? TE.map(() => undefined)(MembershipsProver.compile())
+        : TE.right(undefined)
     );
   }
 }

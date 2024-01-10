@@ -8,73 +8,7 @@ import { Logger } from 'minauth/dist/plugin/logger.js';
 import ProvePreimageProgram from './hash-preimage-proof.js';
 import z from 'zod';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
-
-export class PluginRouter {
-  private baseUrl: string;
-  private logger: Logger;
-  private customRouteMapping: ((s: string) => string) | undefined;
-
-  constructor(
-    baseUrl: string,
-    logger: Logger,
-    customRouteMapping?: (s: string) => string
-  ) {
-    this.baseUrl = baseUrl;
-    this.logger = logger;
-    this.customRouteMapping = customRouteMapping;
-  }
-
-  private async request<T>(
-    method: 'GET' | 'POST',
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    body?: unknown
-  ): Promise<T> {
-    try {
-      const url = this.customRouteMapping
-        ? this.customRouteMapping(pluginRoute)
-        : `${this.baseUrl}${pluginRoute}`;
-      this.logger.debug(`Requesting ${method} ${pluginRoute}`);
-      const response = await fetch(`${url}`, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: method === 'POST' ? JSON.stringify(body) : null
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const validationResult = schema.safeParse(data);
-      if (!validationResult.success) {
-        throw new Error('Validation failed');
-      }
-
-      return validationResult.data;
-    } catch (error) {
-      this.logger.error('Error in fetch operation:', error);
-      throw error;
-    }
-  }
-
-  async get<T>(pluginRoute: string, schema: z.ZodType<T>): Promise<T> {
-    return this.request('GET', pluginRoute, schema);
-  }
-
-  async post<T>(
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    value: T
-  ): Promise<void> {
-    this.request('POST', pluginRoute, schema, value);
-  }
-
-  async getRoles(): Promise<Roles> {
-    return this.get<Roles>('/roles', RolesSchema);
-  }
-}
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter.js';
 
 const RolesSchema = z.record(z.string().min(1), z.string().min(1));
 type Roles = z.infer<typeof RolesSchema>;
@@ -126,7 +60,7 @@ export class SimplePreimageProver
   }
 
   async getRoles(): Promise<Roles> {
-    return this.pluginRoutes.get('/roles', RolesSchema);
+    return this.pluginRoutes.get('/admin/roles', RolesSchema);
   }
 
   /** Compile the underlying zk circuit */

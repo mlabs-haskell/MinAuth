@@ -8,7 +8,7 @@ runTestGroup({
   server: {
     loadPlugins: {
       SimplePreimagePlugin: {
-        kind: 'simplePreimage',
+        kind: 'simple-preimage',
         config: {
           roles: ((): Map<Field, string> => {
             const m = new Map<Field, string>();
@@ -22,7 +22,7 @@ runTestGroup({
         }
       },
       MerkleMembershipsPlugin: {
-        kind: 'merkleMemberships',
+        kind: 'merkle-memberships',
         config: {
           feePayer: O.none,
           trees: [
@@ -60,26 +60,29 @@ runTestGroup({
         shouldSuccess: true
       },
       kind: 'simplePreimage',
-          config: {
-              password: Field.from('1'),
-              serverUrl: 'http://localhost:3000'
+      config: {
+        password: Field.from('1'),
+        serverUrl: 'http://localhost:3000',
+        pluginName: 'SimplePreimagePlugin'
+      }
+    },
+    {
+      name: 'bad password',
+      outcome: {
+        shouldSuccess: false,
+        errorSubset: {
+          __tag: 'clientError',
+          error: {
+            __tag: 'badCredential',
+            respBody: 'Unauthorized'
           }
+        }
       },
-      {
-          name: 'bad password',
-          outcome: {
-              shouldSuccess: false,
-              errorSubset: {
-                  __tag: 'clientError',
-                  error: {
-                      __tag: 'badRequest'
-                  }
-              }
-          },
-          kind: 'simplePreimage',
-          config: {
-              password: Field.from('424242'),
-          serverUrl: 'http://localhost:3000'
+      kind: 'simplePreimage',
+      config: {
+        password: Field.from('424242'),
+        serverUrl: 'http://localhost:3000',
+        pluginName: 'SimplePreimagePlugin'
       }
     },
     {

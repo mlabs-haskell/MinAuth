@@ -15,6 +15,10 @@ import {
 } from '@/helpers/demo-admin';
 import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
+import Erc721TimelockProverComponent, {
+  Erc721TimelockAdminComponent
+} from '@/components/minauth-prover-component2';
+import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -23,15 +27,20 @@ const MinAuthDemo: React.FC = () => {
     name: 'minauth-demo-component',
     stylePrettyLogs: false
   });
+
+  const [selectedPlugin, setSelectedPlugin] = useState<string>('');
+
   const [proverFormData, setProverFormData] = useState<FormDataChange>();
   const [authenticationData, setAuthenticationData] =
     useState<AuthResponse | null>(null);
   const [submissionData, setSubmissionData] = useState<MinAuthProof | null>(
     null
   );
+  const [resourceResponse, setResourceResponse] = useState<
+    ApiResponse<z.ZodTypeAny> | string
+  >('No auth data');
 
-  const [resourceResponse, setResourceResponse] =
-    useState<ApiResponse<z.ZodTypeAny> | null>(null);
+  const [prover, setProver] = useState<Erc721TimelockProver | null>(null);
 
   const handleSubmissionDataChange = (
     newSubmissionData: MinAuthProof | null
@@ -48,8 +57,63 @@ const MinAuthDemo: React.FC = () => {
     }
   };
 
-  const handleRequestedResource = (res: ApiResponse<z.ZodUnknown>) => {
+  const handleRequestedResource = (res: ApiResponse<z.ZodUnknown> | string) => {
     setResourceResponse(res);
+  };
+
+  const simplePreimageComponent = (name: string) => {
+    return (
+      <div>
+        <SimplePreimageAdminConfigComponent
+          logger={logger?.getSubLogger({
+            name: 'SimplePreimageAdminConfigComponent'
+          })}
+        />
+        <MinAuthProverComponent
+          pluginName={name}
+          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+          onSubmissionDataChange={handleSubmissionDataChange}
+          onAuthenticationResponse={(response) => {
+            setAuthenticationData(response);
+          }}
+          logger={logger}
+        />
+      </div>
+    );
+  };
+
+  const erc721TimelockComponent = (name: string) => {
+    return (
+      <div>
+        <Erc721TimelockAdminComponent
+          prover={prover}
+          logger={logger?.getSubLogger({
+            name: 'Erc721TimelockAdminComponent'
+          })}
+        />
+        <Erc721TimelockProverComponent
+          pluginName={name}
+          updateProver={setProver}
+          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+          onSubmissionDataChange={handleSubmissionDataChange}
+          onAuthenticationResponse={(response) => {
+            setAuthenticationData(response);
+          }}
+          logger={logger}
+        />
+      </div>
+    );
+  };
+
+  const selectedPluginComponent = () => {
+    switch (selectedPlugin) {
+      case 'simple-preimage':
+        return simplePreimageComponent('simple-preimage');
+      case 'erc721-timelock':
+        return erc721TimelockComponent('erc721-timelock');
+      default:
+        return <div> No plugin selected </div>;
+    }
   };
 
   return (
@@ -60,28 +124,30 @@ const MinAuthDemo: React.FC = () => {
         <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
           <DropdownComponent
             fetchUrl="http://127.0.0.1:3000/plugins/activePlugins"
-            onSelectedOptionChange={() => {}}
+            onSelectedOptionChange={setSelectedPlugin}
           />
-          <SimplePreimageAdminConfigComponent
-            logger={logger?.getSubLogger({
-              name: 'SimplePreimageAdminConfigComponent'
-            })}
-          />
-          <MinAuthProverComponent
-            onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
-            onSubmissionDataChange={handleSubmissionDataChange}
-            onAuthenticationResponse={(response) => {
-              setAuthenticationData(response);
-            }}
-            logger={logger}
-          />
-          <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
-          <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
+          {selectedPluginComponent()}
+
+          {/* Labels and json text areas to show information  */}
+
+          <div className="flex flex-col space-y-4">
+            <label htmlFor="prover-form-data">
+              <strong>Prover Form Data - parse results</strong>
+            </label>
+            <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
+            <label htmlFor="submission-data">
+              <strong>Submission Data</strong>
+            </label>
+            <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
+          </div>
         </div>
 
         {/* Second column */}
         <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
           <div className="flex justify-between space-x-4">
+            <label htmlFor="authentication-data">
+              <strong>Authentication Data</strong>
+            </label>
             <AuthenticationStatus authenticationData={authenticationData} />
             <div className="flex flex-col space-y-4">
               <RequestResourceButton
@@ -148,17 +214,19 @@ const RefreshAuthButton = (props: {
 
 const RequestResourceButton = (props: {
   auth: AuthResponse | null;
-  onResponse: (res: ApiResponse<z.ZodUnknown>) => void;
+  onResponse: (res: ApiResponse<z.ZodUnknown> | string) => void;
   log?: Logger<ILogObj>;
 }) => {
   const request = async () => {
     if (props.auth === null) {
       props.log?.debug('Cancelling request, no auth data');
+      props.onResponse('No auth data');
       return;
     }
     const authData = parseAuthData(props.auth);
     if (!authData) {
       props.log?.debug('Cancelling request, invalid auth data');
+      props.onResponse('Invalid auth data');
       return;
     }
     props.log?.debug('Requesting protected resource');
@@ -166,18 +234,14 @@ const RequestResourceButton = (props: {
     props.onResponse(res);
   };
   return (
-    <button
-      className="resource-request-btn"
-      onClick={request}
-      disabled={props.auth === null}
-    >
+    <button className="resource-request-btn" onClick={request}>
       Request Protected Resource
     </button>
   );
 };
 
 const ResponseSummary = (props: {
-  protectedResourceResponse: ApiResponse<z.ZodUnknown> | null;
+  protectedResourceResponse: ApiResponse<z.ZodUnknown> | string;
 }) => {
   return (
     <div className="response-summary">

@@ -15,9 +15,9 @@ export class PublicInput extends Struct({
 }) {}
 
 /** Prove knowledge of a preimage of a hash in a merkle tree.
- *  The proof does not reveal the preimage nor the hash.
+ *  The proof reveals nothing, but the merkle root.
  */
-export const Program = ZkProgram({
+export const MerkleMembershipProgram = ZkProgram({
   name: 'MerkleMembership',
   publicInput: PublicInput,
 
@@ -32,3 +32,5 @@ export const Program = ZkProgram({
     }
   }
 });
+
+export const MerkleMembershipProof = ZkProgram.Proof(MerkleMembershipProgram);

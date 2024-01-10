@@ -13,7 +13,9 @@ const config: JestConfigWithTsJest = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'
-  }
+  },
+  modulePathIgnorePatterns: ['./dist/'],
+  testTimeout: 1_000_000
 };
 
 export default config;

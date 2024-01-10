@@ -141,3 +141,4 @@ result-*
 
 # tmp files
 .fixtures
+tokenstore.db

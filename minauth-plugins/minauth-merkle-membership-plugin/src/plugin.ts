@@ -38,6 +38,7 @@ import {
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { wrapTrivialExpressHandler } from 'minauth/dist/plugin/express.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
+import { fieldEncDec } from 'minauth/dist/utils/fp/fieldEncDec.js';
 
 /**
  * The type of the public input of the Minauth plugin.
@@ -45,27 +46,6 @@ import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
  * Each tree represents a set of authorized members.
  */
 export type PublicInputArgs = NonEmptyArray<Field>;
-
-/**
- * Encode/decode an o1js Field. (to string)
- */
-const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
-  __interface_tag: 'fp',
-
-  decode: (i: unknown) =>
-    pipe(
-      wrapZodDec('fp', z.string()).decode(i),
-      E.chain((str) => {
-        try {
-          return E.right(Field.from(str));
-        } catch (err) {
-          return E.left('unable to construct field');
-        }
-      })
-    ),
-
-  encode: (i: Field) => i.toString()
-};
 
 /**
  * Encode/decode `PublicInputArgs` to/from an array of strings.

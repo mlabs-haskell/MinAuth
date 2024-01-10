@@ -2,7 +2,6 @@
   "name": "eth-contract",
   "version": "1.0.0",
   "description": "",
-  "type":"module",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -23,6 +22,8 @@
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@truffle/hdwallet-provider": "^2.1.15",
     "ganache-cli": "^6.12.2",
-    "truffle": "^5.11.5"
+    "truffle": "^5.11.5",
+    "ts-node": "^10.9.2",
+    "yargs": "^17.7.2"
   }
 }

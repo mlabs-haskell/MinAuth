@@ -1,6 +1,6 @@
 {
   "name": "minauth",
-  "version": "0.9.0-alpha.20",
+  "version": "0.9.0-alpha.24",
   "description": "A TypeScript library for building authentication systems on top of the Mina blockchain and other zero-knowledge proofs solutions.",
   "type": "module",
   "files": [
@@ -84,6 +84,11 @@
       "name": "Michał Adamczyk",
       "email": "michal@mlabs.city",
       "url": "https://github.com/adamczykm"
+    },
+    {
+    "name": "Borja Bonet Seguí",
+    "email": "borja@mlabs.city",
+    "url": ""
     }
   ],
   "license": "Apache-2.0"

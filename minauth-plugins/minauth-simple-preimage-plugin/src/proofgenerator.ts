@@ -23,20 +23,23 @@ import {
   tryCatch
 } from 'minauth/dist/utils/fp/readertaskeither.js';
 
-import { PluginRouter, SimplePreimageProver } from './prover.js';
+import { SimplePreimageProver } from './prover.js';
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter.js';
 
-const rawConfSchema = z.object({
+// TODO give more visibility to proof generator configs
+
+/** Schema validating serialized configuration.
+ */
+
+const InputConfSchema = z.object({
+  pluginName: z.string().min(1),
   password: z.string(),
   serverUrl: z.string()
 });
 
-// TODO give more visibility to proof generator configs
 /** Configuration for proof generation.
  */
-export type Conf = { password: Field; serverUrl: string };
-
-// FIXME: Copy-paste from src/plugins/merkleMemberships/server/index.ts, should move to utils.
-// TODO move to minauth-mina-utils (which is not yet created)
+export type Conf = { pluginName: string; password: Field; serverUrl: string };
 
 const confDec: Decoder<FpInterfaceType, Conf> = {
   __interface_tag: fpInterfaceTag,
@@ -44,13 +47,14 @@ const confDec: Decoder<FpInterfaceType, Conf> = {
   decode: (inp: unknown) =>
     pipe(
       E.Do,
-      E.bind('rawSchema', () => wrapZodDec('fp', rawConfSchema).decode(inp)),
+      E.bind('rawSchema', () => wrapZodDec('fp', InputConfSchema).decode(inp)),
       E.bind('password', ({ rawSchema }) =>
         fieldEncDec.decode(rawSchema.password)
       ),
       E.map(({ password, rawSchema }) => ({
         password,
-        serverUrl: rawSchema.serverUrl
+        serverUrl: rawSchema.serverUrl,
+        pluginName: rawSchema.pluginName
       }))
     )
 };
@@ -69,13 +73,24 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     ),
     RTE.bind('logger', () => askSublogger('SimplePreimageProver')),
     RTE.bind('pluginRouterLogger', () => askSublogger('PluginRouterLogger')),
-    RTE.let(
-      'simplePreimageConfig',
-      ({ pluginRouterLogger, config, logger }) => ({
-        logger: logger,
-        pluginRoutes: new PluginRouter(config.serverUrl, pluginRouterLogger)
-      })
+    RTE.bind('pluginRouter', ({ pluginRouterLogger, config }) =>
+      tryCatch(
+        () =>
+          PluginRouter.initialize(
+            pluginRouterLogger,
+            config.serverUrl,
+            config.pluginName
+          ),
+        (err): GenerateProofError => ({
+          __tag: 'failedToInitializeProver',
+          reason: `Error initializing plugin router: ${err}`
+        })
+      )
     ),
+    RTE.let('simplePreimageConfig', ({ pluginRouter, logger }) => ({
+      logger: logger,
+      pluginRoutes: pluginRouter
+    })),
     RTE.bind('prover', ({ simplePreimageConfig }) =>
       tryCatch(
         () => SimplePreimageProver.initialize(simplePreimageConfig),
@@ -95,8 +110,8 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
       )
     ),
     tapLogger((logger) => logger.info('proof generated')),
-    RTE.map(({ proof }) => ({
-      plugin: 'simple-preimage',
+    RTE.map(({ proof, config }) => ({
+      plugin: config.pluginName,
       publicInputArgs: {},
       proof
     }))

@@ -4,7 +4,7 @@
  * ethers.js client. See the plugin's class documentation for more details.
  */
 import crypto from 'crypto';
-import { Cache, Field, JsonProof, verify, ZkProgram } from 'o1js';
+import { Cache, Field, JsonProof, verify } from 'o1js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
@@ -12,8 +12,11 @@ import {
   outputInvalid,
   outputValid
 } from 'minauth/dist/plugin/plugintype.js';
-import { Program } from './merkle-membership-program.js';
-import { Router } from 'express';
+import {
+  MerkleMembershipProgram,
+  MerkleMembershipProof
+} from './merkle-membership-program.js';
+// import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import {
@@ -25,6 +28,7 @@ import { Logger } from 'minauth/dist/plugin/logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
 import { ethers } from 'ethers';
+import { Router } from 'express';
 
 /**
  * The plugin configuration schema.
@@ -33,6 +37,7 @@ import { ethers } from 'ethers';
  * `erc721ContractAddress` - an address to the ethereum contract for NFTs
  * that configured to be used with this plugin (in future might be extended to
  * support multiple such addresses)
+ * `ethereumJsonRpcProvider` - a json rpc provider for the ethereum network
  */
 export const ConfigurationSchema = z.object({
   timeLockContractAddress: z.string(),
@@ -105,7 +110,7 @@ export class Erc721TimelockPlugin
       this.logger.debug(
         `Fetched ${merkleTree.leafCount} commitments with merkle root ${merkleTree.root}.`
       );
-      const proof = ZkProgram.Proof(Program).fromJSON(serializedProof);
+      const proof = MerkleMembershipProof.fromJSON(serializedProof);
       this.logger.debug(
         `Verifying proof for merkle root ${proof.publicInput.merkleRoot}...`
       );
@@ -145,17 +150,40 @@ export class Erc721TimelockPlugin
    */
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
+  // private handleAdminMint = async (req: Request, res: Response) => {
+  //   const reqSchema = z.object({
+  //     address: z.string().regex(/^0x[a-fA-F0-9]{40}$/)
+  //   });
+  //   const r = reqSchema.safeParse(req.body);
+  //   if (!r.success) {
+  //     res.status(400).json({
+  //       error:
+  //         "Invalid ethereum address. The body should be {'address':[recipient_eth_address]}"
+  //     });
+  //     return;
+  //   }
+  //   const { address } = r.data;
+  //   try {
+  //     const tx = await this.ethContract.mint(address);
+  //   } catch (e) {
+  //     res.status(500).json({ error: 'Error minting token.' });
+  //     return;
+  //   }
+  //   res.status(200).json({ success: true });
+  // };
+
   /**
    * The plugin exposes eth contract addresses via http endpoints.
    * The prover should directly interact with the contract to build the proof.
    */
   readonly customRoutes = Router()
     .get('/timelock-address', async (_, res) => {
-      res.send(this.ethContract.lockContractAddress);
+      res.json(this.ethContract.lockContractAddress);
     })
     .get('/erc721-address', async (_, res) => {
-      res.send(this.ethContract.erc721ContractAddress);
+      res.json(this.ethContract.erc721ContractAddress);
     });
+  // .post('/admin/mint', this.handleAdminMint);
 
   /**
    * Check if produced output is still valid.
@@ -202,7 +230,7 @@ export class Erc721TimelockPlugin
     configuration: Configuration,
     logger: Logger
   ): Promise<Erc721TimelockPlugin> {
-    const { verificationKey } = await Program.compile({
+    const { verificationKey } = await MerkleMembershipProgram.compile({
       cache: Cache.None
     });
 
@@ -215,7 +243,8 @@ export class Erc721TimelockPlugin
         lockContractAddress: configuration.timeLockContractAddress,
         nftContractAddress: configuration.erc721ContractAddress
       },
-      provider
+      provider,
+      logger
     );
 
     return new Erc721TimelockPlugin(

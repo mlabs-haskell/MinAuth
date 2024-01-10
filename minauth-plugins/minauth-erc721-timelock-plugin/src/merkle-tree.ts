@@ -4,10 +4,9 @@
  * in blockchain and cryptographic applications. It leverages the 'o1js' library for
  * efficient Merkle Tree operations and is tailored for managing leaves represented as `Field` elements.
  */
-import { Field } from 'o1js';
-import { MerkleTree as O1jsMerkleTree } from 'o1js';
-import { TreeWitness, TREE_HEIGHT } from './merkle-membership-program';
-import { Logger } from 'minauth/dist/plugin/logger';
+import { Field, MerkleTree as O1jsMerkleTree } from 'o1js';
+import { TreeWitness, TREE_HEIGHT } from './merkle-membership-program.js';
+import { Logger } from 'minauth/dist/plugin/logger.js';
 import assert from 'assert';
 
 class CustomSet<T> {

@@ -18,66 +18,13 @@ import { BrowserProvider, JsonRpcProvider } from 'ethers';
 import {
   UserCommitmentHex,
   UserSecretInput,
+  commitmentFieldToHex,
   commitmentHexToField,
   mkUserSecret,
   userCommitmentHex
 } from './commitment-types.js';
-
-// TODO move to minauth
-export class PluginRouter {
-  constructor(
-    private logger: Logger,
-    private baseUrl: string,
-    private customRouteMapping?: (s: string) => string
-  ) {}
-
-  private async request<T>(
-    method: 'GET' | 'POST',
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    body?: unknown
-  ): Promise<T> {
-    try {
-      const url = this.customRouteMapping
-        ? this.customRouteMapping(pluginRoute)
-        : `${this.baseUrl}${pluginRoute}`;
-      this.logger.debug(`Requesting ${method} ${pluginRoute}`);
-      const response = await fetch(`${url}`, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: method === 'POST' ? JSON.stringify(body) : null
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const validationResult = schema.safeParse(data);
-      if (!validationResult.success) {
-        throw new Error('Validation failed');
-      }
-
-      return validationResult.data;
-    } catch (error) {
-      this.logger.error('Error in fetch operation:', error);
-      throw error;
-    }
-  }
-
-  async get<T>(pluginRoute: string, schema: z.ZodType<T>): Promise<T> {
-    return this.request('GET', pluginRoute, schema);
-  }
-
-  async post<T>(
-    pluginRoute: string,
-    schema: z.ZodType<T>,
-    value: T
-  ): Promise<void> {
-    this.request('POST', pluginRoute, schema, value);
-  }
-}
+import { MerkleMembershipProgram } from './merkle-membership-program.js';
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter.js';
 
 /**
  * Configuration for the prover.
@@ -143,7 +90,9 @@ export class Erc721TimelockProver
     autoInput: ProofAutoInput,
     userSecretInput: UserSecretInput
   ): Promise<JsonProof> {
-    this.logger.debug('Building proof started.');
+    this.logger.info(
+      `Building proof started for merkle root: ${autoInput.merkleRoot}}`
+    );
     const publicInput = new ZkProgram.PublicInput({
       merkleRoot: autoInput.merkleRoot
     });
@@ -155,21 +104,25 @@ export class Erc721TimelockProver
 
     let proof = null;
     try {
-      proof = await ZkProgram.Program.proveMembership(publicInput, secretInput);
+      proof = await MerkleMembershipProgram.proveMembership(
+        publicInput,
+        secretInput
+      );
     } catch (e) {
       this.logger.error('Error in proof generation:', e);
       this.logger.debug(
-        'Secret input:',
-        secretInput,
         'Public input:',
         publicInput,
-        'Commitment:',
-        Poseidon.hash([secretInput.secret])
+        'Computed commitment:',
+        Poseidon.hash([secretInput.secret]),
+        'Computed commitment hex:',
+        commitmentFieldToHex({
+          commitment: Poseidon.hash([secretInput.secret])
+        })
       );
-
       throw e;
     }
-    this.logger.debug('Building proof finished.');
+    this.logger.info('Building proof finished.');
     return proof.toJSON();
   }
 
@@ -186,6 +139,15 @@ export class Erc721TimelockProver
     const autoInput = await this.fetchPublicInputs({ userCommitment });
 
     return await this.prove(autoInput, userSecretInput);
+  }
+
+  async fetchEligibleCommitments(): Promise<{
+    commitments: UserCommitmentHex[];
+  }> {
+    this.logger.debug('Fetching eligible commitments started.');
+    const r = await this.ethContract.fetchEligibleCommitments();
+    this.logger.debug('Fetching eligible commitments finished.', r);
+    return r;
   }
 
   /**
@@ -214,6 +176,28 @@ export class Erc721TimelockProver
     };
   }
 
+  /**
+   * The plugin provides an auxiliary method to lock an NFT along with a commitment,
+   * indirectly via the Ethereum contract.
+   */
+  async lockNft(commitment: UserCommitmentHex, tokenId: number): Promise<void> {
+    this.logger.debug(
+      `Locking NFT ${tokenId} with commitment ${commitment} started.`
+    );
+    await this.ethContract.lockToken(tokenId, commitment);
+    this.logger.debug('Locking NFT finished.');
+  }
+
+  /**
+   * The plugin provides an auxiliary method to unlock a locked NFT after
+   * the lock-up period is over.
+   */
+  async unlockNft(index: number): Promise<void> {
+    this.logger.debug(`Unlocking NFT at index ${index} started.`);
+    await this.ethContract.unlockToken(index);
+    this.logger.debug('Unlocking NFT finished.');
+  }
+
   constructor(
     protected readonly logger: Logger,
     protected readonly ethContract: IErc721TimeLock
@@ -227,7 +211,19 @@ export class Erc721TimelockProver
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,
     // but use a serialized one - it will hang during verification.
-    return await ZkProgram.Program.compile({ cache: Cache.None });
+    return await MerkleMembershipProgram.compile({ cache: Cache.None });
+  }
+
+  get ethereumProvider(): string {
+    return this.ethContract.ethereumProvider.toString();
+  }
+
+  get lockContractAddress(): string {
+    return this.ethContract.lockContractAddress;
+  }
+
+  get erc721ContractAddress(): string {
+    return this.ethContract.erc721ContractAddress;
   }
 
   /** Initialize the prover */
@@ -254,7 +250,8 @@ export class Erc721TimelockProver
 
     const ethContract = await Erc721TimeLock.initialize(
       { lockContractAddress, nftContractAddress },
-      cfg.ethereumProvider
+      cfg.ethereumProvider,
+      logger
     );
     return new Erc721TimelockProver(logger, ethContract);
   }

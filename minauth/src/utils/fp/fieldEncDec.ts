@@ -1,11 +1,14 @@
 import { Field } from 'o1js';
-import { EncodeDecoder, wrapZodDec } from '../../plugin/encodedecoder';
-import { FpInterfaceType } from '../../plugin/interfacekind';
-import { pipe } from 'fp-ts/lib/function';
+import { EncodeDecoder, wrapZodDec } from '../../plugin/encodedecoder.js';
+import { FpInterfaceType } from '../../plugin/interfacekind.js';
+import { pipe } from 'fp-ts/lib/function.js';
 import { z } from 'zod';
 import * as E from 'fp-ts/lib/Either.js';
-import { safeFromString } from './either';
+import { safeFromString } from './either.js';
 
+/**
+ * Encode/decode an o1js Field. (to string)
+ */
 export const fieldEncDec: EncodeDecoder<FpInterfaceType, Field> = {
   __interface_tag: 'fp',
 
