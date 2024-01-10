@@ -16,7 +16,7 @@ import {
   MerkleMembershipProgram,
   MerkleMembershipProof
 } from './merkle-membership-program.js';
-import { Router } from 'express';
+// import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import {
@@ -28,6 +28,7 @@ import { Logger } from 'minauth/dist/plugin/logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
 import { ethers } from 'ethers';
+import { Router } from 'express';
 
 /**
  * The plugin configuration schema.
@@ -149,6 +150,28 @@ export class Erc721TimelockPlugin
    */
   publicInputArgsSchema: z.ZodType<unknown> = z.any();
 
+  // private handleAdminMint = async (req: Request, res: Response) => {
+  //   const reqSchema = z.object({
+  //     address: z.string().regex(/^0x[a-fA-F0-9]{40}$/)
+  //   });
+  //   const r = reqSchema.safeParse(req.body);
+  //   if (!r.success) {
+  //     res.status(400).json({
+  //       error:
+  //         "Invalid ethereum address. The body should be {'address':[recipient_eth_address]}"
+  //     });
+  //     return;
+  //   }
+  //   const { address } = r.data;
+  //   try {
+  //     const tx = await this.ethContract.mint(address);
+  //   } catch (e) {
+  //     res.status(500).json({ error: 'Error minting token.' });
+  //     return;
+  //   }
+  //   res.status(200).json({ success: true });
+  // };
+
   /**
    * The plugin exposes eth contract addresses via http endpoints.
    * The prover should directly interact with the contract to build the proof.
@@ -160,6 +183,7 @@ export class Erc721TimelockPlugin
     .get('/erc721-address', async (_, res) => {
       res.json(this.ethContract.erc721ContractAddress);
     });
+  // .post('/admin/mint', this.handleAdminMint);
 
   /**
    * Check if produced output is still valid.

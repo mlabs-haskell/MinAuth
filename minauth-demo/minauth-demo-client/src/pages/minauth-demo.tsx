@@ -36,8 +36,9 @@ const MinAuthDemo: React.FC = () => {
   const [submissionData, setSubmissionData] = useState<MinAuthProof | null>(
     null
   );
-  const [resourceResponse, setResourceResponse] =
-    useState<ApiResponse<z.ZodTypeAny> | null>(null);
+  const [resourceResponse, setResourceResponse] = useState<
+    ApiResponse<z.ZodTypeAny> | string
+  >('No auth data');
 
   const [prover, setProver] = useState<Erc721TimelockProver | null>(null);
 
@@ -56,11 +57,11 @@ const MinAuthDemo: React.FC = () => {
     }
   };
 
-  const handleRequestedResource = (res: ApiResponse<z.ZodUnknown>) => {
+  const handleRequestedResource = (res: ApiResponse<z.ZodUnknown> | string) => {
     setResourceResponse(res);
   };
 
-  const simplePreimageComponent = () => {
+  const simplePreimageComponent = (name: string) => {
     return (
       <div>
         <SimplePreimageAdminConfigComponent
@@ -69,6 +70,7 @@ const MinAuthDemo: React.FC = () => {
           })}
         />
         <MinAuthProverComponent
+          pluginName={name}
           onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
           onSubmissionDataChange={handleSubmissionDataChange}
           onAuthenticationResponse={(response) => {
@@ -80,7 +82,7 @@ const MinAuthDemo: React.FC = () => {
     );
   };
 
-  const erc721TimelockComponent = () => {
+  const erc721TimelockComponent = (name: string) => {
     return (
       <div>
         <Erc721TimelockAdminComponent
@@ -90,6 +92,7 @@ const MinAuthDemo: React.FC = () => {
           })}
         />
         <Erc721TimelockProverComponent
+          pluginName={name}
           updateProver={setProver}
           onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
           onSubmissionDataChange={handleSubmissionDataChange}
@@ -105,9 +108,9 @@ const MinAuthDemo: React.FC = () => {
   const selectedPluginComponent = () => {
     switch (selectedPlugin) {
       case 'simple-preimage':
-        return simplePreimageComponent();
+        return simplePreimageComponent('simple-preimage');
       case 'erc721-timelock':
-        return erc721TimelockComponent();
+        return erc721TimelockComponent('erc721-timelock');
       default:
         return <div> No plugin selected </div>;
     }
@@ -128,9 +131,13 @@ const MinAuthDemo: React.FC = () => {
           {/* Labels and json text areas to show information  */}
 
           <div className="flex flex-col space-y-4">
-            <label htmlFor="prover-form-data">Prover Form Data</label>
+            <label htmlFor="prover-form-data">
+              <strong>Prover Form Data - parse results</strong>
+            </label>
             <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
-            <label htmlFor="submission-data">Submission Data</label>
+            <label htmlFor="submission-data">
+              <strong>Submission Data</strong>
+            </label>
             <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
           </div>
         </div>
@@ -138,6 +145,9 @@ const MinAuthDemo: React.FC = () => {
         {/* Second column */}
         <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
           <div className="flex justify-between space-x-4">
+            <label htmlFor="authentication-data">
+              <strong>Authentication Data</strong>
+            </label>
             <AuthenticationStatus authenticationData={authenticationData} />
             <div className="flex flex-col space-y-4">
               <RequestResourceButton
@@ -204,17 +214,19 @@ const RefreshAuthButton = (props: {
 
 const RequestResourceButton = (props: {
   auth: AuthResponse | null;
-  onResponse: (res: ApiResponse<z.ZodUnknown>) => void;
+  onResponse: (res: ApiResponse<z.ZodUnknown> | string) => void;
   log?: Logger<ILogObj>;
 }) => {
   const request = async () => {
     if (props.auth === null) {
       props.log?.debug('Cancelling request, no auth data');
+      props.onResponse('No auth data');
       return;
     }
     const authData = parseAuthData(props.auth);
     if (!authData) {
       props.log?.debug('Cancelling request, invalid auth data');
+      props.onResponse('Invalid auth data');
       return;
     }
     props.log?.debug('Requesting protected resource');
@@ -222,18 +234,14 @@ const RequestResourceButton = (props: {
     props.onResponse(res);
   };
   return (
-    <button
-      className="resource-request-btn"
-      onClick={request}
-      disabled={props.auth === null}
-    >
+    <button className="resource-request-btn" onClick={request}>
       Request Protected Resource
     </button>
   );
 };
 
 const ResponseSummary = (props: {
-  protectedResourceResponse: ApiResponse<z.ZodUnknown> | null;
+  protectedResourceResponse: ApiResponse<z.ZodUnknown> | string;
 }) => {
   return (
     <div className="response-summary">

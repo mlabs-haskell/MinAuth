@@ -18,6 +18,7 @@ import { BrowserProvider, JsonRpcProvider } from 'ethers';
 import {
   UserCommitmentHex,
   UserSecretInput,
+  commitmentFieldToHex,
   commitmentHexToField,
   mkUserSecret,
   userCommitmentHex
@@ -89,7 +90,9 @@ export class Erc721TimelockProver
     autoInput: ProofAutoInput,
     userSecretInput: UserSecretInput
   ): Promise<JsonProof> {
-    this.logger.debug('Building proof started.');
+    this.logger.info(
+      `Building proof started for merkle root: ${autoInput.merkleRoot}}`
+    );
     const publicInput = new ZkProgram.PublicInput({
       merkleRoot: autoInput.merkleRoot
     });
@@ -108,17 +111,18 @@ export class Erc721TimelockProver
     } catch (e) {
       this.logger.error('Error in proof generation:', e);
       this.logger.debug(
-        'Secret input:',
-        secretInput,
         'Public input:',
         publicInput,
-        'Commitment:',
-        Poseidon.hash([secretInput.secret])
+        'Computed commitment:',
+        Poseidon.hash([secretInput.secret]),
+        'Computed commitment hex:',
+        commitmentFieldToHex({
+          commitment: Poseidon.hash([secretInput.secret])
+        })
       );
-
       throw e;
     }
-    this.logger.debug('Building proof finished.');
+    this.logger.info('Building proof finished.');
     return proof.toJSON();
   }
 
@@ -177,9 +181,8 @@ export class Erc721TimelockProver
    * indirectly via the Ethereum contract.
    */
   async lockNft(commitment: UserCommitmentHex, tokenId: number): Promise<void> {
-    // TODO: errors & tests
     this.logger.debug(
-      'Locking NFT ${tokenId} with commitment ${commitment} started.'
+      `Locking NFT ${tokenId} with commitment ${commitment} started.`
     );
     await this.ethContract.lockToken(tokenId, commitment);
     this.logger.debug('Locking NFT finished.');
@@ -190,8 +193,7 @@ export class Erc721TimelockProver
    * the lock-up period is over.
    */
   async unlockNft(index: number): Promise<void> {
-    // TODO: errors & tests
-    this.logger.debug('Unlocking NFT at index ${index} started.');
+    this.logger.debug(`Unlocking NFT at index ${index} started.`);
     await this.ethContract.unlockToken(index);
     this.logger.debug('Unlocking NFT finished.');
   }

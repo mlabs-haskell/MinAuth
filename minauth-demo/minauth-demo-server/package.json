@@ -7,7 +7,7 @@
   "scripts": {
     "run-client": "node ./dist/headless-test-client/index.js",
     "hardhat-node": "cd eth-contract && npx hardhat node && cd ..",
-    "deploy-eth-contracts": "cd eth-contract && npx ts-node scripts/cli.ts deploy-erc721timelock --lock-period 60 && npx ts-node scripts/cli.ts deploy-erc721mock -n 'minauth_nft' -s 'MNFT' && cd ..",
+    "deploy-eth-contracts": "cd eth-contract && rm -rf ./ignition/deployments/chain-31337 && npx ts-node scripts/cli.ts deploy-erc721timelock --lock-period 60 && npx ts-node scripts/cli.ts deploy-erc721mock -n 'minauth_nft' -s 'MNFT' && cd ..",
     "serve-api": "node ./dist/api-server/index.js",
     "serve-plugin-server": "node ./node_modules/minauth/dist/tools/plugin-server/index.js",
     "run-backend": "concurrently 'npm run serve-plugin-server' 'npm run serve-api' 'npm run hardhat-node' 'npm run deploy-eth-contracts' -c magent,green,yellow,blue",

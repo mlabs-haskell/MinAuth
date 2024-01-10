@@ -47,33 +47,38 @@ const ERC721TimeLock = {
   ignitionModule: path.join(__dirname, "../ignition/modules/erc721timelockdeploy.ts"),
 }
 
-function hexToUInt8Array(hexString: string): Uint8Array {
-    // Validate the input
-    if (!/^0x[a-fA-F0-9]+$/.test(hexString)) {
-        throw new Error('Invalid hexadecimal string');
-    }
+export function hexToUInt8Array(hexString: string, size?: number): Uint8Array {
+  // Validate the input
+  if (!/^0x[a-fA-F0-9]+$/.test(hexString)) {
+    throw new Error('Invalid hexadecimal string');
+  }
 
-    // Remove the '0x' prefix
-    hexString = hexString.slice(2);
+  // Remove the '0x' prefix
+  hexString = hexString.slice(2);
 
-    // Calculate the number of bytes in the hex string
-    const numBytes = hexString.length / 2;
+  const sz = size || hexString.length / 2;
 
-    // Check if the hex string represents more than 32 bytes
-    if (numBytes > 32) {
-        throw new Error('Hexadecimal string represents more than 32 bytes');
-    }
+  // pad with zeros
+  const padding = sz * 2 - hexString.length;
+  hexString = '0'.repeat(padding) + hexString;
 
-    // Create a buffer of 32 bytes, filled with zeros
-    const bytes = new Uint8Array(32);
+  // Calculate the number of bytes in the hex string
+  const numBytes = hexString.length / 2;
 
-    // Convert hex string to bytes
-    for (let i = 0; i < hexString.length; i += 2) {
-        const byteIndex = 31 - Math.floor(i / 2); // Start filling from the end
-        bytes[byteIndex] = parseInt(hexString.substr(i, 2), 16);
-    }
+  // Check if the hex string represents more than 32 bytes
+  if (numBytes > sz) {
+    throw new Error('Hexadecimal string represents more than 32 bytes');
+  }
 
-    return bytes;
+  // Create a buffer of 32 bytes, filled with zeros
+  const bytes = new Uint8Array(sz);
+
+  // Convert hex string to bytes in little-endian format
+  for (let i = 0, j = 0; i < hexString.length; i += 2, j++) {
+    bytes[j] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+
+  return bytes;
 }
 
 function readDeployedAddresses(chainNumber: number): { [key: string]: { address: string } } {
@@ -111,6 +116,44 @@ yargs(hideBin(process.argv))
     type: 'string',
     default: 'localhost',
     global: true
+  })
+  .command(
+  'fund',
+  'Fund an account contract with test ETH',
+  (yargs) => {
+    return yargs.option('address', {
+      alias: 'a',
+      describe: 'Address to fund',
+      type: 'string',
+      demandOption: true,
+    })
+    .option('amount', {
+      alias: 'v',
+      describe: 'Amount of ETH to fund',
+      type: 'string',
+      default: '1',
+      demandOption: true,
+    });
+  },
+  async (argv) => {
+    // read the network id (based on the ignition deployments)
+
+    const {providerString} = networks[argv.network];
+
+    const abstract_provider = ethers.getDefaultProvider(providerString);
+
+    if (!(abstract_provider instanceof JsonRpcProvider)) {
+      console.log("Provider is not a JsonRpcProvider, exiting. (The websocket provider support should be easily added)");
+    }
+    const provider = abstract_provider as JsonRpcProvider;
+    const signer = await provider.getSigner(); // assuming account 0
+
+    const tx = await signer.sendTransaction({
+      to: argv.address,
+      value: ethers.parseEther(argv.amount)
+    });
+
+    console.log(`Funded ${argv.address} with ${ethers.formatEther(tx.value)} ETH`);
   })
   .command(
     'lock',
@@ -152,7 +195,6 @@ yargs(hideBin(process.argv))
       }
       const provider = abstract_provider as JsonRpcProvider;
       const signer = await provider.getSigner(); // assuming account 0
-      const signerAddress = await signer.getAddress();
 
       const erc721TimeLockContract = contracts.ERC721TimeLock__factory.connect(ERC721TimeLockAddress, signer);
       const erc721MockContract = contracts.ERC721Mock__factory.connect(ERC721MockAddress, signer);
@@ -166,8 +208,16 @@ yargs(hideBin(process.argv))
   })
   .command(
     'mint',
-    'Mint an ERC721Mock token into an account[0]',
-    (yargs) => { return yargs },
+    'Mint an ERC721Mock token into a given ethereum address',
+    (yargs) => {
+      return yargs.option('address', {
+        alias: 'a',
+        describe: 'Address to mint the token into',
+        type: 'string',
+        default: "signer",
+        demandOption: false,
+      });
+    },
     async (argv) => {
       // read the network id (based on the ignition deployments)
       const {chainId, providerString} = networks[argv.network];
@@ -185,11 +235,13 @@ yargs(hideBin(process.argv))
       }
       const provider = abstract_provider as JsonRpcProvider;
       const signer = await provider.getSigner(); // assuming account 0
-      const signerAddress = await signer.getAddress();
       const erc721MockContract = contracts.ERC721Mock__factory.connect(ERC721MockAddress, signer);
 
-      console.log(`Minting ERC721Mock ${ERC721MockAddress} token into ${signerAddress}`);
-      await erc721MockContract.mint(signerAddress);
+      console.log(`Minting ERC721Mock ${ERC721MockAddress} token into ${ argv.address }`);
+      if (argv.address === "signer") {
+        argv.address = await signer.getAddress();
+      }
+      await erc721MockContract.mint( argv.address );
   })
   .command<ERC721MockArgs>(
     'deploy-erc721mock',

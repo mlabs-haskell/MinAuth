@@ -45,7 +45,7 @@ export const userCommitmentHex = ({
   secretHash
 }: UserSecret): UserCommitmentHex => {
   const commitment = Poseidon.hash([secretHash]);
-  return { commitmentHex: hex(commitment.toString()) };
+  return { commitmentHex: hexField(commitment) };
 };
 
 export const userCommitmentField = ({
@@ -70,10 +70,14 @@ export const commitmentHexToField = ({
 export const commitmentFieldToHex = ({
   commitment
 }: UserCommitmentField): UserCommitmentHex => {
-  return { commitmentHex: hex(commitment.toString()) };
+  return { commitmentHex: hexField(commitment) };
 };
 
-export const hex = (decimalStr: string): string => {
-  const decimalInt = BigInt(decimalStr);
-  return '0x' + decimalInt.toString(16);
+export const hexField = (f: Field): string => {
+  const decimalInt = BigInt(f.toString());
+  let hex = decimalInt.toString(16);
+  if (hex.length % 2) {
+    hex = '0' + hex;
+  }
+  return '0x' + hex;
 };

@@ -7,14 +7,14 @@ import { z } from 'zod';
 import { MinAuthProof } from 'minauth/dist/common/proof.js';
 
 import {
-  PluginRouter,
   SimplePreimageProver,
   Configuration
 } from 'minauth-simple-preimage-plugin/dist/prover.js';
 import { Field, JsonProof, Poseidon } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
 
-const pluginsBaseURL = 'http://127.0.0.1:3000/plugins';
+const serverUrl = 'http://127.0.0.1:3000';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -64,6 +64,7 @@ const uiSchema = {
 export type FormDataChange = unknown | z.ZodError;
 
 interface MinAuthProverComponentProps {
+  pluginName: string;
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
   onAuthenticationResponse?: (response: AuthResponse) => void;
@@ -92,16 +93,18 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
           'minauth-simple-preimage-plugin/dist/prover'
         );
 
+        const pluginRoutes = await PluginRouter.initialize(
+          props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
+            new Logger({ name: 'PluginRouter logger' }),
+          serverUrl,
+          props.pluginName
+        );
         const spreConfiguration: Configuration = {
           logger:
             props.logger?.getSubLogger({
               name: 'SimplePreimagePlugin prover'
             }) || new Logger({ name: 'SimplePreimagePlugin prover' }),
-          pluginRoutes: new PluginRouter(
-            pluginsBaseURL,
-            props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
-              new Logger({ name: 'PluginRouter logger' })
-          )
+          pluginRoutes
         };
 
         props.logger?.info('initializing prover');
@@ -115,11 +118,18 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
         proverCompiled = true;
         props.logger?.info('verificationKey', verificationKey);
       } catch (error) {
-        props.logger?.error('Error initializing prover:', error);
+        if (error instanceof z.ZodError) {
+          props.logger?.error(
+            'Error initializing prover (parsing):',
+            error.toString()
+          );
+        } else {
+          props.logger?.error('Error initializing prover:', error);
+        }
         throw error;
       }
     })();
-  }, []); // Ignore the warning
+  }, [props.pluginName]); // Ignore the warning
 
   const buildProof = async (
     proverFormData: ProverFormData

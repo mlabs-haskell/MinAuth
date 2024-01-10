@@ -1,10 +1,11 @@
-import { ethers } from 'ethers';
+import { BytesLike, ethers } from 'ethers';
 import { ERC721TimeLock as ERC721TimeLockContract } from './typechain/contracts/ERC721TimeLock.js';
 import { ERC721TimeLock__factory } from './typechain/factories/contracts/ERC721TimeLock__factory.js';
+import { ERC721Mock__factory } from './typechain/factories/contracts/ERC721Mock__factory.js';
 import { MerkleTree } from './merkle-tree.js';
-import { IERC721_ABI } from './ierc721-abi.js';
 import { UserCommitmentHex, commitmentHexToField } from './commitment-types.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
+import { ERC721Mock } from './typechain/index.js';
 
 export interface IErc721TimeLock {
   fetchEligibleCommitments(): Promise<{ commitments: UserCommitmentHex[] }>;
@@ -18,8 +19,8 @@ export interface IErc721TimeLock {
 }
 
 export class Erc721TimeLock implements IErc721TimeLock {
-  private contract: ERC721TimeLockContract;
-  private nftContract: ethers.Contract;
+  protected contract: ERC721TimeLockContract;
+  protected nftContract: ERC721Mock;
 
   constructor(
     private readonly signer: ethers.JsonRpcSigner,
@@ -30,13 +31,13 @@ export class Erc721TimeLock implements IErc721TimeLock {
   ) {
     this.contract = ERC721TimeLock__factory.connect(
       lockContractAddress,
-      ethereumProvider
-    );
-    this.nftContract = new ethers.Contract(
-      erc721ContractAddress,
-      IERC721_ABI,
       this.signer
     );
+    this.nftContract = ERC721Mock__factory.connect(
+      erc721ContractAddress,
+      this.signer
+    );
+    this.logger?.debug('Erc721TimeLock contract:', this.contract);
   }
 
   // ... static initialize method ...
@@ -46,6 +47,7 @@ export class Erc721TimeLock implements IErc721TimeLock {
     logger?: Logger
   ) {
     const signer = await ethereumProvider.getSigner();
+    logger?.debug('Signer:', signer);
 
     return new Erc721TimeLock(
       signer,
@@ -78,11 +80,9 @@ export class Erc721TimeLock implements IErc721TimeLock {
     for (const event of unlockedEvents) {
       currentlyLockedTokens.delete(event.args.tokenId.toString());
     }
-
     const commitments = Array.from(currentlyLockedTokens.values()).map(
       (hash) => ({ commitmentHex: hash })
     );
-
     return { commitments };
   }
 
@@ -113,6 +113,11 @@ export class Erc721TimeLock implements IErc721TimeLock {
 
     // Lock the token
     try {
+      this.logger?.info(
+        `Locking token ${tokenId} with commitment ${commitmentHex} started.`
+      );
+      this.logger?.debug(`Commitment bytes: ${commitmentBytes}`);
+
       const lockTx = await this.contract.lockToken(
         this.erc721ContractAddress,
         tokenId,
@@ -147,7 +152,24 @@ export class Erc721TimeLock implements IErc721TimeLock {
   };
 }
 
-function hexToUInt8Array(hexString: string): Uint8Array {
+// export class MintingErc721TimeLock extends Erc721TimeLock {
+
+//   async mintToken(
+//     address: string
+//   ): Promise<void> {
+//     try {
+//       const tx = await this.nftContract.mint(address);
+//     } catch (e) {
+//       this.logger?.error('Error minting token:', e);
+//       throw e;
+//     }
+//   }
+
+export function hexlify(bytes: BytesLike): string {
+  return ethers.hexlify(bytes);
+}
+
+export function hexToUInt8Array(hexString: string, size?: number): Uint8Array {
   // Validate the input
   if (!/^0x[a-fA-F0-9]+$/.test(hexString)) {
     throw new Error('Invalid hexadecimal string');
@@ -156,21 +178,26 @@ function hexToUInt8Array(hexString: string): Uint8Array {
   // Remove the '0x' prefix
   hexString = hexString.slice(2);
 
+  const sz = size || hexString.length / 2;
+
+  // pad with zeros
+  const padding = sz * 2 - hexString.length;
+  hexString = '0'.repeat(padding) + hexString;
+
   // Calculate the number of bytes in the hex string
   const numBytes = hexString.length / 2;
 
   // Check if the hex string represents more than 32 bytes
-  if (numBytes > 32) {
+  if (numBytes > sz) {
     throw new Error('Hexadecimal string represents more than 32 bytes');
   }
 
   // Create a buffer of 32 bytes, filled with zeros
-  const bytes = new Uint8Array(32);
+  const bytes = new Uint8Array(sz);
 
-  // Convert hex string to bytes
-  for (let i = 0; i < hexString.length; i += 2) {
-    const byteIndex = 31 - Math.floor(i / 2); // Start filling from the end
-    bytes[byteIndex] = parseInt(hexString.substr(i, 2), 16);
+  // Convert hex string to bytes in a big-endian format
+  for (let i = 0, j = 0; i < hexString.length; i += 2, j++) {
+    bytes[j] = parseInt(hexString.substring(i, i + 2), 16);
   }
 
   return bytes;

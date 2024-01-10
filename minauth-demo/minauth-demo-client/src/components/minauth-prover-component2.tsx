@@ -7,20 +7,56 @@ import { MinAuthProof } from 'minauth/dist/common/proof.js';
 import {
   UserCommitmentHex,
   UserCommitmentHexSchema,
+  commitmentFieldToHex,
+  commitmentHexToField,
   mkUserSecret,
   userCommitmentHex
 } from 'minauth-erc721-timelock-plugin/dist/commitment-types.js';
 import Erc721TimelockProver, {
-  Erc721TimelockProverConfiguration,
-  PluginRouter
+  Erc721TimelockProverConfiguration
 } from 'minauth-erc721-timelock-plugin/dist/prover.js';
-import { CircuitString, JsonProof } from 'o1js';
+
+import { MerkleTree } from 'minauth-erc721-timelock-plugin/dist/merkle-tree.js';
+import { CircuitString, JsonProof, Poseidon } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
-import { BrowserProvider, JsonRpcProvider } from 'ethers';
+import {
+  BrowserProvider,
+  Eip1193Provider,
+  JsonRpcProvider,
+  Signer,
+  ethers
+} from 'ethers';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { FormDataChange } from './minauth-prover-component';
+import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
+import PreimageInputWidget from './preimageinput';
 
-const pluginsBaseURL = 'http://127.0.0.1:3000/plugins';
+interface Ethereum extends Eip1193Provider {}
+
+let counter = 0;
+
+// Extend the Window interface
+declare global {
+  interface Window {
+    ethereum?: Ethereum;
+  }
+}
+
+let wallet: { provider: BrowserProvider; signer: Signer } | null = null;
+
+const getWallet = async () => {
+  if (wallet === null) {
+    if (!window.ethereum) {
+      throw new Error('No ethereum provider found');
+    }
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    wallet = { provider, signer };
+  }
+  return wallet;
+};
+
+const serverURL = 'http://127.0.0.1:3000';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -28,11 +64,6 @@ export const JsonProofSchema = z.object({
   maxProofsVerified: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   proof: z.string()
 });
-
-// plugin specific
-const pluginName = 'erc721-timelock';
-
-/* const  a: JSONSchema7 | null = null; */
 
 type SchemaOptions = {
   commitments: Array<UserCommitmentHex>;
@@ -64,9 +95,21 @@ export const ProverFormDataSchema = z.object({
 export type ProverFormData = z.infer<typeof ProverFormDataSchema>;
 
 const uiSchema = {
-  password: {
-    'ui:widget': 'password',
-    'ui:placeholder': 'Enter the preimage of your commitment'
+  preimage: {
+    'ui:widget': 'preimageInput',
+    'ui:placeholder': 'Enter the preimage of your commitment',
+    'ui:options': {
+      transformFunction: (input: string) => {
+        try {
+          return userCommitmentHex(mkUserSecret({ secret: input }))
+            .commitmentHex;
+        } catch (e) {
+          const error = e as Error;
+          console.error('Error transforming preimage', input, error.message);
+          return error.message;
+        }
+      }
+    }
   },
   commitment: {
     'ui:widget': 'select',
@@ -74,9 +117,14 @@ const uiSchema = {
   }
 };
 
+const widgets = {
+  preimageInput: PreimageInputWidget
+};
+
 let proverCompiled = false;
 
 const erc721TimelockProverInitialize = async (
+  pluginName: string,
   ethereumProvider: BrowserProvider | JsonRpcProvider,
   setProverCompiled: (compiled: boolean) => void,
   pluginLogger?: Logger<ILogObj>
@@ -87,10 +135,17 @@ const erc721TimelockProverInitialize = async (
 
   const logger =
     pluginLogger ?? new Logger({ name: 'ERC721TimelockPlugin prover' });
-  const erc721tlConfiguration: Erc721TimelockProverConfiguration = {
+
+  const pluginRoutes = await PluginRouter.initialize(
     logger,
-    pluginRoutes: new PluginRouter(logger, pluginsBaseURL),
-    ethereumProvider
+    serverURL,
+    pluginName
+  );
+
+  const erc721tlConfiguration: Erc721TimelockProverConfiguration = {
+    pluginRoutes,
+    ethereumProvider,
+    logger
   };
 
   const prover = await Erc721TimelockProver.initialize(erc721tlConfiguration, {
@@ -103,7 +158,10 @@ const erc721TimelockProverInitialize = async (
 
 // -----------------
 
-const mkSubmissionData = (proof: JsonProof): MinAuthProof => ({
+const mkSubmissionData = (
+  pluginName: string,
+  proof: JsonProof
+): MinAuthProof => ({
   plugin: pluginName,
   publicInputArgs: {},
   proof
@@ -114,6 +172,7 @@ const validator: ValidatorType<ProverFormData, RJSFSchema, any> =
   customizeValidator({});
 
 interface MinAuthProverComponentProps {
+  pluginName: string;
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
   onAuthenticationResponse?: (response: AuthResponse) => void;
@@ -138,12 +197,15 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
 
   const checkSecret = (): boolean => {
     const preimage = proverFormData?.preimage || '';
-    const commitment = proverFormData?.commitment || { commitmentHex: '' };
-    return commitment === userCommitmentHex(mkUserSecret({ secret: preimage }));
+    const commitmentHex = proverFormData?.commitment || '';
+    return (
+      commitmentHex ===
+      userCommitmentHex(mkUserSecret({ secret: preimage })).commitmentHex
+    );
   };
   // refresh commitments every 10 seconds
   useEffect(() => {
-    const intervalId = setInterval(async () => {
+    const f = async () => {
       // Prevent overlapping calls
       if (!prover || isFetchingRef.current) {
         return;
@@ -155,13 +217,61 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
         const response = await prover.fetchEligibleCommitments();
         setCurrentCommitments(response.commitments);
         props.logger?.debug('set commitments', response.commitments);
+
+        props.logger?.debug('-----------------------');
+        props.logger?.debug(
+          response.commitments.map((x) =>
+            commitmentHexToField(x).commitment.toString()
+          )
+        );
+
+        const merkleTree = new MerkleTree(
+          response.commitments.map((x) => commitmentHexToField(x).commitment)
+        );
+        props.logger?.debug('root:', merkleTree.root.toString());
+
+        const secretHash = mkUserSecret({ secret: '0' });
+        const computedCommitmentField = {
+          commitment: Poseidon.hash([secretHash.secretHash])
+        };
+        props.logger?.debug(
+          'computedCommitment:',
+          computedCommitmentField.commitment.toString(),
+          commitmentFieldToHex(computedCommitmentField)
+          /* ,
+          commitmentHexToField(
+* commitmentFieldToHex(computedCommitmentField).commitmentHex
+          ).toString() */
+        );
+
+        props.logger?.debug(
+          'computedCommitment2:',
+          commitmentHexToField(
+            commitmentFieldToHex(computedCommitmentField)
+          ).commitment.toString()
+        );
+
+        const witness = merkleTree.getWitness(
+          computedCommitmentField.commitment
+        );
+        const computedRoot = witness.calculateRoot(
+          computedCommitmentField.commitment
+        );
+        props.logger?.debug('computedRoot:', computedRoot);
+        props.logger?.error(computedRoot.equals(merkleTree.root));
       } catch (error) {
-        props.logger?.error('Error fetching commitments:', error);
+        const e = error as Error;
+        props.logger?.error('Error fetching commitments:', e.message);
         // Optionally, handle the error (e.g., retry mechanism, user notification)
       } finally {
         isFetchingRef.current = false;
       }
-    }, 10000);
+    };
+    if (!counter) {
+      f();
+      counter++;
+    }
+    const intervalId = setInterval(async () => f(), 10000);
 
     // Clear interval on component unmount
     return () => clearInterval(intervalId);
@@ -173,8 +283,13 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
   useEffect(() => {
     (async () => {
       try {
-        const provider = new JsonRpcProvider('http://localhost:8545');
+        if (!window.ethereum) {
+          props.logger?.error('No ethereum provider found');
+          return;
+        }
+        const provider = (await getWallet()).provider;
         const { prover } = await erc721TimelockProverInitialize(
+          props.pluginName,
           provider,
           (compiled) => {
             proverCompiled = compiled;
@@ -185,11 +300,18 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
         if (props.updateProver) {
           props.updateProver(prover);
         }
-      } catch (err) {
-        props.logger?.error('Error initializing prover', err);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          props.logger?.error(
+            'Error initializing prover (parsing):',
+            error.toString()
+          );
+        } else {
+          props.logger?.error('Error initializing prover:', error);
+        }
       }
     })();
-  }, []); // Ignore the warning
+  }, [props.pluginName, props.updateProver]); // Ignore the warning
 
   const buildProof = async (
     proverFormData: ProverFormData
@@ -204,10 +326,16 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
     }
 
     if (proverCompiled) {
-      const proof = await prover.buildInputAndProve({
-        secret: proverFormData.preimage
-      });
-      return mkSubmissionData(proof);
+      let proof: JsonProof;
+      try {
+        proof = await prover.buildInputAndProve({
+          secret: proverFormData.preimage
+        });
+      } catch (e) {
+        props.logger?.error('Error building proof:', e);
+        return null;
+      }
+      return mkSubmissionData(props.pluginName, proof);
     } else {
       props.logger?.error('Prover not compiled');
     }
@@ -262,6 +390,7 @@ const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
       <Form
         schema={getSchema({ commitments: currentCommitments })}
         uiSchema={uiSchema}
+        widgets={widgets}
         validator={validator}
         formData={proverFormData}
         onChange={(e: IChangeEvent<ProverFormData>) => handleChange(e)}
@@ -302,16 +431,35 @@ export const Erc721TimelockAdminComponent = ({
   const [commitmentData, setCommitmentData] = useState('');
   const [tokenIdToUnlock, setTokenIdToUnlock] = useState('');
   const [transactionInfo, setTransactionInfo] = useState('');
+  const [walletAddress, setWalletAddress] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      if (!window.ethereum) {
+        logger?.error('No ethereum provider found');
+        return;
+      }
+      const { signer } = await getWallet();
+      const address = await signer.getAddress();
+      setWalletAddress(address);
+    })();
+  }, []);
 
   const handleLockNFT = async () => {
     try {
-      const commitment = UserCommitmentHexSchema.parse(commitmentData);
+      const commitment = UserCommitmentHexSchema.parse({
+        commitmentHex: commitmentData
+      });
       if (prover !== null) {
         await prover.lockNft(commitment, parseInt(tokenIdToLock, 10));
         setTransactionInfo('NFT Locked successfully');
       }
     } catch (error) {
-      logger?.error('Error locking NFT:', error);
+      if (error instanceof z.ZodError) {
+        logger?.error('Error locking NFT (parsing):', error.toString());
+      } else {
+        logger?.error('Error locking NFT:', error);
+      }
       setTransactionInfo('Error locking NFT');
     }
   };
@@ -323,7 +471,11 @@ export const Erc721TimelockAdminComponent = ({
         setTransactionInfo('NFT Unlocked successfully');
       }
     } catch (error) {
-      logger?.error('Error unlocking NFT:', error);
+      if (error instanceof z.ZodError) {
+        logger?.error('Error unlocking NFT (parsing):', error.toString());
+      } else {
+        logger?.error('Error unlocking NFT:', error);
+      }
       setTransactionInfo('Error unlocking NFT');
     }
   };
@@ -331,7 +483,7 @@ export const Erc721TimelockAdminComponent = ({
   return (
     <div>
       <div>
-        <strong>Ethereum Provider:</strong> {prover?.ethereumProvider}
+        <strong>Ethereum Address:</strong> {walletAddress}
       </div>
       <div>
         <strong>Lock Contract Address:</strong> {prover?.lockContractAddress}
