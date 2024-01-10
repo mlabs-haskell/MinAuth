@@ -40,7 +40,6 @@ export class Erc721TimeLock implements IErc721TimeLock {
     this.logger?.debug('Erc721TimeLock contract:', this.contract);
   }
 
-  // ... static initialize method ...
   static async initialize(
     addresses: { lockContractAddress: string; nftContractAddress: string },
     ethereumProvider: ethers.BrowserProvider | ethers.JsonRpcProvider,
@@ -151,19 +150,6 @@ export class Erc721TimeLock implements IErc721TimeLock {
     return merkleTree;
   };
 }
-
-// export class MintingErc721TimeLock extends Erc721TimeLock {
-
-//   async mintToken(
-//     address: string
-//   ): Promise<void> {
-//     try {
-//       const tx = await this.nftContract.mint(address);
-//     } catch (e) {
-//       this.logger?.error('Error minting token:', e);
-//       throw e;
-//     }
-//   }
 
 export function hexlify(bytes: BytesLike): string {
   return ethers.hexlify(bytes);
