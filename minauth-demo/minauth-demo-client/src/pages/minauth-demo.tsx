@@ -19,6 +19,7 @@ import Erc721TimelockProverComponent, {
   Erc721TimelockAdminComponent
 } from '@/components/minauth-prover-component2';
 import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
+import MembershipsProverComponent from '@/components/merkle-memberships-component';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -82,6 +83,22 @@ const MinAuthDemo: React.FC = () => {
     );
   };
 
+  const merkleMembershipComponent = (name: string) => {
+    return (
+      <div>
+        <MembershipsProverComponent
+          pluginName={name}
+          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+          onSubmissionDataChange={handleSubmissionDataChange}
+          onAuthenticationResponse={(response) => {
+            setAuthenticationData(response);
+          }}
+          logger={logger}
+        />
+      </div>
+    );
+  };
+
   const erc721TimelockComponent = (name: string) => {
     return (
       <div>
@@ -111,6 +128,8 @@ const MinAuthDemo: React.FC = () => {
         return simplePreimageComponent('simple-preimage');
       case 'erc721-timelock':
         return erc721TimelockComponent('erc721-timelock');
+      case 'merkle-memberships':
+        return merkleMembershipComponent('merkle-memberships');
       default:
         return <div> No plugin selected </div>;
     }
