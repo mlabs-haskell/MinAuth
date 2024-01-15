@@ -13,8 +13,7 @@ import {
 import { Field, JsonProof, Poseidon } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
-
-const serverUrl = 'http://127.0.0.1:3000';
+import { ServerConfig } from '@/api/server-config';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -63,7 +62,7 @@ const uiSchema = {
 
 export type FormDataChange = unknown | z.ZodError;
 
-interface MinAuthProverComponentProps {
+interface SimplePreimageProverComponentProps {
   pluginName: string;
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
@@ -73,9 +72,9 @@ interface MinAuthProverComponentProps {
 
 let proverCompiled = false;
 
-const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
-  props: MinAuthProverComponentProps
-) => {
+const SimplePreimageProverComponent: React.FC<
+  SimplePreimageProverComponentProps
+> = (props: SimplePreimageProverComponentProps) => {
   // State and useEffect hooks remain unchanged
 
   const [proverFormData, setProverFormData] = useState<ProverFormData>({
@@ -96,7 +95,7 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
         const pluginRoutes = await PluginRouter.initialize(
           props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
             new Logger({ name: 'PluginRouter logger' }),
-          serverUrl,
+          ServerConfig.url,
           props.pluginName
         );
         const spreConfiguration: Configuration = {
@@ -223,4 +222,4 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
   );
 };
 
-export default MinAuthProverComponent;
+export default SimplePreimageProverComponent;

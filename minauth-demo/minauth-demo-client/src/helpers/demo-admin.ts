@@ -6,10 +6,10 @@
  */
 import { z } from 'zod';
 import { ApiResponse, mkRequest } from './request';
+import { ServerConfig } from '@/api/server-config';
 
-const getRolesURL = 'http://127.0.0.1:3000/plugins/simple-preimage/admin/roles';
-const postRolesURL =
-  'http://127.0.0.1:3000/plugins/simple-preimage/admin/roles';
+const getRolesURL = `${ServerConfig.url}/plugins/simple-preimage/admin/roles`;
+const postRolesURL = `${ServerConfig.url}/plugins/simple-preimage/admin/roles`;
 
 export const SimplePreimageRolesSchema = z.record(z.string(), z.string());
 export type SimplePreimageRoles = z.infer<typeof SimplePreimageRolesSchema>;

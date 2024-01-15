@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { FormDataChange } from '../components/minauth-prover-component';
-import MinAuthProverComponent from '@/components/minauth-prover-component';
+import React, { ReactNode, useEffect, useState } from 'react';
+import SimplePreimageProverComponent, {
+  FormDataChange
+} from '../components/simple-preimage-prover';
 import { ILogObj, Logger } from 'tslog';
 import DropdownComponent from '@/components/dropdown';
 import JsonTextarea from '@/components/json-text-area';
@@ -17,8 +18,10 @@ import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
 import Erc721TimelockProverComponent, {
   Erc721TimelockAdminComponent
-} from '@/components/minauth-prover-component2';
+} from '@/components/nft-timelock-prover';
 import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
+import ReactMarkdown from 'react-markdown';
+import { ServerConfig } from '@/api/server-config';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -61,15 +64,55 @@ const MinAuthDemo: React.FC = () => {
     setResourceResponse(res);
   };
 
+  const demoDescription = () => {
+    return (
+      <Pane
+        title="MinAuth Library Demo"
+        description="This is a simple demonstration on how to work with MinAuth plugins client-side (prover-side). To make it work you have to have a MinAuth-enabled server running at "
+      ></Pane>
+    );
+  };
+
   const simplePreimageComponent = (name: string) => {
     return (
       <div>
-        <SimplePreimageAdminConfigComponent
-          logger={logger?.getSubLogger({
-            name: 'SimplePreimageAdminConfigComponent'
-          })}
-        />
-        <MinAuthProverComponent
+        <Pane
+          title="Plugin configuration / Admin"
+          hasDivider={true}
+          description="Below is the demonstrational client-facing configuration for the selected plugin."
+        >
+          <SimplePreimageAdminConfigComponent
+            logger={logger?.getSubLogger({
+              name: 'SimplePreimageAdminConfigComponent'
+            })}
+          />
+        </Pane>
+        <Pane
+          title="MinAuth Plugin Interaction"
+          hasDivider={true}
+          description="Below is the interaction form generated or specified by the selected plugin."
+        >
+          <div className="text-black">
+            <SimplePreimageProverComponent
+              pluginName={name}
+              onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+              onSubmissionDataChange={handleSubmissionDataChange}
+              onAuthenticationResponse={(response) => {
+                setAuthenticationData(response);
+              }}
+              logger={logger}
+            />
+          </div>
+        </Pane>
+      </div>
+    );
+  };
+
+  const merkleMembershipComponent = (name: string) => {
+    return (
+      <div>
+        <strong>Plugin {name} disabled due to a bug</strong>
+        {/* <MembershipsProverComponent
           pluginName={name}
           onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
           onSubmissionDataChange={handleSubmissionDataChange}
@@ -77,7 +120,7 @@ const MinAuthDemo: React.FC = () => {
             setAuthenticationData(response);
           }}
           logger={logger}
-        />
+        /> */}
       </div>
     );
   };
@@ -85,22 +128,33 @@ const MinAuthDemo: React.FC = () => {
   const erc721TimelockComponent = (name: string) => {
     return (
       <div>
-        <Erc721TimelockAdminComponent
-          prover={prover}
-          logger={logger?.getSubLogger({
-            name: 'Erc721TimelockAdminComponent'
-          })}
-        />
-        <Erc721TimelockProverComponent
-          pluginName={name}
-          updateProver={setProver}
-          onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
-          onSubmissionDataChange={handleSubmissionDataChange}
-          onAuthenticationResponse={(response) => {
-            setAuthenticationData(response);
-          }}
-          logger={logger}
-        />
+        <Pane title="Plugin configuration / Admin" hasDivider={true}>
+          <Erc721TimelockAdminComponent
+            prover={prover}
+            logger={logger?.getSubLogger({
+              name: 'Erc721TimelockAdminComponent'
+            })}
+          />
+        </Pane>
+
+        <Pane
+          title="MinAuth Plugin Interaction"
+          hasDivider={true}
+          description="Below is the interaction form generated or specified by the selected plugin."
+        >
+          <div className="text-black">
+            <Erc721TimelockProverComponent
+              pluginName={name}
+              updateProver={setProver}
+              onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
+              onSubmissionDataChange={handleSubmissionDataChange}
+              onAuthenticationResponse={(response) => {
+                setAuthenticationData(response);
+              }}
+              logger={logger}
+            />
+          </div>
+        </Pane>
       </div>
     );
   };
@@ -111,60 +165,79 @@ const MinAuthDemo: React.FC = () => {
         return simplePreimageComponent('simple-preimage');
       case 'erc721-timelock':
         return erc721TimelockComponent('erc721-timelock');
+      case 'merkle-memberships':
+        return merkleMembershipComponent('merkle-memberships');
       default:
         return <div> No plugin selected </div>;
     }
   };
 
+  const fetchUrl = `${ServerConfig.url}/plugins/activePlugins`;
+
   return (
-    <div className="flex flex-col items-center w-full min-h-screen bg-gray-800 text-white p-5 my-8 mx-auto">
+    <div className="items-center w-full min-h-screen text-white p-5 my-8 mx-auto">
       <Header />
+      <div>{demoDescription()}</div>
       <div className="flex flex-col w-full max-w-4xl mt-5 mx-auto">
-        {/* First column */}
-        <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
-          <DropdownComponent
-            fetchUrl="http://127.0.0.1:3000/plugins/activePlugins"
-            onSelectedOptionChange={setSelectedPlugin}
-          />
-          {selectedPluginComponent()}
-
-          {/* Labels and json text areas to show information  */}
-
-          <div className="flex flex-col space-y-4">
-            <label htmlFor="prover-form-data">
-              <strong>Prover Form Data - parse results</strong>
-            </label>
-            <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
-            <label htmlFor="submission-data">
-              <strong>Submission Data</strong>
-            </label>
-            <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
-          </div>
-        </div>
-
-        {/* Second column */}
-        <div className="flex flex-col w-1/2" style={{ maxWidth: '50%' }}>
-          <div className="flex justify-between space-x-4">
-            <label htmlFor="authentication-data">
-              <strong>Authentication Data</strong>
-            </label>
-            <AuthenticationStatus authenticationData={authenticationData} />
-            <div className="flex flex-col space-y-4">
-              <RequestResourceButton
-                auth={authenticationData}
-                onResponse={handleRequestedResource}
+        {/* Columns Container */}
+        <div className="flex space-x-4">
+          {/* First Column - plugin specific */}
+          <div className="w-1/2 max-w-1/2">
+            <Pane
+              title="Select a plugin"
+              hasDivider={true}
+              description="Below you should find a list of plugins activated by server configuration."
+            >
+              <DropdownComponent
+                fetchUrl={fetchUrl}
+                onSelectedOptionChange={setSelectedPlugin}
               />
+            </Pane>
+            {selectedPluginComponent()}
+
+            {/* Labels and json text areas to show information */}
+          </div>
+
+          {/* Second Column */}
+          <div className="w-1/2 max-w-1/2">
+            <div className="flex flex-col space-y-4">
+              <Pane
+                title="Prover Form Data"
+                hasDivider={true}
+                description="The results of parsing data coming from the selected prover's form"
+              >
+                <JsonTextarea json={JSON.stringify(proverFormData, null, 2)} />
+              </Pane>
+              <Pane
+                title="Submission Data"
+                hasDivider={true}
+                description="All the data submitted to the server to get the authorization."
+              >
+                <JsonTextarea json={JSON.stringify(submissionData, null, 2)} />
+              </Pane>
+            </div>
+            <Pane
+              title="Authentication Data"
+              hasDivider={true}
+              description="The server response for the authentication request"
+            >
+              <AuthenticationStatus authenticationData={authenticationData} />
               <RefreshAuthButton
                 auth={authenticationData}
                 onResponse={setAuthenticationData}
               />
-              {/* <RevokeProofButton /> */}
-            </div>
+            </Pane>
+            <Pane title="Request Protected Resource">
+              <ResponseSummary protectedResourceResponse={resourceResponse} />
+              <RequestResourceButton
+                auth={authenticationData}
+                onResponse={handleRequestedResource}
+              />
+            </Pane>
           </div>
-          <ResponseSummary protectedResourceResponse={resourceResponse} />
         </div>
+        {/* Tooltips and additional descriptions would be integrated within the components */}
       </div>
-      {/* Tooltips and additional descriptions would be integrated within the components */}
     </div>
   );
 };
@@ -203,7 +276,7 @@ const RefreshAuthButton = (props: {
   };
   return (
     <button
-      className="resource-request-btn"
+      className="border hover:border-2 hover:font-semibold border-green-300 text-green-300 rounded-md ml-2 p-1"
       onClick={request}
       disabled={props.auth === null}
     >
@@ -234,7 +307,10 @@ const RequestResourceButton = (props: {
     props.onResponse(res);
   };
   return (
-    <button className="resource-request-btn" onClick={request}>
+    <button
+      className="border hover:border-2 hover:font-semibold border-indigo-200 text-indigo-200 rounded-md ml-2 p-1 resource-request-btn"
+      onClick={request}
+    >
       Request Protected Resource
     </button>
   );
@@ -313,7 +389,7 @@ const SimplePreimageAdminConfigComponent = (props: {
   }, []); // ignore the warning, this is intentional
 
   return (
-    <div className="simple-preimage-admin">
+    <div className="simple-preimage-admin mt-4">
       <label htmlFor="simple-preimage-config-textarea">
         {' '}
         Simple Preimage Demo Admin Config
@@ -324,11 +400,49 @@ const SimplePreimageAdminConfigComponent = (props: {
         onJsonChange={setTextAreaText}
         refreshCounter={counter}
       />
-      <button onClick={refresh}> Refresh </button>
-      <button onClick={setRoles} disabled={textAreaReadRoles() === null}>
+      <button
+        className="border hover:border-2 hover:font-semibold border-green-400 text-green-400 rounded-md ml-2 p-1"
+        onClick={refresh}
+      >
+        {' '}
+        Refresh{' '}
+      </button>
+      <button
+        onClick={setRoles}
+        disabled={textAreaReadRoles() === null}
+        className="border hover:border-2 hover:font-semibold border-yellow-400 text-yellow-400 rounded-md ml-2 p-1"
+      >
         {' '}
         Set Roles{' '}
       </button>
+    </div>
+  );
+};
+
+interface PaneProps {
+  title: string;
+  hasDivider?: boolean;
+  children?: ReactNode;
+  description?: string; // Markdown description
+}
+const Pane: React.FC<PaneProps> = ({
+  title,
+  hasDivider = false,
+  children,
+  description
+}) => {
+  const divider = hasDivider ? 'mt-4 border-t pt-5' : 'mt-4 pt-1';
+  return (
+    <div className="bg-gray-800 bg-opacity-30 m-2 mt-7 border rounded-md p-5">
+      <h2 className="font-bold lg:text-8x1">{title}</h2>
+      <div className={divider}>
+        {description && (
+          <div className="markdown sm:text-xs px-5 pb-3">
+            <ReactMarkdown>{description}</ReactMarkdown>
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 };

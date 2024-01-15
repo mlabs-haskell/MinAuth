@@ -1,8 +1,9 @@
 import { AuthData, mkAuthorizedRequest } from '@/helpers/jwt';
 import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
+import { ServerConfig } from './server-config';
 
-const resourceUrl = 'http://127.0.0.1:3000/protected';
+const resourceUrl = `${ServerConfig.url}/protected`;
 
 export const requestProtectedResource = async (
   auth: AuthData
