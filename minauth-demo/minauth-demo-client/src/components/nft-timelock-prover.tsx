@@ -27,9 +27,9 @@ import {
   ethers
 } from 'ethers';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { FormDataChange } from './minauth-prover-component';
+import { FormDataChange } from './simple-preimage-prover.js';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
-import PreimageInputWidget from './preimageinput';
+import PreimageInputWidget from './preimage-input.js';
 
 interface Ethereum extends Eip1193Provider {}
 
@@ -171,7 +171,7 @@ const mkSubmissionData = (
 const validator: ValidatorType<ProverFormData, RJSFSchema, any> =
   customizeValidator({});
 
-interface MinAuthProverComponentProps {
+interface SimplePreimageProverComponentProps {
   pluginName: string;
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
@@ -180,9 +180,10 @@ interface MinAuthProverComponentProps {
   logger?: Logger<ILogObj>;
 }
 
-const Erc721TimelockProverComponent: React.FC<MinAuthProverComponentProps> = (
-  props: MinAuthProverComponentProps
-) => {
+/** Component for interating with the ERC721TimelockProver */
+const Erc721TimelockProverComponent: React.FC<
+  SimplePreimageProverComponentProps
+> = (props: SimplePreimageProverComponentProps) => {
   const [proverFormData, setProverFormData] = useState<
     ProverFormData | undefined
   >(undefined);

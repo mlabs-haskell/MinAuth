@@ -8,6 +8,10 @@ interface JsonTextareaProps {
   refreshCounter?: number;
 }
 
+/**
+ * Given a JSON string, this component will display a textarea
+ * with the JSON string formatted with indentation for readability.
+ */
 const JsonTextarea: React.FC<JsonTextareaProps> = ({
   id,
   json,

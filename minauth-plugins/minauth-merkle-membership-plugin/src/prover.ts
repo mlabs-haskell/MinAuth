@@ -1,3 +1,4 @@
+// TODO use logger
 import { Field, JsonProof, MerkleTree, SelfProof, Cache } from 'o1js';
 import * as ZkProgram from './merklemembershipsprogram.js';
 import {

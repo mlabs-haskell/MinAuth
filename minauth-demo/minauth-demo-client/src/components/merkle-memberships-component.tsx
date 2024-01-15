@@ -7,8 +7,8 @@ import { MinAuthProof } from 'minauth/dist/common/proof.js';
 import { Field, JsonProof, Poseidon, Cache } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { FormDataChange } from './minauth-prover-component';
-import PreimageInputWidget from './preimageinput';
+import { FormDataChange } from './simple-preimage-prover.js';
+import PreimageInputWidget from './preimage-input.js';
 import { mkRequest } from '@/helpers/request';
 import MembershipsProver from 'minauth-merkle-membership-plugin/dist/prover.js';
 import * as ZkProgram from 'minauth-merkle-membership-plugin/dist/merklemembershipsprogram.js';
@@ -303,107 +303,5 @@ const MembershipsProverComponent: React.FC<MembershipsProverComponentProps> = (
     </div>
   );
 };
-
-/* interface Erc721TimelockAdminComponentProps {
- *   prover: Erc721TimelockProver | null;
- *   logger?: Logger<ILogObj>;
- * }
- *
- * export const Erc721TimelockAdminComponent = ({
- *   prover,
- *   logger
- * }: Erc721TimelockAdminComponentProps) => {
- *   const [tokenIdToLock, setTokenIdToLock] = useState('');
- *   const [commitmentData, setCommitmentData] = useState('');
- *   const [tokenIdToUnlock, setTokenIdToUnlock] = useState('');
- *   const [transactionInfo, setTransactionInfo] = useState('');
- *   const [walletAddress, setWalletAddress] = useState<string>('');
- *
- *   useEffect(() => {
- *     (async () => {
- *       if (!window.ethereum) {
- *         logger?.error('No ethereum provider found');
- *         return;
- *       }
- *       const { signer } = await getWallet();
- *       const address = await signer.getAddress();
- *       setWalletAddress(address);
- *     })();
- *   }, []);
- *
- *   const handleLockNFT = async () => {
- *     try {
- *       const commitment = UserCommitmentHexSchema.parse({
- *         commitmentHex: commitmentData
- *       });
- *       if (prover !== null) {
- *         await prover.lockNft(commitment, parseInt(tokenIdToLock, 10));
- *         setTransactionInfo('NFT Locked successfully');
- *       }
- *     } catch (error) {
- *       if (error instanceof z.ZodError) {
- *         logger?.error('Error locking NFT (parsing):', error.toString());
- *       } else {
- *         logger?.error('Error locking NFT:', error);
- *       }
- *       setTransactionInfo('Error locking NFT');
- *     }
- *   };
- *
- *   const handleUnlockNFT = async () => {
- *     try {
- *       if (prover !== null) {
- *         await prover.unlockNft(parseInt(tokenIdToUnlock, 10));
- *         setTransactionInfo('NFT Unlocked successfully');
- *       }
- *     } catch (error) {
- *       if (error instanceof z.ZodError) {
- *         logger?.error('Error unlocking NFT (parsing):', error.toString());
- *       } else {
- *         logger?.error('Error unlocking NFT:', error);
- *       }
- *       setTransactionInfo('Error unlocking NFT');
- *     }
- *   };
- *
- *   return (
- *     <div>
- *       <div>
- *         <strong>Ethereum Address:</strong> {walletAddress}
- *       </div>
- *       <div>
- *         <strong>Lock Contract Address:</strong> {prover?.lockContractAddress}
- *       </div>
- *       <div>
- *         <strong>NFT Contract Address:</strong> {prover?.erc721ContractAddress}
- *       </div>
- *       <div>
- *         <input
- *           type="text"
- *           value={commitmentData}
- *           onChange={(e) => setCommitmentData(e.target.value)}
- *           placeholder="Enter Commitment Data"
- *         />
- *         <input
- *           type="number"
- *           value={tokenIdToLock}
- *           onChange={(e) => setTokenIdToLock(e.target.value)}
- *           placeholder="Enter Token ID to lock"
- *         />
- *         <button onClick={handleLockNFT}>Lock NFT</button>
- *       </div>
- *       <div>
- *         <input
- *           type="number"
- *           value={tokenIdToUnlock}
- *           onChange={(e) => setTokenIdToUnlock(e.target.value)}
- *           placeholder="Enter Token ID to unlock"
- *         />
- *         <button onClick={handleUnlockNFT}>Unlock NFT</button>
- *       </div>
- *       {transactionInfo && <div>{transactionInfo}</div>}
- *     </div>
- *   );
- * }; */
 
 export default MembershipsProverComponent;

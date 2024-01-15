@@ -6,6 +6,12 @@ interface PreimageInputOptions {
   transformFunction?: (input: string) => string;
 }
 
+/**
+ * An example widget component to ingest secret preimage data.
+ * It hide the input, but diplays the output of `transformFunction`
+ * on that data.
+ * It is meant to be used with `rjsf`
+ */
 const PreimageInputWidget: React.FC<WidgetProps> = ({
   id,
   value,

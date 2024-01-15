@@ -63,7 +63,7 @@ const uiSchema = {
 
 export type FormDataChange = unknown | z.ZodError;
 
-interface MinAuthProverComponentProps {
+interface SimplePreimageProverComponentProps {
   pluginName: string;
   onFormDataChange?: (formData: FormDataChange) => void;
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
@@ -73,8 +73,8 @@ interface MinAuthProverComponentProps {
 
 let proverCompiled = false;
 
-const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
-  props: MinAuthProverComponentProps
+const SimplePreimageProverComponent: React.FC<SimplePreimageProverComponentProps> = (
+  props: SimplePreimageProverComponentProps
 ) => {
   // State and useEffect hooks remain unchanged
 
@@ -223,4 +223,4 @@ const MinAuthProverComponent: React.FC<MinAuthProverComponentProps> = (
   );
 };
 
-export default MinAuthProverComponent;
+export default SimplePreimageProverComponent;

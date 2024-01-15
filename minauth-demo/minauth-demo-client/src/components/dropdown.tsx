@@ -8,6 +8,7 @@ interface DropdownComponentOptions {
   onError?: (error: Error) => void;
 }
 
+/** A simple dropdown component that fetches options from a given URL */
 const DropdownComponent: React.FC<DropdownComponentOptions> = ({
   onSelectedOptionChange,
   fetchUrl,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { FormDataChange } from '../components/minauth-prover-component';
-import MinAuthProverComponent from '@/components/minauth-prover-component';
+import SimplePreimageProverComponent, {
+  FormDataChange
+} from '../components/simple-preimage-prover.js';
 import { ILogObj, Logger } from 'tslog';
 import DropdownComponent from '@/components/dropdown';
 import JsonTextarea from '@/components/json-text-area';
@@ -17,9 +18,8 @@ import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
 import Erc721TimelockProverComponent, {
   Erc721TimelockAdminComponent
-} from '@/components/minauth-prover-component2';
+} from '@/components/nft-timelock-prover.jsx';
 import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
-import MembershipsProverComponent from '@/components/merkle-memberships-component';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -70,7 +70,7 @@ const MinAuthDemo: React.FC = () => {
             name: 'SimplePreimageAdminConfigComponent'
           })}
         />
-        <MinAuthProverComponent
+        <SimplePreimageProverComponent
           pluginName={name}
           onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
           onSubmissionDataChange={handleSubmissionDataChange}
@@ -86,7 +86,8 @@ const MinAuthDemo: React.FC = () => {
   const merkleMembershipComponent = (name: string) => {
     return (
       <div>
-        <MembershipsProverComponent
+        <strong>Plugin disabled due to a bug</strong>
+        {/* <MembershipsProverComponent
           pluginName={name}
           onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
           onSubmissionDataChange={handleSubmissionDataChange}
@@ -94,7 +95,7 @@ const MinAuthDemo: React.FC = () => {
             setAuthenticationData(response);
           }}
           logger={logger}
-        />
+        /> */}
       </div>
     );
   };
