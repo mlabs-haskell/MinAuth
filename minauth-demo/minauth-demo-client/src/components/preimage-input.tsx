@@ -8,7 +8,7 @@ interface PreimageInputOptions {
 
 /**
  * An example widget component to ingest secret preimage data.
- * It hide the input, but diplays the output of `transformFunction`
+ * It hides the input, but diplays the output of `transformFunction`
  * on that data.
  * It is meant to be used with `rjsf`
  */
