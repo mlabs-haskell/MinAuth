@@ -40,15 +40,17 @@ const DropdownComponent: React.FC<DropdownComponentOptions> = ({
   };
 
   return (
-    <div>
-      <select value={selectedOption} onChange={handleSelectChange}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
+    <select
+      className="bg-white bg-opacity-40 p-1 m-2 rounded text-black focus:border-blue"
+      value={selectedOption}
+      onChange={handleSelectChange}
+    >
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
   );
 };
 

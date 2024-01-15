@@ -8,13 +8,12 @@ import { Field, JsonProof, Poseidon, Cache } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { FormDataChange } from './simple-preimage-prover.js';
-import PreimageInputWidget from './preimage-input.js';
+import PreimageInputWidget from './preimage-input';
 import { mkRequest } from '@/helpers/request';
 import MembershipsProver from 'minauth-merkle-membership-plugin/dist/prover.js';
 import * as ZkProgram from 'minauth-merkle-membership-plugin/dist/merklemembershipsprogram.js';
 import { Either, isLeft } from 'fp-ts/lib/Either';
-
-const serverURL = 'http://127.0.0.1:3000';
+import { ServerConfig } from '@/api/server-config';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -104,7 +103,7 @@ const merkleMembershipProverInitialize = async (
   setProverCompiled: (compiled: boolean) => void,
   logger?: Logger<ILogObj>
 ) => {
-  const pluginsUrl = `${serverURL}/plugins/${pluginName}`;
+  const pluginsUrl = `${ServerConfig.url}/plugins/${pluginName}`;
   const merkleRootsResp = await mkRequest(
     `${pluginsUrl}/getTreeRoots`,
     z.array(z.string())
@@ -121,7 +120,7 @@ const merkleMembershipProverInitialize = async (
   await ZkProgram.Program.compile({ cache: Cache.None });
   const proverE: Either<string, MembershipsProver> =
     await MembershipsProver.initialize(
-      { baseUrl: serverURL },
+      { baseUrl: ServerConfig.url },
       { compile: false }
     )();
 
@@ -213,6 +212,7 @@ const MembershipsProverComponent: React.FC<MembershipsProverComponentProps> = (
     if (proverCompiled) {
       let proof: JsonProof;
       try {
+        props.logger?.debug('Building proof for', proverFormData);
         throw new Error('Not implemented');
         /* proof = await prover.buildInputAndProve({
          *   secret: proverFormData.preimage

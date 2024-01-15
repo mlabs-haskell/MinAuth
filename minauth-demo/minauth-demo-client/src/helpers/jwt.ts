@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { ApiResponse, ApiResponseSchema, mkRequest } from './request';
 import { MinAuthProof } from 'minauth/dist/common/proof';
+import { ServerConfig } from '@/api/server-config';
 
-const submitURL = 'http://127.0.0.1:3000/login';
-const refreshURL = 'http://127.0.0.1:3000/token';
+const submitURL = `${ServerConfig.url}/login`;
+const refreshURL = `${ServerConfig.url}/token`;
 
 export const AuthSchema = z.object({
   token: z.string(),

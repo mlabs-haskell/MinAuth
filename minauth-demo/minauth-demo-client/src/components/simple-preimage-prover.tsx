@@ -13,8 +13,7 @@ import {
 import { Field, JsonProof, Poseidon } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
-
-const serverUrl = 'http://127.0.0.1:3000';
+import { ServerConfig } from '@/api/server-config';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -73,9 +72,9 @@ interface SimplePreimageProverComponentProps {
 
 let proverCompiled = false;
 
-const SimplePreimageProverComponent: React.FC<SimplePreimageProverComponentProps> = (
-  props: SimplePreimageProverComponentProps
-) => {
+const SimplePreimageProverComponent: React.FC<
+  SimplePreimageProverComponentProps
+> = (props: SimplePreimageProverComponentProps) => {
   // State and useEffect hooks remain unchanged
 
   const [proverFormData, setProverFormData] = useState<ProverFormData>({
@@ -96,7 +95,7 @@ const SimplePreimageProverComponent: React.FC<SimplePreimageProverComponentProps
         const pluginRoutes = await PluginRouter.initialize(
           props.logger?.getSubLogger({ name: 'PluginRouter logger' }) ||
             new Logger({ name: 'PluginRouter logger' }),
-          serverUrl,
+          ServerConfig.url,
           props.pluginName
         );
         const spreConfiguration: Configuration = {

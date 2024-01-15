@@ -29,7 +29,8 @@ import {
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { FormDataChange } from './simple-preimage-prover.js';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
-import PreimageInputWidget from './preimage-input.js';
+import PreimageInputWidget from './preimage-input';
+import { ServerConfig } from '@/api/server-config';
 
 interface Ethereum extends Eip1193Provider {}
 
@@ -55,8 +56,6 @@ const getWallet = async () => {
   }
   return wallet;
 };
-
-const serverURL = 'http://127.0.0.1:3000';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -138,7 +137,7 @@ const erc721TimelockProverInitialize = async (
 
   const pluginRoutes = await PluginRouter.initialize(
     logger,
-    serverURL,
+    ServerConfig.url,
     pluginName
   );
 
@@ -387,7 +386,7 @@ const Erc721TimelockProverComponent: React.FC<
   };
 
   return (
-    <div className="m-4 p-4 bg-white shadow-md rounded-lg">
+    <div className="m-2 p-4 pb-1 bg-white shadow-md rounded-lg sm:text-sm">
       <Form
         schema={getSchema({ commitments: currentCommitments })}
         uiSchema={uiSchema}
@@ -395,24 +394,25 @@ const Erc721TimelockProverComponent: React.FC<
         validator={validator}
         formData={proverFormData}
         onChange={(e: IChangeEvent<ProverFormData>) => handleChange(e)}
-        className="space-y-4"
       >
-        <button
-          type="button"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded m-2"
-          disabled={proverFormData === undefined}
-          onClick={buildProofButtonClick}
-        >
-          Generate Proof
-        </button>
-        <button
-          type="submit"
-          disabled={submissionData === null}
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded m-2"
-          onClick={submitProofButtonClick}
-        >
-          Submit Proof
-        </button>
+        <div className="flex justify-center space-x-4">
+          <button
+            type="button"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded m-2"
+            disabled={proverFormData === undefined}
+            onClick={buildProofButtonClick}
+          >
+            Generate Proof
+          </button>
+          <button
+            type="submit"
+            disabled={submissionData === null}
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded m-2"
+            onClick={submitProofButtonClick}
+          >
+            Submit Proof
+          </button>
+        </div>
         <div></div>
       </Form>
     </div>
@@ -483,38 +483,58 @@ export const Erc721TimelockAdminComponent = ({
 
   return (
     <div>
-      <div>
-        <strong>Ethereum Address:</strong> {walletAddress}
+      <div className="mt-1">
+        <strong>Ethereum Address:</strong>
+        <div className="text-sm">{walletAddress}</div>
       </div>
-      <div>
-        <strong>Lock Contract Address:</strong> {prover?.lockContractAddress}
+      <div className="mt-1">
+        <strong>Lock Contract Address:</strong>
+        <div className="text-sm">{prover?.lockContractAddress}</div>
       </div>
-      <div>
-        <strong>NFT Contract Address:</strong> {prover?.erc721ContractAddress}
+      <div className="mt-1">
+        <strong>NFT Contract Address:</strong>
+        <div className="text-sm">{prover?.erc721ContractAddress}</div>
       </div>
-      <div>
+      <div className="mt-8 md-2">
+        <h3 className="lg:text-5x1 font-bold">Ethereum Interaction</h3>
+      </div>
+      <div className="mt-2">
         <input
+          className="bg-white text-black placeholder-gray-600 bg-opacity-40 m-1 p-1 pl-2 rounded-mdbg-white text-black bg-opacity-40 m-1 p-1 rounded-md"
           type="text"
           value={commitmentData}
           onChange={(e) => setCommitmentData(e.target.value)}
           placeholder="Enter Commitment Data"
         />
+
         <input
+          className="bg-white text-black placeholder-gray-600 bg-opacity-40 m-1 p-1 pl-2 rounded-md"
           type="number"
           value={tokenIdToLock}
           onChange={(e) => setTokenIdToLock(e.target.value)}
           placeholder="Enter Token ID to lock"
         />
-        <button onClick={handleLockNFT}>Lock NFT</button>
+        <button
+          className="border hover:border-2 hover:font-semibold border-yellow-400 text-yellow-400 rounded-md ml-2 p-1"
+          onClick={handleLockNFT}
+        >
+          Lock NFT
+        </button>
       </div>
       <div>
         <input
+          className="bg-white text-black placeholder-gray-600 bg-opacity-40 m-1 p-1 pl-2 rounded-md"
           type="number"
           value={tokenIdToUnlock}
           onChange={(e) => setTokenIdToUnlock(e.target.value)}
-          placeholder="Enter Token ID to unlock"
+          placeholder="Enter token index to unlock"
         />
-        <button onClick={handleUnlockNFT}>Unlock NFT</button>
+        <button
+          className="border hover:border-2 hover:font-semibold border-green-400 text-green-400 rounded-md ml-2 p-1"
+          onClick={handleUnlockNFT}
+        >
+          Unlock NFT
+        </button>
       </div>
       {transactionInfo && <div>{transactionInfo}</div>}
     </div>

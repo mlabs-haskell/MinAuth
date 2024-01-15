@@ -77,6 +77,7 @@ const JsonTextarea: React.FC<JsonTextareaProps> = ({
 
   return (
     <textarea
+      className=" bg-white bg-opacity-40 text-black p-2 pl-4 m-2 sm:text-sm rounded border border-white focus:border-blue"
       {...(id && { id })} // Conditionally include the id attribute
       id={id}
       value={text}
