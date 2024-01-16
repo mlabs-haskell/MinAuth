@@ -17,7 +17,7 @@
 /coverage.json
 
 # Ignition files
-/ignition
+/ignition/deployments
 
 # Compiled contract output
 /build-info
