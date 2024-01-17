@@ -1,6 +1,6 @@
 {
   "name": "minauth-erc721-timelock-plugin",
-  "version": "0.9.0-alpha.24",
+  "version": "0.9.0-alpha.27",
   "description": "",
   "type": "module",
   "files": [
@@ -18,7 +18,7 @@
     "ethers": "^6.9.1",
     "express": "^4.18.2",
     "fp-ts": "^2.16.1",
-    "minauth": "0.9.0-alpha.24",
+    "minauth": "0.9.0-alpha.27",
     "web3": "^4.3.0",
     "zod": "^3.22.2"
   },
