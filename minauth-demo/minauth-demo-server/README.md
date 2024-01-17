@@ -18,6 +18,27 @@ After the server is set up you can easily provide its backend services via:
 
      $ npm run run-backend
 
+### Additional steps for NFT time-lock plugin
+
+In order to succefully demo the ERC721-timelock plugin will have to have a funded (ETH for transactions) wallet with NFT's that it can lock.
+You can do so by using a CLI provided with the plugin. For example:
+
+1. Give 5 ETH to the address
+
+```bash
+
+    $ npx ts-node eth-contract/scripts/cli.ts fund -a [the-wallets-eth-address] -v 5
+
+```
+2. Mint NFT tokens #1 and #2
+
+```bash
+
+    $ npx ts-node eth-contract/scripts/cli.ts mint -a [the-wallets-eth-address]
+    $ npx ts-node eth-contract/scripts/cli.ts mint -a [the-wallets-eth-address]
+
+```
+
 
 ### E2E tests with headless client
 
