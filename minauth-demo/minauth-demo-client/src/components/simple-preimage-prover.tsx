@@ -68,6 +68,7 @@ interface SimplePreimageProverComponentProps {
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
   onAuthenticationResponse?: (response: AuthResponse) => void;
   logger?: Logger<ILogObj>;
+  setProverCompiling?: (compiled: boolean) => void;
 }
 
 let proverCompiled = false;
@@ -86,6 +87,7 @@ const SimplePreimageProverComponent: React.FC<
   const [prover, setProver] = useState<SimplePreimageProver | null>(null);
 
   useEffect(() => {
+    props.setProverCompiling?.(true);
     (async () => {
       try {
         const { SimplePreimageProver } = await import(
@@ -115,6 +117,7 @@ const SimplePreimageProverComponent: React.FC<
         setProver(prover);
         const { verificationKey } = await SimplePreimageProver.compile();
         proverCompiled = true;
+        props.setProverCompiling?.(false);
         props.logger?.info('verificationKey', verificationKey);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -189,7 +192,7 @@ const SimplePreimageProverComponent: React.FC<
   };
 
   return (
-    <div className="m-4 p-4 bg-white shadow-md rounded-lg">
+    <div className="m-2 p-4 pb-1 bg-gray-200 bg-opacity-70 shadow-md rounded-lg sm:text-sm">
       <Form
         schema={schema}
         uiSchema={uiSchema}

@@ -22,6 +22,7 @@ import Erc721TimelockProverComponent, {
 import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
 import ReactMarkdown from 'react-markdown';
 import { ServerConfig } from '@/api/server-config';
+import Overlay from '@/components/overlay';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 
@@ -31,9 +32,10 @@ const MinAuthDemo: React.FC = () => {
     stylePrettyLogs: false
   });
 
+  const [proverCompiling, setProverCompiling] = useState<boolean>(false);
   const [selectedPlugin, setSelectedPlugin] = useState<string>('');
-
   const [proverFormData, setProverFormData] = useState<FormDataChange>();
+
   const [authenticationData, setAuthenticationData] =
     useState<AuthResponse | null>(null);
   const [submissionData, setSubmissionData] = useState<MinAuthProof | null>(
@@ -101,6 +103,7 @@ const MinAuthDemo: React.FC = () => {
                 setAuthenticationData(response);
               }}
               logger={logger}
+              setProverCompiling={setProverCompiling}
             />
           </div>
         </Pane>
@@ -144,6 +147,7 @@ const MinAuthDemo: React.FC = () => {
         >
           <div className="text-black">
             <Erc721TimelockProverComponent
+              setProverCompiling={setProverCompiling}
               pluginName={name}
               updateProver={setProver}
               onFormDataChange={(s) => handleFormDataChange(s, 'Prover')}
@@ -177,6 +181,7 @@ const MinAuthDemo: React.FC = () => {
   return (
     <div className="items-center w-full min-h-screen text-white p-5 my-8 mx-auto">
       <Header />
+      <Overlay isShown={proverCompiling} />
       <div>{demoDescription()}</div>
       <div className="flex flex-col w-full max-w-4xl mt-5 mx-auto">
         {/* Columns Container */}
@@ -241,11 +246,37 @@ const MinAuthDemo: React.FC = () => {
     </div>
   );
 };
-
 const Header = () => {
   return (
-    <header>
-      <h1>MINAUTH DEMO</h1>
+    <header className="flex justify-between items-center bg-gray-800 bg-opacity-60 m-2 mt-7 border rounded-md p-5">
+      <div>
+        <h1 className="text-xl font-bold">
+          MinAuth - zero-knowledge authentication demo
+        </h1>
+        <p>
+          <a
+            href="https://github.com/mlabs-haskell/MinAuth"
+            className="text-blue-400 hover:text-blue-600"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            https://github.com/mlabs-haskell/MinAuth
+          </a>
+        </p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm">powered by</p>
+        <p>
+          <a
+            href="https://github.com/o1-labs/o1js"
+            className="text-blue-400 hover:text-blue-600"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            o1js
+          </a>
+        </p>
+      </div>
     </header>
   );
 };

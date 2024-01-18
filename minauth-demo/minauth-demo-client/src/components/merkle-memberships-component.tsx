@@ -100,7 +100,7 @@ let proverCompiled = false;
 
 const merkleMembershipProverInitialize = async (
   pluginName: string,
-  setProverCompiled: (compiled: boolean) => void,
+  setProverCompiling: (compiled: boolean) => void,
   logger?: Logger<ILogObj>
 ) => {
   const pluginsUrl = `${ServerConfig.url}/plugins/${pluginName}`;
@@ -132,7 +132,7 @@ const merkleMembershipProverInitialize = async (
 
   logger?.debug('Prover compiled');
 
-  setProverCompiled(true);
+  setProverCompiling(true);
 
   return { prover, merkleRoots: merkleRootsResp.data };
 };

@@ -72,17 +72,17 @@ const getSchema = (opts: SchemaOptions): RJSFSchema => ({
   title: 'ERC721TimelockProver Form',
   description: 'This form is used to generate a proof.',
   type: 'object',
-  required: ['password', 'commitment'],
+  required: ['commitment', 'preimage'],
   properties: {
-    preimage: {
-      type: 'string',
-      title: 'Commitment preimage',
-      maxLength: CircuitString.maxLength
-    },
     commitment: {
       type: 'string',
       title: 'Available Commitments',
       enum: opts.commitments.map((c) => c.commitmentHex)
+    },
+    preimage: {
+      type: 'string',
+      title: 'Commitment preimage',
+      maxLength: CircuitString.maxLength
     }
   }
 });
@@ -125,7 +125,6 @@ let proverCompiled = false;
 const erc721TimelockProverInitialize = async (
   pluginName: string,
   ethereumProvider: BrowserProvider | JsonRpcProvider,
-  setProverCompiled: (compiled: boolean) => void,
   pluginLogger?: Logger<ILogObj>
 ) => {
   const { Erc721TimelockProver } = await import(
@@ -146,11 +145,9 @@ const erc721TimelockProverInitialize = async (
     ethereumProvider,
     logger
   };
-
   const prover = await Erc721TimelockProver.initialize(erc721tlConfiguration, {
     compile: true
   });
-  setProverCompiled(true);
 
   return { prover };
 };
@@ -176,6 +173,7 @@ interface SimplePreimageProverComponentProps {
   onSubmissionDataChange?: (submissionData: MinAuthProof | null) => void;
   onAuthenticationResponse?: (response: AuthResponse) => void;
   updateProver?: (prover: Erc721TimelockProver) => void;
+  setProverCompiling?: (compiled: boolean) => void;
   logger?: Logger<ILogObj>;
 }
 
@@ -281,6 +279,7 @@ const Erc721TimelockProverComponent: React.FC<
   const isFetchingRef = useRef(false);
 
   useEffect(() => {
+    props.setProverCompiling?.(true);
     (async () => {
       try {
         if (!window.ethereum) {
@@ -291,11 +290,9 @@ const Erc721TimelockProverComponent: React.FC<
         const { prover } = await erc721TimelockProverInitialize(
           props.pluginName,
           provider,
-          (compiled) => {
-            proverCompiled = compiled;
-          },
           props.logger?.getSubLogger({ name: 'ERC721TimelockPlugin prover' })
         );
+        props.setProverCompiling?.(false);
         setProver(prover);
         if (props.updateProver) {
           props.updateProver(prover);
@@ -386,8 +383,9 @@ const Erc721TimelockProverComponent: React.FC<
   };
 
   return (
-    <div className="m-2 p-4 pb-1 bg-white shadow-md rounded-lg sm:text-sm">
+    <div className="m-2 p-4 pb-1 bg-gray-200 bg-opacity-70 shadow-md rounded-lg sm:text-sm">
       <Form
+        className="max-w-full overflow-x-auto"
         schema={getSchema({ commitments: currentCommitments })}
         uiSchema={uiSchema}
         widgets={widgets}
@@ -395,26 +393,26 @@ const Erc721TimelockProverComponent: React.FC<
         formData={proverFormData}
         onChange={(e: IChangeEvent<ProverFormData>) => handleChange(e)}
       >
-        <div className="flex justify-center space-x-4">
-          <button
-            type="button"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded m-2"
-            disabled={proverFormData === undefined}
-            onClick={buildProofButtonClick}
-          >
-            Generate Proof
-          </button>
-          <button
-            type="submit"
-            disabled={submissionData === null}
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded m-2"
-            onClick={submitProofButtonClick}
-          >
-            Submit Proof
-          </button>
-        </div>
-        <div></div>
+        {/* Your form inputs go here. They will be within the horizontally scrollable area if they get too wide */}
       </Form>
+      <div className="mt-4">
+        <button
+          type="button"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded m-2"
+          disabled={proverFormData === undefined}
+          onClick={buildProofButtonClick}
+        >
+          Generate Proof
+        </button>
+        <button
+          type="submit"
+          disabled={submissionData === null}
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded m-2"
+          onClick={submitProofButtonClick}
+        >
+          Submit Proof
+        </button>
+      </div>
     </div>
   );
 };

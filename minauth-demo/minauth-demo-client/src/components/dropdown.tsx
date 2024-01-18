@@ -8,7 +8,6 @@ interface DropdownComponentOptions {
   onError?: (error: Error) => void;
 }
 
-/** A simple dropdown component that fetches options from a given URL */
 const DropdownComponent: React.FC<DropdownComponentOptions> = ({
   onSelectedOptionChange,
   fetchUrl,
@@ -16,23 +15,20 @@ const DropdownComponent: React.FC<DropdownComponentOptions> = ({
   onError
 }) => {
   const [options, setOptions] = useState<string[]>([]);
-  const [selectedOption, setSelectedOption] = useState<string>('');
+  const [selectedOption, setSelectedOption] =
+    useState<string>('No plugin selected');
 
   useEffect(() => {
     fetch(fetchUrl)
       .then((response) => response.json())
       .then((data) => {
         setOptions(data);
-        if (data.length > 0) {
-          setSelectedOption(data[0]);
-          onSelectedOptionChange(data[0]);
-        }
       })
       .catch((error) => {
         logger?.error('Error fetching data:', error);
         onError?.(error);
       });
-  }, [fetchUrl, logger, onError, onSelectedOptionChange]);
+  }, [fetchUrl, logger, onError]);
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedOption(event.target.value);
@@ -45,6 +41,9 @@ const DropdownComponent: React.FC<DropdownComponentOptions> = ({
       value={selectedOption}
       onChange={handleSelectChange}
     >
+      <option disabled value="No plugin selected">
+        No plugin selected
+      </option>
       {options.map((option) => (
         <option key={option} value={option}>
           {option}
