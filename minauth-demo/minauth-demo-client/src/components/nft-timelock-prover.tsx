@@ -125,6 +125,7 @@ let proverCompiled = false;
 const erc721TimelockProverInitialize = async (
   pluginName: string,
   ethereumProvider: BrowserProvider | JsonRpcProvider,
+  setProverCompiled: (compiled: boolean) => void,
   pluginLogger?: Logger<ILogObj>
 ) => {
   const { Erc721TimelockProver } = await import(
@@ -145,9 +146,11 @@ const erc721TimelockProverInitialize = async (
     ethereumProvider,
     logger
   };
+
   const prover = await Erc721TimelockProver.initialize(erc721tlConfiguration, {
     compile: true
   });
+  setProverCompiled(true);
 
   return { prover };
 };
@@ -290,6 +293,9 @@ const Erc721TimelockProverComponent: React.FC<
         const { prover } = await erc721TimelockProverInitialize(
           props.pluginName,
           provider,
+          (compiled) => {
+            proverCompiled = compiled;
+          },
           props.logger?.getSubLogger({ name: 'ERC721TimelockPlugin prover' })
         );
         props.setProverCompiling?.(false);

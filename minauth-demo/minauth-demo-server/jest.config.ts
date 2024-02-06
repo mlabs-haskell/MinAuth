@@ -1,6 +1,7 @@
 import type { JestConfigWithTsJest } from 'ts-jest';
 
 const config: JestConfigWithTsJest = {
+  workerThreads: true,
   verbose: true,
   transform: {
     '^.+\\.ts?$': [
