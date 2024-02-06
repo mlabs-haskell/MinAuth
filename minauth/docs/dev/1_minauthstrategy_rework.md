@@ -15,3 +15,9 @@ A possible solution would be to introduce two new entities:
 - A `PluginHost` - generalization of the plugin server. This entity would be responsible for holding runtime instances of plugins and relay communication between its users and the plugins. Additionally it could aggregate all the custom routes of plugins and make them installable at one go. This would mean continued dependency on express.js but it does make it a little bit more centralized and easier to drop in the future.
 - An `AuthMapper` - an entity that would map bidirectionally a combination of plugin outputs to the authentication response further made available through the minauthstrategy
 - The pluginserver should implement the abstraction of the plugin host and it should use a strategy called `AnyPluginStrategy`.
+
+### Revocation
+
+Additionally the server using MinAuth must be able to re-check the always up-to-date validity of the MinAuth plugins outputs.
+The plugin can identify its own output and provide the validity guarantee, but passport.js strategy does not deal with this problem.
+Previously it was the responsibility of the plugin server itself, but now it seems that it should be split between the two new entities.
