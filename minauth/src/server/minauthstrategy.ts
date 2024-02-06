@@ -1,55 +1,9 @@
-// TODO use logger
-import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
 import { MinAuthProof, MinAuthPluginInputSchema } from '../common/proof.js';
 import { Logger } from '../plugin/logger.js';
+import AuthMapper from './authmapper.js';
 
-/**
- * A result of a proof verification.
- */
-type VerificationResult =
-  | {
-      __tag: 'success';
-      output: unknown;
-    }
-  | {
-      __tag: 'failed';
-      error: string;
-    };
-
-/**
- * Forward proof verification to a remote verifier.
- */
-const verifyProof = (
-  verifierUrl: string,
-  data: MinAuthProof,
-  log: Logger
-): Promise<VerificationResult> => {
-  log.info('Calling for proof verification with:', data);
-  return axios.post(verifierUrl, data).then(
-    (resp) => {
-      if (resp.status == 200) {
-        log.info('Received response:', resp);
-        const { output } = resp.data as {
-          output: unknown;
-        };
-        return { __tag: 'success', output };
-      }
-
-      const { error } = resp.data as { error: string };
-      return { __tag: 'failed', error };
-    },
-    (error) => {
-      return { __tag: 'failed', error: String(error) };
-    }
-  );
-};
-
-export type AuthenticationResponse = {
-  plugin: string;
-  output: unknown;
-};
 
 export interface MinAuthStrategyConfig {
   logger: Logger;
@@ -57,13 +11,14 @@ export interface MinAuthStrategyConfig {
 }
 
 /**
+ * TODO: in progress.
  * Minauth's integration with passport.js.
- * This implementation uses the plugin server to verify the proof.
  */
 class MinAuthStrategy extends Strategy {
   name = 'MinAuthStrategy';
 
-  readonly verifyProof: (_: MinAuthProof) => Promise<VerificationResult>;
+  readonly authMapper: AuthMapper;
+
   readonly log: Logger;
 
   public constructor(config: MinAuthStrategyConfig) {
@@ -78,19 +33,13 @@ class MinAuthStrategy extends Strategy {
     // forward the proof verification to the plugin server
     const result = await this.authMapper.requestAuth(loginData)
 
-    if (result.__tag == 'success') {
-      const { output } = result;
+    if (authResp.verificationResult.__tag == 'success') {
 
-      this.log.debug('proof verification output:', output);
-
-      const authResp: AuthenticationResponse = {
-        plugin: loginData.plugin,
-        output
-      };
+      this.log.debug('proof verification output:', authResp.output);
 
       this.success(authResp);
     } else {
-      const { error } = result;
+      const { error } = authResp.verificationResult;
 
       this.log.info(`unable to authenticate using minAuth: ${error}`);
 
