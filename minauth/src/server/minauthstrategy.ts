@@ -53,7 +53,7 @@ export type AuthenticationResponse = {
 
 export interface MinAuthStrategyConfig {
   logger: Logger;
-  verifierUrl: string;
+  authMapper: AuthMapper;
 }
 
 /**
@@ -69,16 +69,14 @@ class MinAuthStrategy extends Strategy {
   public constructor(config: MinAuthStrategyConfig) {
     super();
     this.log = config.logger;
-    this.verifyProof = (data) =>
-      verifyProof(config.verifierUrl, data, config.logger);
   }
 
   async authenticate(req: Request): Promise<void> {
     this.log.info('authenticating (strategy) with req:', req.body);
-    const loginData = MinAuthPluginInputSchema.parse(req.body);
+    const loginData = this.authMapper.requestAuthSchema.parse(req.body)
 
     // forward the proof verification to the plugin server
-    const result = await this.verifyProof(loginData);
+    const result = await this.authMapper.requestAuth(loginData)
 
     if (result.__tag == 'success') {
       const { output } = result;
