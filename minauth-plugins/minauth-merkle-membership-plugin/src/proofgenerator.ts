@@ -159,8 +159,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     RTE.map(
       ({ encodedPublicInputArgs, proof }): MinAuthProof => ({
         plugin: 'MerkleMembershipsPlugin',
-        proof,
-        publicInputArgs: encodedPublicInputArgs
+        input: { proof, merkleRoots: encodedPublicInputArgs }
       })
     ),
     tapLogger((logger) => logger.info('all done'))
