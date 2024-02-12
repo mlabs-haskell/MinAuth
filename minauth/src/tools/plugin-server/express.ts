@@ -26,12 +26,12 @@ import {
   useRootLogger,
   withExpressApp
 } from './types.js';
-import { MinAuthProofSchema } from '../../common/proof.js';
+import { MinAuthPluginInputSchema } from '../../common/proof.js';
 
 /** Handle a POST request to /verifyProof */
 const handleVerifyProof = (env: PluginRuntimeEnv) =>
   wrapTrivialExpressHandler((req) => {
-    const parseResults = MinAuthProofSchema.safeParse(req.body);
+    const parseResults = MinAuthPluginInputSchema.safeParse(req.body);
     if (!parseResults.success) {
       env.logger.info(
         `Failed to parse incoming MinAuthProof:\b ${parseResults.error}`
@@ -42,7 +42,7 @@ const handleVerifyProof = (env: PluginRuntimeEnv) =>
     env.logger.info(`Parsed incoming MinAuthProof with body:\b ${body}`);
 
     return pipe(
-      verifyProof(body.proof, body.publicInputArgs, body.plugin)(env),
+      verifyProof(body.input, body.plugin)(env),
       TE.map((output) => {
         return { output };
       }),

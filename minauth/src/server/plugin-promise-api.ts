@@ -1,7 +1,6 @@
 import { Configuration } from './plugin-fp-api.js';
 import * as fpPlugin from './plugin-fp-api.js';
 import * as expressCore from 'express-serve-static-core';
-import { JsonProof } from 'o1js';
 import { launchTE } from '../utils/fp/taskeither.js';
 import { OutputValidity } from '../plugin/plugintype.js';
 
@@ -69,13 +68,10 @@ export const installCustomRoutes = (
  */
 export const verifyProof = (
   env: PluginRuntimeEnv,
-  proof: JsonProof,
-  publicInputArgs: unknown,
+  input: unknown,
   pluginName: string
 ): Promise<unknown> =>
-  launchPluginRuntime(env)(
-    fpPlugin.verifyProof(proof, publicInputArgs, pluginName)
-  );
+  launchPluginRuntime(env)(fpPlugin.verifyProof(input, pluginName));
 
 /** Validate the output of a plugin within the active  plugin runtime.
  */
