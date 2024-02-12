@@ -1,0 +1,3 @@
+:serve {:deps {org.babashka/http-server {:mvn/version "0.1.12"}}
+        :main-opts ["-m" "babashka.http-server"]
+        :exec-fn babashka.http-server/exec}
