@@ -14,6 +14,7 @@ import { Field, JsonProof, Poseidon } from 'o1js';
 import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
 import { ServerConfig } from '@/api/server-config';
+import { Input } from 'minauth-simple-preimage-plugin/dist/plugin.js';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),
@@ -22,11 +23,13 @@ export const JsonProofSchema = z.object({
   proof: z.string()
 });
 
-const mkSubmissionData = (proof: JsonProof): MinAuthProof => ({
-  plugin: 'simple-preimage',
-  publicInputArgs: {},
-  proof
-});
+const mkSubmissionData = (proof: JsonProof): MinAuthProof => {
+  const input: Input = { proof };
+  return {
+    plugin: 'simple-preimage',
+    input
+  };
+};
 
 const schema: RJSFSchema = {
   title: 'Prover Form',

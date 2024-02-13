@@ -11,6 +11,7 @@ import { FormDataChange } from './simple-preimage-prover.js';
 import PreimageInputWidget from './preimage-input';
 import { mkRequest } from '@/helpers/request';
 import MembershipsProver from 'minauth-merkle-membership-plugin/dist/prover.js';
+import { Input } from 'minauth-merkle-membership-plugin/dist/plugin.js';
 import * as ZkProgram from 'minauth-merkle-membership-plugin/dist/merklemembershipsprogram.js';
 import { Either, isLeft } from 'fp-ts/lib/Either';
 import { ServerConfig } from '@/api/server-config';
@@ -142,11 +143,12 @@ const merkleMembershipProverInitialize = async (
 const mkSubmissionData = (
   pluginName: string,
   proof: JsonProof
-): MinAuthProof => ({
-  plugin: pluginName,
-  publicInputArgs: {},
-  proof
-});
+): MinAuthProof => {
+  // TODO: uncomment once the o1js bug is fixed
+  /* const input: Input = { proof, merkleRoots: [] }; */
+  const input = { proof, merkleRoots: [] };
+  return { plugin: pluginName, input };
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const validator: ValidatorType<ProverFormData, RJSFSchema, any> =
