@@ -174,9 +174,9 @@ const initializePlugin = (
       rawPluginFactory.__interface_tag === fpInterfaceTag
         ? TE.right(rawPluginFactory)
         : rawPluginFactory.__interface_tag === tsInterfaceTag
-          ? TE.right(tsToFpMinAuthPluginFactory(rawPluginFactory))
-          : // TODO This check should be moved to `importPluginModule`
-            TE.left('invalid plugin module')
+        ? TE.right(tsToFpMinAuthPluginFactory(rawPluginFactory))
+        : // TODO This check should be moved to `importPluginModule`
+          TE.left('invalid plugin module')
     ),
     TE.bind('typedPluginCfg', ({ pluginFactory }) =>
       validatePluginCfg(pluginCfg, pluginFactory)
@@ -367,7 +367,13 @@ export const verifyProof = (
     RTE.Do,
     RTE.tap(() =>
       useLogger((logger) => {
-        logger.info(`verifying proof using plugin ${pluginName}`);
+        logger.info(
+          `verifying input with ${pluginName}. Input: ${JSON.stringify(
+            input,
+            null,
+            2
+          )}`
+        );
       })
     ),
     RTE.bind('pluginInstance', () => askPluginInstance(pluginName)),

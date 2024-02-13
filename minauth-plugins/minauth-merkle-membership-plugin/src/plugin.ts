@@ -125,20 +125,20 @@ const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
         wrapZodDec(
           'fp',
           z.object({
-            publicInputArgs: z.unknown(),
+            merkleRoots: z.unknown(),
             recursiveHash: z.string()
           })
         ).decode(i)
       ),
-      E.bind('input', ({ rawObj }) =>
-        inputEncDec.decode(rawObj.publicInputArgs)
+      E.bind('merkleRoots', ({ rawObj }) =>
+        merkleRootsEncDec.decode(rawObj.merkleRoots)
       ),
       E.bind('recursiveHash', ({ rawObj }) =>
         fieldEncDec.decode(rawObj.recursiveHash)
       ),
-      E.map(({ input, recursiveHash }) => {
+      E.map(({ merkleRoots, recursiveHash }) => {
         return {
-          merkleRoots: input.merkleRoots,
+          merkleRoots,
           recursiveHash
         };
       })
