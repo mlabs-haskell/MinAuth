@@ -53,24 +53,24 @@ export const outputInvalid = (reason: string): OutputValidity => {
  * A plugin is a server-side component that can be used to verify a proof.
  * It may defined custom routes and handlers that are necessary for the
  * client counterpart to generate a proof.
- * The two remainng arguments `PublicInputArgs` and `Output` parametrize
- * The plugin input and output.
- * `PublicInputArgs` usually will define the way to acquire public inputs
- * for the proof and `Output` will wrap the output of the proof.
+ * The two remainng arguments `Input` and `Output` parametrize
+ * the plugin's input and output.
+ * `Input` will usually contain a zk-proof and auxiliary data
+ * required to establish public data against which the proof was made.
+ * and `Output` will wrap the output of the proof.
  */
 export interface IMinAuthPlugin<
   InterfaceType extends InterfaceKind,
-  PublicInputArgs,
+  Input,
   Output
 > extends WithInterfaceTag<InterfaceType> {
   /**
    * This is meant to build the public inputs for the proof and verify
    * the proof using compiled verifier zk-circuit.
+   * The input will usually contain a zk-proof and auxiliary data
+   * required to establish public data against which the proof was made.
    */
-  verifyAndGetOutput(
-    publicInputArgs: PublicInputArgs,
-    serializedProof: JsonProof
-  ): RetType<InterfaceType, Output>;
+  verifyAndGetOutput(input: Input): RetType<InterfaceType, Output>;
 
   /**
    * Plugins should be able to confirm the validity produced outputs.
@@ -84,23 +84,17 @@ export interface IMinAuthPlugin<
 
   /** Custom routes and handlers. Will be installed under `/plugins/<plugin name>` */
   readonly customRoutes: Router;
-
-  // TODO consider removing this from the interface
-  // Plugin will be internally responsible for the zk circuit.
-
-  /** The verification key of the underlying zk circuit. */
-  readonly verificationKey: VerificationKey;
 }
 
 /** Type parameter extraction (inference) helpers. */
-type ExtractPluginPublicInputArgsType<T> = T extends IMinAuthPlugin<
+type ExtractPluginInputType<T> = T extends IMinAuthPlugin<
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   infer _1,
-  infer PublicInputArgs,
+  infer Input,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   infer _2
 >
-  ? PublicInputArgs
+  ? Input
   : never;
 
 /** Type parameter extraction (inference) helpers. */
@@ -122,9 +116,9 @@ type ExtractPluginOutputType<T> = T extends IMinAuthPlugin<
  */
 export interface IMinAuthPluginFactory<
   InterfaceType extends InterfaceKind,
-  PluginType extends IMinAuthPlugin<InterfaceType, PublicInputArgs, Output>,
+  PluginType extends IMinAuthPlugin<InterfaceType, Input, Output>,
   Configuration,
-  PublicInputArgs = ExtractPluginPublicInputArgsType<PluginType>,
+  Input = ExtractPluginInputType<PluginType>,
   Output = ExtractPluginOutputType<PluginType>
 > extends WithInterfaceTag<InterfaceType> {
   /**
@@ -142,8 +136,8 @@ export interface IMinAuthPluginFactory<
   /** Decoder for the plugin configuration. */
   readonly configurationDec: Decoder<InterfaceType, Configuration>;
 
-  /** Decoder for the public input construction arguments. */
-  readonly publicInputArgsDec: Decoder<InterfaceType, PublicInputArgs>;
+  /** The decoder for the plugin inputs. */
+  readonly inputDecoder: Decoder<InterfaceType, Input>;
 
   /** Encoder/Decoder for the plugins outputs. */
   readonly outputEncDec: EncodeDecoder<InterfaceType, Output>;
@@ -257,12 +251,11 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
 ): IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output> => {
   return {
     __interface_tag: 'fp',
-    verifyAndGetOutput: (pia, sp) =>
-      fromFailablePromise(() => i.verifyAndGetOutput(pia, sp)),
+    verifyAndGetOutput: (inp) =>
+      fromFailablePromise(() => i.verifyAndGetOutput(inp)),
     checkOutputValidity: (o) =>
       fromFailablePromise(() => i.checkOutputValidity(o)),
-    customRoutes: i.customRoutes,
-    verificationKey: i.verificationKey
+    customRoutes: i.customRoutes
   };
 };
 
@@ -271,23 +264,23 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
  */
 export const tsToFpMinAuthPluginFactory = <
   Configuration,
-  PublicInputArgs,
+  Input,
   Output
 >(
   i: IMinAuthPluginFactory<
     TsInterfaceType,
-    IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>,
+    IMinAuthPlugin<TsInterfaceType, Input, Output>,
     Configuration
   >
 ): IMinAuthPluginFactory<
   FpInterfaceType,
-  IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>,
+  IMinAuthPlugin<FpInterfaceType, Input, Output>,
   Configuration
 > => {
   return {
     __interface_tag: 'fp',
     configurationDec: tsToFpDecoder(i.configurationDec),
-    publicInputArgsDec: tsToFpDecoder(i.publicInputArgsDec),
+    inputDecoder: tsToFpDecoder(i.inputDecoder),
     outputEncDec: combineEncDec(
       tsToFpEncoder(i.outputEncDec),
       tsToFpDecoder(i.outputEncDec)

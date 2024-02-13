@@ -31,6 +31,7 @@ import { FormDataChange } from './simple-preimage-prover.js';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter';
 import PreimageInputWidget from './preimage-input';
 import { ServerConfig } from '@/api/server-config';
+import { Input } from 'minauth-erc721-timelock-plugin/dist/plugin.js';
 
 interface Ethereum extends Eip1193Provider {}
 
@@ -160,11 +161,13 @@ const erc721TimelockProverInitialize = async (
 const mkSubmissionData = (
   pluginName: string,
   proof: JsonProof
-): MinAuthProof => ({
-  plugin: pluginName,
-  publicInputArgs: {},
-  proof
-});
+): MinAuthProof => {
+  const input: Input = { proof };
+  return {
+    plugin: pluginName,
+    input
+  };
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const validator: ValidatorType<ProverFormData, RJSFSchema, any> =

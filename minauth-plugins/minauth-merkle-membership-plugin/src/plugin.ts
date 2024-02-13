@@ -39,18 +39,22 @@ import { Logger } from 'minauth/dist/plugin/logger.js';
 import { wrapTrivialExpressHandler } from 'minauth/dist/plugin/express.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { fieldEncDec } from 'minauth/dist/utils/fp/fieldEncDec.js';
+import { JsonProofSchema } from 'minauth/dist/common/proof.js';
 
 /**
  * The type of the public input of the Minauth plugin.
  * The public input is a list of Merkle tree roots.
  * Each tree represents a set of authorized members.
  */
-export type PublicInputArgs = NonEmptyArray<Field>;
+export type Input = {
+  merkleRoots: NonEmptyArray<Field>;
+  proof: JsonProof;
+};
 
-/**
- * Encode/decode `PublicInputArgs` to/from an array of strings.
- */
-const publicInputArgsEncDec: EncodeDecoder<FpInterfaceType, PublicInputArgs> = {
+const merkleRootsEncDec: EncodeDecoder<
+  FpInterfaceType,
+  NonEmptyArray<Field>
+> = {
   __interface_tag: 'fp',
 
   decode: (i: unknown) =>
@@ -66,11 +70,44 @@ const publicInputArgsEncDec: EncodeDecoder<FpInterfaceType, PublicInputArgs> = {
 };
 
 /**
+ * Encode/decode `PublicInputArgs` to/from an array of strings.
+ */
+const inputEncDec: EncodeDecoder<FpInterfaceType, Input> = {
+  __interface_tag: 'fp',
+
+  decode: (i: unknown) =>
+    pipe(
+      E.Do,
+      E.bind('inp', () =>
+        wrapZodDec(
+          'fp',
+          z.object({ merkleRoots: z.array(z.string()), proof: z.unknown() })
+        ).decode(i)
+      ),
+      E.bind('merkleRoots', ({ inp }) =>
+        merkleRootsEncDec.decode(inp.merkleRoots)
+      ),
+      E.bind('proof', ({ inp }) =>
+        wrapZodDec('fp', JsonProofSchema).decode(inp.proof)
+      ),
+      E.map(({ merkleRoots, proof }) => {
+        return { merkleRoots, proof };
+      })
+    ),
+  encode: (i: Input) => {
+    return {
+      merkleRoots: merkleRootsEncDec.encode(i.merkleRoots),
+      proof: i.proof
+    };
+  }
+};
+
+/**
  * The type of the output of the MerkleMemberships Minauth plugin.
  */
 export type Output = {
   /** The input used to generate the proof related to this output. */
-  publicInputArgs: PublicInputArgs;
+  merkleRoots: NonEmptyArray<Field>;
   /** The hash informing the plugin to which trees the proof relates. */
   recursiveHash: Field;
 };
@@ -88,28 +125,28 @@ const outputEncDec: EncodeDecoder<FpInterfaceType, Output> = {
         wrapZodDec(
           'fp',
           z.object({
-            publicInputArgs: z.unknown(),
+            merkleRoots: z.unknown(),
             recursiveHash: z.string()
           })
         ).decode(i)
       ),
-      E.bind('publicInputArgs', ({ rawObj }) =>
-        publicInputArgsEncDec.decode(rawObj.publicInputArgs)
+      E.bind('merkleRoots', ({ rawObj }) =>
+        merkleRootsEncDec.decode(rawObj.merkleRoots)
       ),
       E.bind('recursiveHash', ({ rawObj }) =>
         fieldEncDec.decode(rawObj.recursiveHash)
       ),
-      E.map(({ publicInputArgs, recursiveHash }) => {
+      E.map(({ merkleRoots, recursiveHash }) => {
         return {
-          publicInputArgs,
+          merkleRoots,
           recursiveHash
         };
       })
     ),
 
-  encode: ({ publicInputArgs, recursiveHash }) => {
+  encode: ({ merkleRoots, recursiveHash }) => {
     return {
-      publicInputArgs: publicInputArgsEncDec.encode(publicInputArgs),
+      merkleRoots: merkleRootsEncDec.encode(merkleRoots),
       recursiveHash: fieldEncDec.encode(recursiveHash)
     };
   }
@@ -183,7 +220,7 @@ const computeExpectedHash =
  * memberships
  */
 export class MerkleMembershipsPlugin
-  implements IMinAuthPlugin<FpInterfaceType, PublicInputArgs, Output>
+  implements IMinAuthPlugin<FpInterfaceType, Input, Output>
 {
   readonly __interface_tag = 'fp';
 
@@ -227,17 +264,14 @@ export class MerkleMembershipsPlugin
   /** Given public input description and a zk proof validate the proof
    *  and produce the output
    */
-  verifyAndGetOutput(
-    publicInputArgs: PublicInputArgs,
-    serializedProof: JsonProof
-  ): TaskEither<string, Output> {
+  verifyAndGetOutput(input: Input): TaskEither<string, Output> {
     const treeRoots = TE.fromOption(() => 'empty input list')(
-      NE.fromArray(publicInputArgs)
+      NE.fromArray(input.merkleRoots)
     );
 
     const deserializedProof = TE.fromIOEither(
       IOE.tryCatch(
-        () => ZkProgram.Proof(Program).fromJSON(serializedProof),
+        () => ZkProgram.Proof(Program).fromJSON(input.proof),
         (err) => String(err)
       )
     );
@@ -274,7 +308,7 @@ export class MerkleMembershipsPlugin
       ),
       TE.map(({ expectedHash }) => {
         return {
-          publicInputArgs,
+          merkleRoots: input.merkleRoots,
           recursiveHash: expectedHash
         };
       })
@@ -288,7 +322,7 @@ export class MerkleMembershipsPlugin
    */
   checkOutputValidity(o: Output): TaskEither<string, OutputValidity> {
     return pipe(
-      computeExpectedHash(this.storageProvider)(o.publicInputArgs),
+      computeExpectedHash(this.storageProvider)(o.merkleRoots),
       TE.map(
         (expectedHash): OutputValidity =>
           expectedHash.equals(o.recursiveHash).toBoolean()
@@ -347,10 +381,7 @@ export class MerkleMembershipsPlugin
     minaTreesProviderConfigurationSchema
   );
 
-  static readonly publicInputArgsDec: Decoder<
-    FpInterfaceType,
-    PublicInputArgs
-  > = publicInputArgsEncDec;
+  static readonly inputDecoder: Decoder<FpInterfaceType, Input> = inputEncDec;
 
   static readonly outputEncDec = outputEncDec;
 }

@@ -13,13 +13,12 @@ export const JsonProofSchema = z.object({
 /**
  * A zod schema for proof objects that can be verified by the plugin server.
  */
-export const MinAuthProofSchema = z.object({
+export const MinAuthPluginInputSchema = z.object({
   plugin: z.string(),
-  publicInputArgs: z.unknown(),
-  proof: JsonProofSchema
+  input: z.unknown()
 });
 
 /**
  * A type for proof objects that can be verified by the plugin server.
  */
-export type MinAuthProof = z.infer<typeof MinAuthProofSchema>;
+export type MinAuthProof = z.infer<typeof MinAuthPluginInputSchema>;

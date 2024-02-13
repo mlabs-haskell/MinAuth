@@ -112,8 +112,7 @@ const generateProof = (): GenerateProof<Conf, MinAuthProof> =>
     tapLogger((logger) => logger.info('proof generated')),
     RTE.map(({ proof, config }) => ({
       plugin: config.pluginName,
-      publicInputArgs: {},
-      proof
+      input: { proof }
     }))
   );
 

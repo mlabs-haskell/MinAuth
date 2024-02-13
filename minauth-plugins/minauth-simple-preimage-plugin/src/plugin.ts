@@ -1,4 +1,4 @@
-import { Cache, JsonProof, verify } from 'o1js';
+import { Cache, verify } from 'o1js';
 import {
   IMinAuthPlugin,
   IMinAuthPluginFactory,
@@ -6,9 +6,7 @@ import {
   outputInvalid,
   outputValid
 } from 'minauth/dist/plugin/plugintype.js';
-import ProvePreimageProgram, {
-  ProvePreimageProofClass
-} from './hash-preimage-proof.js';
+import ProvePreimageProgram from './hash-preimage-proof.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
@@ -20,6 +18,7 @@ import {
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
+import { JsonProofSchema } from 'minauth/dist/common/proof.js';
 
 /**
  * The plugin configuration schema.
@@ -46,6 +45,12 @@ export const configurationSchema = z
 
 export type Configuration = z.infer<typeof configurationSchema>;
 
+export const InputSchema = z.object({
+  proof: JsonProofSchema
+});
+
+export type Input = z.infer<typeof InputSchema>;
+
 /**
  * The output of the plugin is the hash that the preimage knowledge of which
  * was proven and a role assigned to that hash
@@ -66,7 +71,7 @@ export type Output = {
  *       match the list kept by the server.
  */
 export class SimplePreimagePlugin
-  implements IMinAuthPlugin<TsInterfaceType, unknown, Output>
+  implements IMinAuthPlugin<TsInterfaceType, Input, Output>
 {
   /**
    * This plugin uses an idiomatic Typescript interface
@@ -89,11 +94,8 @@ export class SimplePreimagePlugin
   /**
    * Verify a proof and return the role.
    */
-  async verifyAndGetOutput(
-    _: unknown,
-    serializedProof: JsonProof
-  ): Promise<Output> {
-    const proof = ProvePreimageProofClass.fromJSON(serializedProof);
+  async verifyAndGetOutput(inp: Input): Promise<Output> {
+    const proof = inp.proof;
     const key = proof.publicOutput.toString();
     const role = this.roles[key]; // Directly accessing the property in the record
 
@@ -194,7 +196,10 @@ export class SimplePreimagePlugin
 
   static readonly configurationDec = wrapZodDec('ts', configurationSchema);
 
-  static readonly publicInputArgsDec = wrapZodDec('ts', z.unknown());
+  static readonly inputDecoder = wrapZodDec(
+    'ts',
+    z.object({ proof: JsonProofSchema })
+  );
 
   /** output parsing and serialization */
   static readonly outputEncDec = combineEncDec(

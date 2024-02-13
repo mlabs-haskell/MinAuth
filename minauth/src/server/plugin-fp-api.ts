@@ -11,7 +11,6 @@ import { pipe } from 'fp-ts/lib/function.js';
 import * as Str from 'fp-ts/lib/string.js';
 import { existsSync } from 'fs';
 import fs from 'fs/promises';
-import { JsonProof } from 'o1js';
 import * as path from 'path';
 import { z } from 'zod';
 import {
@@ -191,11 +190,10 @@ const initializePlugin = (
         __interface_tag: 'fp',
         // NOTE: non-properties are not getting copied using `...pluginInstance`
         // So we do it manually.
-        verifyAndGetOutput: (p, s) => pluginInstance.verifyAndGetOutput(p, s),
+        verifyAndGetOutput: (i) => pluginInstance.verifyAndGetOutput(i),
         checkOutputValidity: (o) => pluginInstance.checkOutputValidity(o),
         customRoutes: pluginInstance.customRoutes,
-        verificationKey: pluginInstance.verificationKey,
-        publicInputArgsDec: pluginFactory.publicInputArgsDec,
+        inputDecoder: pluginFactory.inputDecoder,
         outputEncDec: pluginFactory.outputEncDec
       };
     })
@@ -362,34 +360,30 @@ export const installCustomRoutes = (
  * Verify proof with given plugin and return its output.
  */
 export const verifyProof = (
-  proof: JsonProof,
-  // The encoded public input arguments.
-  publicInputArgs: unknown,
+  input: unknown,
   pluginName: string
 ): PluginRuntime</* The encoded plugin output*/ unknown> =>
   pipe(
     RTE.Do,
     RTE.tap(() =>
       useLogger((logger) => {
-        logger.info(`verifying proof using plugin ${pluginName}`);
-        logger.debug({
-          pluginName,
-          proof,
-          // NOTE: converting bigints to json may fail
-          publicInputArgs: String(publicInputArgs)
-        });
+        logger.info(
+          `verifying input with ${pluginName}. Input: ${JSON.stringify(
+            input,
+            null,
+            2
+          )}`
+        );
       })
     ),
     RTE.bind('pluginInstance', () => askPluginInstance(pluginName)),
     // Use the plugin to extract the output. The plugin is also responsible
     // for checking the legitimacy of the public inputs.
-    RTE.bind('typedPublicInputArgs', ({ pluginInstance }) =>
-      RTE.fromEither(pluginInstance.publicInputArgsDec.decode(publicInputArgs))
+    RTE.bind('typedInput', ({ pluginInstance }) =>
+      RTE.fromEither(pluginInstance.inputDecoder.decode(input))
     ),
-    RTE.bind('output', ({ typedPublicInputArgs, pluginInstance }) =>
-      RTE.fromTaskEither(
-        pluginInstance.verifyAndGetOutput(typedPublicInputArgs, proof)
-      )
+    RTE.bind('output', ({ typedInput, pluginInstance }) =>
+      RTE.fromTaskEither(pluginInstance.verifyAndGetOutput(typedInput))
     ),
     RTE.map(({ pluginInstance, output }) =>
       pluginInstance.outputEncDec.encode(output)

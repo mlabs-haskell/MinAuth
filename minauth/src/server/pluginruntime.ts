@@ -22,7 +22,7 @@ export type RuntimePluginInstance = IMinAuthPlugin<
   unknown,
   unknown
 > & {
-  publicInputArgsDec: Decoder<FpInterfaceType, unknown>;
+  inputDecoder: Decoder<FpInterfaceType, unknown>;
   outputEncDec: EncodeDecoder<FpInterfaceType, unknown>;
 };
 

@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
-import { MinAuthProof, MinAuthProofSchema } from '../common/proof.js';
+import { MinAuthProof, MinAuthPluginInputSchema } from '../common/proof.js';
 import { Logger } from '../plugin/logger.js';
 
 /**
@@ -75,7 +75,7 @@ class MinAuthStrategy extends Strategy {
 
   async authenticate(req: Request): Promise<void> {
     this.log.info('authenticating (strategy) with req:', req.body);
-    const loginData = MinAuthProofSchema.parse(req.body);
+    const loginData = MinAuthPluginInputSchema.parse(req.body);
 
     // forward the proof verification to the plugin server
     const result = await this.verifyProof(loginData);

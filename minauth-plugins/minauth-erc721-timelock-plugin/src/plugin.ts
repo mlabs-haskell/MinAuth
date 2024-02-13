@@ -25,6 +25,7 @@ import {
   noOpEncoder
 } from 'minauth/dist/plugin/encodedecoder.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
+import { JsonProofSchema } from 'minauth/dist/common/proof.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { Erc721TimeLock, IErc721TimeLock } from './erc721timelock.js';
 import { ethers } from 'ethers';
@@ -51,7 +52,7 @@ export type Configuration = z.infer<typeof ConfigurationSchema>;
  * For simplicity sake we don't use additional public inputs arguments.
  * One could for example pick a contract here (from predefined set).
  */
-export type PublicInputArgs = unknown;
+export type Input = { proof: JsonProof };
 
 /**
  * The plugin's output schema.
@@ -79,7 +80,7 @@ export type Output = z.infer<typeof OutputSchema>;
  * Some care must be taken to avoid timing attacks.
  */
 export class Erc721TimelockPlugin
-  implements IMinAuthPlugin<TsInterfaceType, PublicInputArgs, Output>
+  implements IMinAuthPlugin<TsInterfaceType, Input, Output>
 {
   /**
    * This plugin uses an idiomatic Typescript interface
@@ -100,17 +101,14 @@ export class Erc721TimelockPlugin
   /**
    * Verify a proof and return the role.
    */
-  async verifyAndGetOutput(
-    _publicInputsArgs: PublicInputArgs,
-    serializedProof: JsonProof
-  ): Promise<Output> {
+  async verifyAndGetOutput(input: Input): Promise<Output> {
     try {
       // fetch valid commitments from the eth contract
       const merkleTree = await this.ethContract.buildCommitmentTree();
       this.logger.debug(
         `Fetched ${merkleTree.leafCount} commitments with merkle root ${merkleTree.root}.`
       );
-      const proof = MerkleMembershipProof.fromJSON(serializedProof);
+      const proof = MerkleMembershipProof.fromJSON(input.proof);
       this.logger.debug(
         `Verifying proof for merkle root ${proof.publicInput.merkleRoot}...`
       );
@@ -257,7 +255,10 @@ export class Erc721TimelockPlugin
 
   static readonly configurationDec = wrapZodDec('ts', ConfigurationSchema);
 
-  static readonly publicInputArgsDec = wrapZodDec('ts', z.unknown());
+  static readonly inputDecoder = wrapZodDec(
+    'ts',
+    z.object({ proof: JsonProofSchema })
+  );
 
   /** output parsing and serialization */
   static readonly outputEncDec = combineEncDec(

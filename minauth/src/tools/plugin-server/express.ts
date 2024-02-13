@@ -26,12 +26,12 @@ import {
   useRootLogger,
   withExpressApp
 } from './types.js';
-import { MinAuthProofSchema } from '../../common/proof.js';
+import { MinAuthPluginInputSchema } from '../../common/proof.js';
 
 /** Handle a POST request to /verifyProof */
 const handleVerifyProof = (env: PluginRuntimeEnv) =>
   wrapTrivialExpressHandler((req) => {
-    const parseResults = MinAuthProofSchema.safeParse(req.body);
+    const parseResults = MinAuthPluginInputSchema.safeParse(req.body);
     if (!parseResults.success) {
       env.logger.info(
         `Failed to parse incoming MinAuthProof:\b ${parseResults.error}`
@@ -39,10 +39,16 @@ const handleVerifyProof = (env: PluginRuntimeEnv) =>
       return TE.left('Failed to parse incoming MinAuthProof');
     }
     const body = parseResults.data;
-    env.logger.info(`Parsed incoming MinAuthProof with body:\b ${body}`);
+    env.logger.info(
+      `Parsed incoming MinAuthProof with body:\b ${JSON.stringify(
+        body,
+        null,
+        2
+      )}`
+    );
 
     return pipe(
-      verifyProof(body.proof, body.publicInputArgs, body.plugin)(env),
+      verifyProof(body.input, body.plugin)(env),
       TE.map((output) => {
         return { output };
       }),
@@ -70,7 +76,10 @@ const handleValidateOutput =
     launchTE(
       pipe(
         liftZodParseResult(validateOutputDataSchema.safeParse(req.body)),
-        TE.tapIO((body) => () => env.logger.info(`parsed body: ${body}`)),
+        TE.tapIO(
+          (body) => () =>
+            env.logger.info(`parsed body: ${JSON.stringify(body, null, 2)}`)
+        ),
         TE.chain((body: ValidateOutputData) =>
           validateOutput(body.plugin, body.output)(env)
         ),
