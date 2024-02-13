@@ -11,7 +11,7 @@ import { FormDataChange } from './simple-preimage-prover.js';
 import PreimageInputWidget from './preimage-input';
 import { mkRequest } from '@/helpers/request';
 import MembershipsProver from 'minauth-merkle-membership-plugin/dist/prover.js';
-import { Input } from 'minauth-merkle-membership-plugin/dist/plugin.js';
+/* import { Input } from 'minauth-merkle-membership-plugin/dist/plugin.js'; */
 import * as ZkProgram from 'minauth-merkle-membership-plugin/dist/merklemembershipsprogram.js';
 import { Either, isLeft } from 'fp-ts/lib/Either';
 import { ServerConfig } from '@/api/server-config';
