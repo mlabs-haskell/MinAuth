@@ -84,6 +84,12 @@ export interface IMinAuthPlugin<
 
   /** Custom routes and handlers. Will be installed under `/plugins/<plugin name>` */
   readonly customRoutes: Router;
+
+  /** The decoder for the plugin inputs. */
+  readonly inputDecoder: Decoder<InterfaceType, Input>;
+
+  /** Encoder/Decoder for the plugins outputs. */
+  readonly outputEncDec: EncodeDecoder<InterfaceType, Output>;
 }
 
 /** Type parameter extraction (inference) helpers. */
@@ -135,12 +141,6 @@ export interface IMinAuthPluginFactory<
 
   /** Decoder for the plugin configuration. */
   readonly configurationDec: Decoder<InterfaceType, Configuration>;
-
-  /** The decoder for the plugin inputs. */
-  readonly inputDecoder: Decoder<InterfaceType, Input>;
-
-  /** Encoder/Decoder for the plugins outputs. */
-  readonly outputEncDec: EncodeDecoder<InterfaceType, Output>;
 }
 
 // Interfaces used on the client side.
@@ -255,18 +255,19 @@ export const tsToFpMinAuthPlugin = <PublicInputArgs, Output>(
       fromFailablePromise(() => i.verifyAndGetOutput(inp)),
     checkOutputValidity: (o) =>
       fromFailablePromise(() => i.checkOutputValidity(o)),
-    customRoutes: i.customRoutes
+    customRoutes: i.customRoutes,
+    inputDecoder: tsToFpDecoder(i.inputDecoder),
+    outputEncDec: combineEncDec(
+      tsToFpEncoder(i.outputEncDec),
+      tsToFpDecoder(i.outputEncDec)
+    )
   };
 };
 
 /**
  * Convert a plugin factory from the idiomatic typescript interface to the functional style
  */
-export const tsToFpMinAuthPluginFactory = <
-  Configuration,
-  Input,
-  Output
->(
+export const tsToFpMinAuthPluginFactory = <Configuration, Input, Output>(
   i: IMinAuthPluginFactory<
     TsInterfaceType,
     IMinAuthPlugin<TsInterfaceType, Input, Output>,
@@ -280,11 +281,6 @@ export const tsToFpMinAuthPluginFactory = <
   return {
     __interface_tag: 'fp',
     configurationDec: tsToFpDecoder(i.configurationDec),
-    inputDecoder: tsToFpDecoder(i.inputDecoder),
-    outputEncDec: combineEncDec(
-      tsToFpEncoder(i.outputEncDec),
-      tsToFpDecoder(i.outputEncDec)
-    ),
     initialize: (cfg, logger) =>
       fromFailablePromise(() =>
         i.initialize(cfg, logger).then(tsToFpMinAuthPlugin)

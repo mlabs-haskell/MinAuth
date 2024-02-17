@@ -46,7 +46,7 @@ type VerificationResult =
 // };
 
 export default class AuthMapper {
-  public static async initizalize() {}
+  public static async initialize() {}
 
   public async requestAuth(authRequestBody: any): Promise<AuthResponse> {
     // This method will be used to request authentication from the plugin server.

@@ -47,8 +47,10 @@ const strategy = new MinAuthStrategy(authMapper, logger);
 
 ```
 
-
-
-
 ### backward compatibility
 - The pluginserver should implement the abstraction of the plugin host and it should use a strategy called `AnyPluginStrategy`.
+
+
+## Additional changes
+
+To allow more flexibility in defining plugins that is in synergy with the new minauthstrategy design the plugin input concept was generalized and does not include the previous requirement of passing dinstinct o1js' jsonproof.
