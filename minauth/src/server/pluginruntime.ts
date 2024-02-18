@@ -1,5 +1,4 @@
 import { ReaderTaskEither } from 'fp-ts/lib/ReaderTaskEither.js';
-import { Decoder, EncodeDecoder } from '../plugin/encodedecoder.js';
 import { FpInterfaceType } from '../plugin/interfacekind.js';
 import { IMinAuthPlugin } from '../plugin/plugintype.js';
 import { pipe } from 'fp-ts/lib/function.js';
@@ -21,10 +20,7 @@ export type RuntimePluginInstance = IMinAuthPlugin<
   FpInterfaceType,
   unknown,
   unknown
-> & {
-  inputDecoder: Decoder<FpInterfaceType, unknown>;
-  outputEncDec: EncodeDecoder<FpInterfaceType, unknown>;
-};
+>;
 
 /** Mapping between plugin names and their runtime instances. */
 export type ActivePlugins = Readonly<Record<string, RuntimePluginInstance>>;

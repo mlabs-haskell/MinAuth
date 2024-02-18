@@ -9,7 +9,7 @@ export type Plugins = PMap<IMinAuthPlugin<InterfaceKind, unknown, unknown>>;
 export interface IPluginHost<InterfaceType extends InterfaceKind> {
   verifyProofAndGetOutput(inputs: PMap<unknown>): RetType<InterfaceType, PMap<Either<string, unknown>>>;
 
-  checkOutputValidity(output: PMap<unknown>): RetType<InterfaceType, PMap<Either<string, OutputValidity>>>;
+  checkOutputValidity(output: PMap<unknown>): RetType<InterfaceType, PMap<OutputValidity>>;
 
   isReady() : RetType<InterfaceType, boolean>;
 

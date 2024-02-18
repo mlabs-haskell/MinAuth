@@ -7,12 +7,10 @@ import {
 } from '../plugin/plugintype';
 import {
   FpInterfaceType,
-  InterfaceKind,
   TsInterfaceType
 } from '../plugin/interfacekind';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import * as TE from 'fp-ts/lib/TaskEither';
-import * as T from 'fp-ts/lib/Task';
 import { pipe } from 'fp-ts/lib/function.js';
 import { Either } from 'fp-ts/lib/Either.js';
 import * as E from 'fp-ts/lib/Either.js';
@@ -20,7 +18,10 @@ import { Logger } from '../plugin/logger.js';
 import { sequenceS } from 'fp-ts/lib/Apply.js';
 
 export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
-  constructor(readonly plugins: Plugins, protected readonly log: Logger) {}
+  constructor(
+    readonly plugins: Plugins,
+    protected readonly log: Logger
+  ) {}
 
   /**
    * Verify all proofs and get outputs
@@ -78,7 +79,9 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
 
         return ret;
       } catch (e) {
-        this.log.error(`Exception while verifying proof for plugin "${pluginName}: ${e}`);
+        this.log.error(
+          `Exception while verifying proof for plugin "${pluginName}: ${e}`
+        );
         return TE.left(
           `Exception while processing plugin "${pluginName}": ${e}`
         );
@@ -86,46 +89,109 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
     };
 
     // Using sequenceS to process all tasks in parallel, while collecting their results
-    const processPluginTasks = Object.entries(inputs).reduce((acc, [pluginName, input]) => {
-      acc[pluginName] = processPlugin([pluginName, input]); // Assuming processPlugin is correctly implemented
-      return acc;
-    }, {} as Record<string, TaskEither<string, Either<string, unknown>>>);
+    const processPluginTasks = Object.entries(inputs).reduce(
+      (acc, [pluginName, input]) => {
+        acc[pluginName] = processPlugin([pluginName, input]); // Assuming processPlugin is correctly implemented
+        return acc;
+      },
+      {} as Record<string, TaskEither<string, Either<string, unknown>>>
+    );
 
-    return sequenceS(TE.ApplicativePar)(processPluginTasks)
+    return sequenceS(TE.ApplicativePar)(processPluginTasks);
   }
 
   /**
    * Check the validity of the outputs
-   * @param output - Mapping of plugin names to outputs
+   * @param outputs - Mapping of plugin names to outputs
    * @returns Mapping of plugin names to output validity
    */
-  checkOutputValidity(output: PMap<unknown>): Promise<OutputValidity> {
-    // check the outputs
-    const outputValidity: PMap<OutputValidity> = {};
-    Promise.all(
-      Object.entries(output).map(async ([pluginName, output]) => {
+  checkOutputValidity(
+    outputs: PMap<unknown>
+  ): TaskEither<string, PMap<OutputValidity>> {
+    const processPlugin = ([pluginName, output]: [string, unknown]): TaskEither<
+      string,
+      OutputValidity
+    > => {
+      this.log.info(`Checking output validity for plugin "${pluginName}"`);
+      try {
         const plugin = this.plugins[pluginName];
-        const typedOutput = plugin.outputEncDec.decode(output);
-        const validity = await plugin.checkOutputValidity(typedOutput);
-        outputValidity[pluginName] = validity;
-      })
+        if (!plugin) {
+          return TE.left(`Plugin "${pluginName}" not found`);
+        }
+
+        let p: IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+        if (plugin.__interface_tag == 'ts') {
+          p = tsToFpMinAuthPlugin(
+            plugin as IMinAuthPlugin<TsInterfaceType, unknown, unknown>
+          );
+        } else {
+          p = plugin as IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+        }
+
+        p satisfies IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+
+        return pipe(
+          TE.fromEither(p.outputEncDec.decode(output)),
+          TE.chain((typedOutput) => p.checkOutputValidity(typedOutput))
+        );
+      } catch (e) {
+        this.log.error(
+          `Exception while checking output validity for plugin "${pluginName}: ${e}`
+        );
+        return TE.left(
+          `Exception while checking output validity for plugin "${pluginName}": ${e}`
+        );
+      }
+    };
+    // check the outputs
+    const processPluginTasks = Object.entries(outputs).reduce(
+      (acc, [pluginName, input]) => {
+        acc[pluginName] = processPlugin([pluginName, input]); // Assuming processPlugin is correctly implemented
+        return acc;
+      },
+      {} as Record<string, TaskEither<string, OutputValidity>>
     );
+
+    return sequenceS(TE.ApplicativePar)(processPluginTasks);
   }
 
   isReady() {
     return TE.right(true);
   }
 
-  activePluginNames() : TaskEither<string, string[]> {
+  activePluginNames(): TaskEither<string, string[]> {
     return TE.right(Object.keys(this.plugins));
   }
 
   // this ties us into the express app
-  async installCustomRoutes(app: expressCore.Express): TaskEither<string, void> {
-    // for reach plugin in this.plugins, call plugin.installCustomRoutes(app)
-    const installCustomRoutesTasks = Object.values(this.plugins).map((plugin) => {
-      return plugin.installCustomRoutes(app);
-    }
-    );
+  installCustomRoutes(
+    app: expressCore.Express
+  ): TaskEither<string, void> {
+
+    // const processPlugin = ([pluginName, plugin]: [string, RuntimePluginInstance>]): TaskEither<string, void> => {
+    //   fromFailableIO(
+    //       () =>
+    //         app.use(
+    //           `/plugins/${pluginName}`,
+    //           (req, _, next) => {
+    //             logger.debug('handling plugin custom route', {
+    //               pluginName,
+    //               method: req.method,
+    //               path: req.path
+    //             });
+    //             next();
+    //           },
+    //           plugin.customRoutes
+    //         ),
+    //       (reason) => `unable to install custom route: ${reason}`
+    //     )
+
+    // // for reach plugin in this.plugins, call plugin.installCustomRoutes(app)
+    // const installCustomRoutesTasks = Object.values(this.plugins).map(
+    //   (plugin) => {
+    //     return plugin.installCustomRoutes(app);
+    //   }
+    // );
+    return TE.right(undefined);
   }
 }
