@@ -11,17 +11,44 @@ import {
 } from '../plugin/interfacekind';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import * as TE from 'fp-ts/lib/TaskEither';
+import * as Arr from 'fp-ts/lib/Array';
 import { pipe } from 'fp-ts/lib/function.js';
 import { Either } from 'fp-ts/lib/Either.js';
 import * as E from 'fp-ts/lib/Either.js';
 import { Logger } from '../plugin/logger.js';
 import { sequenceS } from 'fp-ts/lib/Apply.js';
+import { fromFailableIO } from '../utils/fp/taskeither.js';
 
 export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
+
+  readonly plugins: PMap<IMinAuthPlugin<FpInterfaceType, unknown, unknown>>;
+
   constructor(
-    readonly plugins: Plugins,
+    plugins: Plugins,
     protected readonly log: Logger
-  ) {}
+  ) {
+
+    // convert all plugins to the correct interface
+    this.plugins = Object.entries(plugins).reduce(
+      (acc, [pluginName, plugin]) => {
+        let p: IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+        if (plugin.__interface_tag == 'ts') {
+          p = tsToFpMinAuthPlugin(
+            plugin as IMinAuthPlugin<TsInterfaceType, unknown, unknown>
+          );
+        } else {
+          p = plugin as IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+        }
+
+        p satisfies IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
+
+        acc[pluginName] = p;
+        return acc;
+      },
+      {} as PMap<IMinAuthPlugin<FpInterfaceType, unknown, unknown>>
+    );
+
+  }
 
   /**
    * Verify all proofs and get outputs
@@ -47,21 +74,11 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
           return TE.left(`Plugin "${pluginName}" not found`);
         }
 
-        let p: IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
-        if (plugin.__interface_tag == 'ts') {
-          p = tsToFpMinAuthPlugin(
-            plugin as IMinAuthPlugin<TsInterfaceType, unknown, unknown>
-          );
-        } else {
-          p = plugin as IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
-        }
-
-        p satisfies IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
 
         const inputVerification: TaskEither<string, unknown> = pipe(
-          TE.fromEither(p.inputDecoder.decode(input)),
-          TE.chain((typedInput) => p.verifyAndGetOutput(typedInput)),
-          TE.map((output) => p.outputEncDec.encode(output)),
+          TE.fromEither(plugin.inputDecoder.decode(input)),
+          TE.chain((typedInput) => plugin.verifyAndGetOutput(typedInput)),
+          TE.map((output) => plugin.outputEncDec.encode(output)),
           TE.map((encodedOutput) => {
             outputs[pluginName] = encodedOutput;
           })
@@ -119,20 +136,9 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
           return TE.left(`Plugin "${pluginName}" not found`);
         }
 
-        let p: IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
-        if (plugin.__interface_tag == 'ts') {
-          p = tsToFpMinAuthPlugin(
-            plugin as IMinAuthPlugin<TsInterfaceType, unknown, unknown>
-          );
-        } else {
-          p = plugin as IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
-        }
-
-        p satisfies IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
-
         return pipe(
-          TE.fromEither(p.outputEncDec.decode(output)),
-          TE.chain((typedOutput) => p.checkOutputValidity(typedOutput))
+          TE.fromEither(plugin.outputEncDec.decode(output)),
+          TE.chain((typedOutput) => plugin.checkOutputValidity(typedOutput))
         );
       } catch (e) {
         this.log.error(
@@ -165,33 +171,41 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
 
   // this ties us into the express app
   installCustomRoutes(
-    app: expressCore.Express
+    app: expressCore.Express,
+    mkPluginRoute: (pluginName: string) => string = (pluginName) => `/plugins/${pluginName}`
   ): TaskEither<string, void> {
 
-    // const processPlugin = ([pluginName, plugin]: [string, RuntimePluginInstance>]): TaskEither<string, void> => {
-    //   fromFailableIO(
-    //       () =>
-    //         app.use(
-    //           `/plugins/${pluginName}`,
-    //           (req, _, next) => {
-    //             logger.debug('handling plugin custom route', {
-    //               pluginName,
-    //               method: req.method,
-    //               path: req.path
-    //             });
-    //             next();
-    //           },
-    //           plugin.customRoutes
-    //         ),
-    //       (reason) => `unable to install custom route: ${reason}`
-    //     )
+    const processPlugin = (pluginName: string): TaskEither<string, void> => {
+      const plugin = this.plugins[pluginName];
+      if (!plugin) {
+        return TE.left(`Plugin "${pluginName}" not found`);
+      }
 
-    // // for reach plugin in this.plugins, call plugin.installCustomRoutes(app)
-    // const installCustomRoutesTasks = Object.values(this.plugins).map(
-    //   (plugin) => {
-    //     return plugin.installCustomRoutes(app);
-    //   }
-    // );
-    return TE.right(undefined);
+      return pipe(
+        fromFailableIO(
+          () =>
+            app.use(
+              mkPluginRoute(pluginName),
+              (req, _, next) => {
+                this.log.debug('handling plugin custom route', {
+                  pluginName,
+                  method: req.method,
+                  path: req.path
+                });
+                next();
+              },
+              plugin.customRoutes
+            ),
+          `unable to install custom route at ${mkPluginRoute(pluginName)} for plugin "${pluginName}"`
+        ),
+        TE.map(() => undefined)
+      );
+    };
+
+    return pipe(
+      Object.keys(this.plugins),
+      Arr.traverse(TE.ApplicativeSeq)(processPlugin),
+      TE.map(() => undefined)
+    );
   }
 }
