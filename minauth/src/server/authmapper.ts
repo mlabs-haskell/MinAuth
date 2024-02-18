@@ -1,61 +1,28 @@
-export type AuthResponse = {
-  verificationResult: VerificationResult;
-  plugin: string;
-  output: unknown;
+
+
+export interface IsAuthResponse {
+  authStatus: 'full' | 'partial' | 'none';
+  authMessage: string;
+  serialized(): unknown;
 };
 
-/**
- * TODO: A result of a proof verification.
- */
-type VerificationResult =
-  | {
-      __tag: 'success';
-      output: unknown;
-    }
-  | {
-      __tag: 'failed';
-      error: string;
-    };
 
-// /**
-//  * Forward proof verification to a remote verifier.
-//  */
-// const verifyProof = (
-//   verifierUrl: string,
-//   data: MinAuthProof,
-//   log: Logger
-// ): Promise<VerificationResult> => {
-//   log.info('Calling for proof verification with:', data);
-//   return axios.post(verifierUrl, data).then(
-//     (resp) => {
-//       if (resp.status == 200) {
-//         log.info('Received response:', resp);
-//         const { output } = resp.data as {
-//           V
-//         };
-//         return { __tag: 'success', output };
-//       }
-
-//       const { error } = resp.data as { error: string };
-//       return { __tag: 'failed', error };
-//     },
-//     (error) => {A
-//       return { __tag: 'failed', error: String(error) };
-//     }
-//   );
-// };
-
-export default class AuthMapper {
-  public static async initialize() {}
-
-  public async requestAuth(authRequestBody: any): Promise<AuthResponse> {
-    // This method will be used to request authentication from the plugin server.
-    // It will send a request to the plugin server with the authentication request body
-    // and return the response from the plugin server.
-    return {
-      verificationResult: { __tag: 'success', output: {} },
-      plugin: 'string',
-      output: {}
-    };
-  }
+export interface IAuthMapper<AuthResponse extends IsAuthResponse, AuthValidityReport > {
+  requestAuth(authRequestBody: unknown): Promise<AuthResponse>;
+  checkAuthValidity(authResponse: AuthResponse): Promise<AuthValidityReport>;
 }
+
+export const mapValidityReport = <T extends IsAuthResponse, A, B>(
+  authMapper: IAuthMapper<T, A>,
+  f: (a: A) => Promise<B>
+): IAuthMapper<T, B> => {
+  return {
+    requestAuth: authMapper.requestAuth,
+    checkAuthValidity: (input: T): Promise<B> => {
+      // Use the map method of the provided authMapper to get a Promise<A>,
+      // then transform its resolved value into a Promise<B> using function f.
+      return authMapper.checkAuthValidity(input).then(f);
+    }
+  };
+};
+

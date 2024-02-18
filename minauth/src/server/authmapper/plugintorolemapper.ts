@@ -1,15 +1,51 @@
-import AuthMapper from '../authmapper.js'
+import {IAuthMapper} from '../authmapper.js'
 
-default export class PluginToRoleMapper<AuthReqBody, AuthResponse> extends AuthMapper{
+export interface IsAuthResponse {
+  authStatus: 'full' | 'partial' | 'none';
+  authMessage: string;
+  serialized(): unknown;
+  roles: string[];
+};
 
-  public static async initialize(pluginHost: IPluginHost, pluginRoleMapping: PluginRoleMapping){
+export type PluginOutputs = {
+  [pluginName: string]: { output: unknown, roles: string[]};
+};
 
+type InvalidAuth = {
+  authStatus: 'none';
+  authMessage: string;
+  serialized(): unknown;
+};
+
+type PartialAuth = {
+  authStatus: 'partial';
+  authMessage: string;
+  serialized(): unknown;
+  roles: string[];
+  outputs: PluginOutputs;
+};
+
+type FullAuth = {
+  authStatus: 'full';
+  authMessage: string;
+  serialized(): unknown;
+  roles: string[];
+  outputs: PluginOutputs;
+};
+
+type PluginRolesAuth = InvalidAuth | PartialAuth | FullAuth;
+
+
+export default class PluginToRoleMapper<AuthReqBody> implements IAuthMapper<PluginRolesAuth, PluginRolesAuth>{
+
+  public async requestAuth(authRequestBody: AuthReqBody): Promise<PluginRolesAuth> {
+    //TODO
+    throw new Error('Method not implemented.');
   }
 
-  public async requestAuth(authRequestBody: AuthReqBody): Promise<AuthResponse> {}
-
-  public async checkAuthValidity(authResponse: AuthResponse) {}
-
-  readonly requestAuthSchema: z.ZodSchema<AuthReqBody> = z.unknown()
+  public async checkAuthValidity(authResp: PluginRolesAuth): Promise<PluginRolesAuth> {
+    //TODO
+    throw new Error('Method not implemented.');
+  }
 
 };
