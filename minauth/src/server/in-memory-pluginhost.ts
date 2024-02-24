@@ -1,14 +1,11 @@
 import * as expressCore from 'express-serve-static-core';
-import { Plugins, PMap, IPluginHost } from './ipluginhost.js';
+import { PMap, IPluginHost } from './ipluginhost.js';
 import {
   IMinAuthPlugin,
   OutputValidity,
   tsToFpMinAuthPlugin
 } from '../plugin/plugintype';
-import {
-  FpInterfaceType,
-  TsInterfaceType
-} from '../plugin/interfacekind';
+import { FpInterfaceType, TsInterfaceType } from '../plugin/interfacekind';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as Arr from 'fp-ts/lib/Array';
@@ -17,17 +14,16 @@ import { Either } from 'fp-ts/lib/Either.js';
 import * as E from 'fp-ts/lib/Either.js';
 import { Logger } from '../plugin/logger.js';
 import { sequenceS } from 'fp-ts/lib/Apply.js';
+import { InterfaceKind } from '../plugin/interfacekind';
 import { fromFailableIO } from '../utils/fp/taskeither.js';
 
 export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
-
   readonly plugins: PMap<IMinAuthPlugin<FpInterfaceType, unknown, unknown>>;
 
   constructor(
-    plugins: Plugins,
+    plugins: IMinAuthPlugin<InterfaceKind, unknown, unknown>,
     protected readonly log: Logger
   ) {
-
     // convert all plugins to the correct interface
     this.plugins = Object.entries(plugins).reduce(
       (acc, [pluginName, plugin]) => {
@@ -47,7 +43,6 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
       },
       {} as PMap<IMinAuthPlugin<FpInterfaceType, unknown, unknown>>
     );
-
   }
 
   /**
@@ -73,7 +68,6 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
         if (!plugin) {
           return TE.left(`Plugin "${pluginName}" not found`);
         }
-
 
         const inputVerification: TaskEither<string, unknown> = pipe(
           TE.fromEither(plugin.inputDecoder.decode(input)),
@@ -172,9 +166,9 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
   // this ties us into the express app
   installCustomRoutes(
     app: expressCore.Express,
-    mkPluginRoute: (pluginName: string) => string = (pluginName) => `/plugins/${pluginName}`
+    mkPluginRoute: (pluginName: string) => string = (pluginName) =>
+      `/plugins/${pluginName}`
   ): TaskEither<string, void> {
-
     const processPlugin = (pluginName: string): TaskEither<string, void> => {
       const plugin = this.plugins[pluginName];
       if (!plugin) {
@@ -196,7 +190,9 @@ export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
               },
               plugin.customRoutes
             ),
-          `unable to install custom route at ${mkPluginRoute(pluginName)} for plugin "${pluginName}"`
+          `unable to install custom route at ${mkPluginRoute(
+            pluginName
+          )} for plugin "${pluginName}"`
         ),
         TE.map(() => undefined)
       );

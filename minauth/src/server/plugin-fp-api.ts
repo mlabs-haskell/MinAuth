@@ -193,8 +193,8 @@ const initializePlugin = (
         verifyAndGetOutput: (i) => pluginInstance.verifyAndGetOutput(i),
         checkOutputValidity: (o) => pluginInstance.checkOutputValidity(o),
         customRoutes: pluginInstance.customRoutes,
-        inputDecoder: pluginFactory.inputDecoder,
-        outputEncDec: pluginFactory.outputEncDec
+        inputDecoder: pluginInstance.inputDecoder,
+        outputEncDec: pluginInstance.outputEncDec
       };
     })
   );

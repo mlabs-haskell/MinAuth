@@ -60,12 +60,16 @@ const openDB = async (): Promise<Database> => {
   return db;
 };
 
+export const setupStrategy = (): passport.Strategy => {
+}
+
 /**
  * Initializes and configures Passport with JWT and custom (MinAuth) authentication strategies.
  *
  * @returns {passport.Authenticator} The configured Passport authenticator instance.
  */
 export const setupPassport = (): passport.Authenticator => {
+  const strategy = setupStrategy();
   const jwtOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: SECRET_KEY
@@ -82,7 +86,7 @@ export const setupPassport = (): passport.Authenticator => {
         }
       })
     )
-    .use(new MinAuthStrategy({ logger: log, verifierUrl: VERIFIER_URL }));
+    .use(strategy);
 
   return passport;
 };

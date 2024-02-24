@@ -15,7 +15,7 @@ const logger = new Logger<ILogObj>();
 
 const somePlugin = {} as unknown as IMinAuthPlugin<FpInterfaceType, unknown, unknown>;
 
-const pluginHost = new InMemoryPluginHost({ plugins: [{ name: 'some-plugin-1', plugin: somePlugin }] });
+const pluginHost = new InMemoryPluginHost({ plugins: [{ name: 'some-plugin-1', plugin: somePlugin }] }, logger);
 
 const authMapper = await PluginToRoleMapper.initialize(
   pluginHost,

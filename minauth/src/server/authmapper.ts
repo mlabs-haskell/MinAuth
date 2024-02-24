@@ -1,13 +1,13 @@
-
-
 export interface IsAuthResponse {
   authStatus: 'full' | 'partial' | 'none';
   authMessage: string;
   serialized(): unknown;
-};
+}
 
-
-export interface IAuthMapper<AuthResponse extends IsAuthResponse, AuthValidityReport > {
+export interface IAuthMapper<
+  AuthResponse extends IsAuthResponse,
+  AuthValidityReport
+> {
   requestAuth(authRequestBody: unknown): Promise<AuthResponse>;
   checkAuthValidity(authResponse: AuthResponse): Promise<AuthValidityReport>;
 }
@@ -25,4 +25,3 @@ export const mapValidityReport = <T extends IsAuthResponse, A, B>(
     }
   };
 };
-

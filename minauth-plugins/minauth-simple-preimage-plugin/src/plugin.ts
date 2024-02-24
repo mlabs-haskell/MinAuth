@@ -196,13 +196,13 @@ export class SimplePreimagePlugin
 
   static readonly configurationDec = wrapZodDec('ts', configurationSchema);
 
-  static readonly inputDecoder = wrapZodDec(
+  readonly inputDecoder = wrapZodDec(
     'ts',
     z.object({ proof: JsonProofSchema })
   );
 
   /** output parsing and serialization */
-  static readonly outputEncDec = combineEncDec(
+  readonly outputEncDec = combineEncDec(
     noOpEncoder('ts'),
     wrapZodDec('ts', z.object({ provedHash: z.string(), role: z.string() }))
   );

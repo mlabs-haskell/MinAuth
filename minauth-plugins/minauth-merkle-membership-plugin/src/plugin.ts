@@ -381,9 +381,9 @@ export class MerkleMembershipsPlugin
     minaTreesProviderConfigurationSchema
   );
 
-  static readonly inputDecoder: Decoder<FpInterfaceType, Input> = inputEncDec;
+  readonly inputDecoder: Decoder<FpInterfaceType, Input> = inputEncDec;
 
-  static readonly outputEncDec = outputEncDec;
+  readonly outputEncDec = outputEncDec;
 }
 
 MerkleMembershipsPlugin satisfies IMinAuthPluginFactory<
