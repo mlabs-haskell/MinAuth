@@ -18,6 +18,8 @@ import { InterfaceKind } from '../plugin/interfacekind';
 import { fromFailableIO } from '../utils/fp/taskeither.js';
 
 export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
+  __interface_tag: FpInterfaceType = 'fp';
+
   readonly plugins: PMap<IMinAuthPlugin<FpInterfaceType, unknown, unknown>>;
 
   constructor(

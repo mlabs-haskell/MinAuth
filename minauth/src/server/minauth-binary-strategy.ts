@@ -4,7 +4,7 @@ import { Logger } from '../plugin/logger.js';
 import { IAuthMapper, IsAuthResponse } from './authmapper.js';
 
 /** An auxilliary abbrevation */
-type AuthMapper = IAuthMapper<IsAuthResponse, unknown>;
+type AuthMapper = IAuthMapper<IsAuthResponse, unknown, unknown>;
 
 /**
  *  Configuration for the MinAuthBinaryAuthStrategy
@@ -14,7 +14,7 @@ type AuthMapper = IAuthMapper<IsAuthResponse, unknown>;
  */
 export interface MinAuthStrategyConfig {
   logger: Logger;
-  authMapper: IAuthMapper<IsAuthResponse, unknown>;
+  authMapper: IAuthMapper<IsAuthResponse, unknown, unknown>;
 }
 
 /**

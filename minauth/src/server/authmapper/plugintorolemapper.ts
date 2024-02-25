@@ -1,6 +1,11 @@
 import { IAuthMapper } from '../authmapper.js';
-import { Either } from 'fp-ts/lib/Either';
-
+import { Either } from 'fp-ts/lib/Either.js';
+import { IPluginHost, PMap, fpToTsPluginHost, splitPMap } from '../ipluginhost.js';
+import { FpInterfaceType, TsInterfaceType, fpInterfaceTag } from '../../plugin/interfacekind.js';
+import { OutputValidity } from '../../plugin/plugintype.js';
+/**
+ * Represents an authentication response with details on the authentication status, message, and roles.
+ */
 export interface IsAuthResponse {
   authStatus: 'full' | 'partial' | 'none';
   authMessage: string;
@@ -8,6 +13,9 @@ export interface IsAuthResponse {
   roles: string[];
 }
 
+/**
+ * Type for mapping auth plugin names to their outputs and associated roles.
+ */
 export type PluginOutputs = {
   [pluginName: string]: { output: unknown; roles: string[] };
 };
@@ -40,22 +48,47 @@ export type PluginRoleMap = {
 
 type PluginRolesAuth = InvalidAuth | PartialAuth | FullAuth;
 
+/**
+ * Class for mapping plugin outputs to roles and determining authentication status based on the outputs of various plugins.
+ * This class implements the `IAuthMapper` interface, providing a concrete implementation for authentication processes
+ * that involve mapping specific plugin outputs to user roles and deciding on the overall authentication status (full, partial, none)
+ * based on the collective output from all involved plugins that involves the union of roles from all plugins.
+ *
+ * Usage:
+ * To use this class, first initialize it with `PluginToRoleMapper.initialize(pluginHost, roleMap)`, providing an `IPluginHost` instance
+ * and a `PluginRoleMap` that defines how to extract roles from plugin outputs. Then, use `requestAuth` to initiate the authentication
+ * process with specific inputs, or `checkAuthValidity` to validate the current state of authentication based on plugin outputs.
+ */
 export default class PluginToRoleMapper
-  implements IAuthMapper<PluginRolesAuth, PluginRolesAuth>
+  implements IAuthMapper<PluginRolesAuth, PluginOutputs, PluginRolesAuth>
 {
-  private pluginHost: IPluginHost<InterfaceKind>; // Specify the correct InterfaceKind if needed
+  private pluginHost: IPluginHost<TsInterfaceType>; // Specify the correct InterfaceKind if needed
   private roleMap: PluginRoleMap;
 
+  extractValidityCheck(authResponse: PluginRolesAuth): PluginOutputs {
+    if (authResponse.authStatus === 'none') {
+      return {};
+    }
+    return authResponse.outputs;
+  }
+
   private constructor(
-    pluginHost: IPluginHost<InterfaceKind>,
+    pluginHost: IPluginHost<FpInterfaceType> | IPluginHost<TsInterfaceType>,
     roleMap: PluginRoleMap
   ) {
-    this.pluginHost = pluginHost;
+    // if pluginhost is of fp interface type, convert it to ts interface type
+    if (pluginHost.__interface_tag === fpInterfaceTag ) {
+      this.pluginHost = fpToTsPluginHost(pluginHost);
+    }
+    else {
+      this.pluginHost = pluginHost;
+    }
+
     this.roleMap = roleMap;
   }
 
   static initialize(
-    pluginHost: IPluginHost<InterfaceKind>,
+    pluginHost: IPluginHost<FpInterfaceType> | IPluginHost<TsInterfaceType>,
     roleMap: PluginRoleMap
   ): PluginToRoleMapper {
     return new PluginToRoleMapper(pluginHost, roleMap);
@@ -118,7 +151,7 @@ export default class PluginToRoleMapper
     outputRoleMap: PluginOutputs
   ): Promise<PluginRolesAuth> {
     const outputs: PMap<unknown> = Object.keys(outputRoleMap).reduce(
-      (acc, pluginName) => {
+      (acc: PMap<unknown>, pluginName: string) => {
         acc[pluginName] = outputRoleMap[pluginName].output;
         return acc;
       },
@@ -129,7 +162,7 @@ export default class PluginToRoleMapper
       await this.pluginHost.checkOutputValidity(outputs);
 
     const errors = new Set<string>();
-    const valid = {};
+    const valid: PMap<unknown> = {};
 
     Object.entries(resps).forEach(([pluginName, validity]) => {
       if (!validity.isValid) {
