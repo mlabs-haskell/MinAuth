@@ -9,13 +9,16 @@ import crypto from 'crypto';
 import passport from 'passport';
 import { Strategy as JWTStrategy, ExtractJwt } from 'passport-jwt';
 import jwt from 'jsonwebtoken';
-import MinAuthStrategy, {
-  AuthenticationResponse
-} from 'minauth/dist/server/minauthstrategy.js';
 import dotenv from 'dotenv';
 import { Logger, ILogObj } from 'tslog';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
+import MinAuthBinaryStrategy from 'minauth/dist/server/minauth-passport.js';
+import PluginToRoleMapper, {
+  PluginRoleMap
+} from 'minauth/dist/server/authmapper/plugin-to-role-mapper.js';
+import PluginServerProxyHost from 'minauth/dist/server/pluginhost/plugin-server-proxy-host.js';
+import z from 'zod';
 
 const log = new Logger<ILogObj>();
 
@@ -32,6 +35,30 @@ const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const DATABASE_FILENAME = './tokenstore.db';
 const VERIFIER_URL: string = 'http://127.0.0.1:3001/verifyProof';
+
+const ApiServerMinauthConfigSchema = z.object({
+  pluginToRoleMap: z.record(z.string(), z.array(z.string()))
+});
+
+type ApiServerMinauthConfig = z.infer<typeof ApiServerMinauthConfigSchema>;
+
+export const setupMinauthStrategy = (
+  config: ApiServerMinauthConfig
+): passport.Strategy => {
+  // the role map could be more complex, i.e. the role set can be dependent on the plugin output
+  const roleMap: PluginRoleMap = config.pluginToRoleMap;
+
+  const pluginhost = new PluginServerProxyHost({ serverUrl: VERIFIER_URL });
+
+  const authMapper = PluginToRoleMapper.initialize(pluginhost, roleMap);
+
+  const strategy = new MinAuthBinaryStrategy({
+    logger: log.getSubLogger({ name: 'MinAuthStrategy' }),
+    authMapper
+  });
+
+  return strategy;
+};
 
 /**
  * Open a connection to the SQLite database, creating the database and the required table if they don't exist.
@@ -60,16 +87,15 @@ const openDB = async (): Promise<Database> => {
   return db;
 };
 
-export const setupStrategy = (): passport.Strategy => {
-}
-
 /**
  * Initializes and configures Passport with JWT and custom (MinAuth) authentication strategies.
  *
  * @returns {passport.Authenticator} The configured Passport authenticator instance.
  */
-export const setupPassport = (): passport.Authenticator => {
-  const strategy = setupStrategy();
+export const setupPassport = (
+  config: ApiServerMinauthConfig
+): passport.Authenticator => {
+  const strategy = setupMinauthStrategy(config);
   const jwtOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: SECRET_KEY
@@ -107,13 +133,15 @@ const generateRefreshToken = async (): Promise<string> => {
   }
 };
 
+// TODO: there should be more explicit and type-safe for clients to
+//       know how the request for the auth response should look like.
 /**
  * Stores a hashed version of the refresh token along with the associated AuthenticationResponse in the database.
- * @param authResponse The corresponding AuthenticationResponse object.
+ * @param authResponse A serialized authentication response.
  * @returns {Promise<{refreshToken:string}>} A promise that resolves to the generated refresh token.
  */
 export const storeAuthResponse = async (
-  authResponse: AuthenticationResponse
+  authResponse: unknown
 ): Promise<{ refreshToken: string }> => {
   try {
     const refreshToken = await generateRefreshToken();
@@ -141,7 +169,7 @@ export const getAuthResponseByToken = async ({
   refreshToken
 }: {
   refreshToken: string;
-}): Promise<AuthenticationResponse | null> => {
+}): Promise<unknown | null> => {
   try {
     log.debug('refresh token:', refreshToken);
     const hashed = await hashString(refreshToken);
@@ -151,9 +179,7 @@ export const getAuthResponseByToken = async ({
       'SELECT auth_response FROM refresh_tokens WHERE token_hash = ?',
       hashed
     );
-    return row
-      ? (JSON.parse(row.auth_response) as AuthenticationResponse)
-      : null;
+    return row ? JSON.parse(row.auth_response) : null;
   } catch (error) {
     const err = error as Error;
     log.error('Error retrieving AuthenticationResponse by token:', err.message);
@@ -206,10 +232,10 @@ export const invalidateRefreshToken = async (token: string): Promise<void> => {
 
 /**
  * Hashes an AuthenticationResponse using sha256 (default for passport-jwt) and returns the hash.
- * @param {AuthenticationResponse} authResponse - The authentication response to hash.
+ * @param {AuthenticationResponse} authResponse - A serialized authentication response to hash.
  * @returns {Promise<string>} A promise that resolves to the hash string.
  */
-export const hashAuthResp = (authResponse: AuthenticationResponse): string =>
+export const hashAuthResp = (authResponse: unknown): string =>
   crypto
     .createHash('sha256')
     .update(JSON.stringify(authResponse))

@@ -18,9 +18,6 @@ import {
   invalidateRefreshToken,
   hashAuthResp
 } from './setup_jwt_passport.js';
-import MinAuthStrategy, {
-  AuthenticationResponse
-} from 'minauth/dist/server/authmapper.js';
 
 const app = express();
 const PORT: number = 3000;

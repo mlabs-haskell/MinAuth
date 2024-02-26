@@ -1,7 +1,16 @@
 import { IAuthMapper } from '../authmapper.js';
 import { Either } from 'fp-ts/lib/Either.js';
-import { IPluginHost, PMap, fpToTsPluginHost, splitPMap } from '../ipluginhost.js';
-import { FpInterfaceType, TsInterfaceType, fpInterfaceTag } from '../../plugin/interfacekind.js';
+import {
+  IPluginHost,
+  PMap,
+  fpToTsPluginHost,
+  splitPMap
+} from '../pluginhost.js';
+import {
+  FpInterfaceType,
+  TsInterfaceType,
+  fpInterfaceTag
+} from '../../plugin/interfacekind.js';
 import { OutputValidity } from '../../plugin/plugintype.js';
 /**
  * Represents an authentication response with details on the authentication status, message, and roles.
@@ -43,7 +52,7 @@ type FullAuth = {
 };
 
 export type PluginRoleMap = {
-  [pluginName: string]: (pluginOutput: unknown) => string[];
+  [pluginName: string]: ((pluginOutput: unknown) => string[]) | string[];
 };
 
 type PluginRolesAuth = InvalidAuth | PartialAuth | FullAuth;
@@ -63,7 +72,7 @@ export default class PluginToRoleMapper
   implements IAuthMapper<PluginRolesAuth, PluginOutputs, PluginRolesAuth>
 {
   private pluginHost: IPluginHost<TsInterfaceType>; // Specify the correct InterfaceKind if needed
-  private roleMap: PluginRoleMap;
+  private roleMap: Record<string, (pluginOutput: unknown) => string[]>;
 
   extractValidityCheck(authResponse: PluginRolesAuth): PluginOutputs {
     if (authResponse.authStatus === 'none') {
@@ -77,14 +86,25 @@ export default class PluginToRoleMapper
     roleMap: PluginRoleMap
   ) {
     // if pluginhost is of fp interface type, convert it to ts interface type
-    if (pluginHost.__interface_tag === fpInterfaceTag ) {
+    if (pluginHost.__interface_tag === fpInterfaceTag) {
       this.pluginHost = fpToTsPluginHost(pluginHost);
-    }
-    else {
+    } else {
       this.pluginHost = pluginHost;
     }
 
-    this.roleMap = roleMap;
+    //convert roleMap to a map of functions
+    const converted: Record<string, (pluginOutput: unknown) => string[]> = {};
+    for (const pluginName in roleMap) {
+      const value = roleMap[pluginName];
+      if (typeof value === 'function') {
+        // If it's already a function, use it directly.
+        converted[pluginName] = value;
+      } else {
+        // If it's an array, wrap it in a function that ignores its input.
+        converted[pluginName] = () => value;
+      }
+    }
+    this.roleMap = converted;
   }
 
   static initialize(

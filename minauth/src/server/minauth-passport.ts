@@ -7,7 +7,7 @@ import { IAuthMapper, IsAuthResponse } from './authmapper.js';
 type AuthMapper = IAuthMapper<IsAuthResponse, unknown, unknown>;
 
 /**
- *  Configuration for the MinAuthBinaryAuthStrategy
+ *  Configuration for the MinAuthBinaryStrategy
  *  The actual work is forwarded to the authmapper.
  *  The strategy retain only fully successful authentications.
  *  And implements the passport.js strategy interface.
@@ -25,8 +25,8 @@ export interface MinAuthStrategyConfig {
  * (In theory the auth mapper can return a partial success - the authenticating
  * user receives maximal authority given the input.)
  */
-export class MinAuthBinaryAuthStrategy extends Strategy {
-  name = 'MinAuthBinaryAuthStrategy';
+export default class MinAuthBinaryStrategy extends Strategy {
+  name = 'MinAuthBinaryStrategy';
 
   readonly authMapper: AuthMapper;
 
@@ -59,5 +59,3 @@ export class MinAuthBinaryAuthStrategy extends Strategy {
     }
   }
 }
-
-export default MinAuthBinaryAuthStrategy;

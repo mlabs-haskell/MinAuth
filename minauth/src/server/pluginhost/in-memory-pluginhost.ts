@@ -1,21 +1,21 @@
 import * as expressCore from 'express-serve-static-core';
-import { PMap, IPluginHost } from './ipluginhost.js';
+import { PMap, IPluginHost } from '../pluginhost.js';
 import {
   IMinAuthPlugin,
   OutputValidity,
   tsToFpMinAuthPlugin
-} from '../plugin/plugintype';
-import { FpInterfaceType, TsInterfaceType } from '../plugin/interfacekind';
+} from '../../plugin/plugintype';
+import { FpInterfaceType, TsInterfaceType } from '../../plugin/interfacekind';
 import { TaskEither } from 'fp-ts/lib/TaskEither';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as Arr from 'fp-ts/lib/Array';
 import { pipe } from 'fp-ts/lib/function.js';
 import { Either } from 'fp-ts/lib/Either.js';
 import * as E from 'fp-ts/lib/Either.js';
-import { Logger } from '../plugin/logger.js';
+import { Logger } from '../../plugin/logger.js';
 import { sequenceS } from 'fp-ts/lib/Apply.js';
-import { InterfaceKind } from '../plugin/interfacekind';
-import { fromFailableIO } from '../utils/fp/taskeither.js';
+import { InterfaceKind } from '../../plugin/interfacekind';
+import { fromFailableIO } from '../../utils/fp/taskeither.js';
 
 export class InMemoryPluginHost implements IPluginHost<FpInterfaceType> {
   __interface_tag: FpInterfaceType = 'fp';
