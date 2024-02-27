@@ -33,7 +33,6 @@ export function fromFailablePromise<T>(
   }
 }
 
-
 /**
  * Discards the task's return value.
  */

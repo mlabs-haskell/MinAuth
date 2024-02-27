@@ -3,6 +3,10 @@
  */
 import { z } from 'zod';
 import { Logger } from 'tslog';
+import * as TE from 'fp-ts/lib/TaskEither.js';
+import { TaskEither } from 'fp-ts/lib/TaskEither.js';
+import { fromFailablePromise } from '../utils/fp/taskeither.js';
+import { pipe } from 'fp-ts/lib/function.js';
 
 const log = new Logger();
 
@@ -33,6 +37,41 @@ export type OkResponse<T extends z.ZodTypeAny> = z.infer<
 export type ApiResponse<T extends z.ZodTypeAny> = z.infer<
   ReturnType<typeof ApiResponseSchema<T>>
 >;
+
+function isOkResponse<T extends z.ZodTypeAny>(
+  response: ApiResponse<T>
+): response is OkResponse<T> {
+  return response.type === 'ok';
+}
+export function mkRequestTE<U extends z.ZodSchema>(
+  url: string,
+  schema: U,
+  opts?: {
+    headers?: Record<string, string>;
+    body?: unknown;
+  }
+): TaskEither<ErrorResponse, OkResponse<U>> {
+  return pipe(
+    fromFailablePromise(() => mkRequest(url, schema, opts)),
+    TE.fold(
+      (e): TaskEither<ErrorResponse, OkResponse<U>> => {
+        log.error('mkRequest error:', e);
+        return TE.left(fallbackError(e));
+      },
+      (r): TaskEither<ErrorResponse, OkResponse<U>> => {
+        // Assert the type based on runtime check
+        if (isOkResponse(r)) {
+          // Ensure TypeScript understands r as OkResponse
+          return TE.right(r);
+        } else {
+          // Ensure TypeScript understands r as ErrorResponse
+          const errorResponse: ErrorResponse = r as ErrorResponse;
+          return TE.left(errorResponse);
+        }
+      }
+    )
+  );
+}
 
 export async function mkRequest<U extends z.ZodSchema>(
   url: string,
@@ -107,16 +146,20 @@ export async function mkRequest<U extends z.ZodSchema>(
       return { data: parseRes.data, server_response: respObj, type: 'ok' };
     }
   } catch (error: unknown) {
-    let message = 'An error occurred';
-    log.debug('error:', error);
-    // handle schema.parse errors
-    if (error instanceof Error) {
-      // Handle general errors
-      message = error.message;
-    }
-    return {
-      type: 'network-error',
-      message
-    };
+    return fallbackError(error);
   }
 }
+
+const fallbackError = (error: unknown): ErrorResponse => {
+  let message = 'An error occurred';
+  log.debug('error:', error);
+  // handle schema.parse errors
+  if (error instanceof Error) {
+    // Handle general errors
+    message = error.message;
+  }
+  return {
+    type: 'network-error',
+    message
+  };
+};

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ApiResponse, ApiResponseSchema, mkRequest } from './request';
+import {
+  ApiResponse,
+  ApiResponseSchema,
+  mkRequest
+} from 'minauth/dist/common/request.js';
 import { MinAuthProof } from 'minauth/dist/common/proof';
 import { ServerConfig } from '@/api/server-config';
 

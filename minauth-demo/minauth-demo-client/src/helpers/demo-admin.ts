@@ -5,7 +5,7 @@
  * They are meant as admin actions to configure the plugins on the server.
  */
 import { z } from 'zod';
-import { ApiResponse, mkRequest } from './request';
+import { ApiResponse, mkRequest } from 'minauth/dist/common/request.js';
 import { ServerConfig } from '@/api/server-config';
 
 const getRolesURL = `${ServerConfig.url}/plugins/simple-preimage/admin/roles`;
