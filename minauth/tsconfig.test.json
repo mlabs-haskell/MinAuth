@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ESNext",
+    // any other overrides specific to tests
+  },
+  "include": [
+    "src/**/*", // Adjust as necessary to include your source and test files
+  ]
+}
+

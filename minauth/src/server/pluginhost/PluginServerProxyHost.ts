@@ -94,7 +94,7 @@ export default class PluginServerProxyHost
     // check the outputs
     const processPluginTasks = Object.entries(outputs).reduce(
       (acc, [pluginName, input]) => {
-        acc[pluginName] = proxyPluginRequest([pluginName, input]); // Assuming processPlugin is correctly implemented
+        acc[pluginName] = proxyPluginRequest([pluginName, input]);
         return acc;
       },
       {} as Record<string, TaskEither<string, OutputValidity>>
