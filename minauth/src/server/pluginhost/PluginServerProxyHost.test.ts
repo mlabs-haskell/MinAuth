@@ -1,4 +1,4 @@
-// Import statements
+import { Express } from 'express-serve-static-core';
 import PluginServerProxyHost from './PluginServerProxyHost'; // Adjust the import path according to your project structure
 import * as requestModule from '../../common/request'; // Adjust the import path
 import { Logger } from '../../plugin/logger'; // Adjust the import path
@@ -12,10 +12,15 @@ import {
   outputInvalid,
   outputValid
 } from '../plugin-promise-api';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import express from 'express';
 
-// Mock the request module
+// Mock external modules
 jest.mock('../../common/request', () => ({
   mkRequestTE: jest.fn()
+}));
+jest.mock('http-proxy-middleware', () => ({
+  createProxyMiddleware: jest.fn()
 }));
 
 describe('PluginServerProxyHost', () => {
@@ -227,6 +232,97 @@ describe('PluginServerProxyHost', () => {
       for (const { outputs, expected } of testData) {
         await checkoutputValidityHelper(outputs, expected);
       }
+    });
+  });
+
+  describe('isReady', () => {
+    it('should resolve as false on request failure', async () => {
+      (requestModule.mkRequestTE as jest.Mock).mockReturnValue(
+        TE.left('Error')
+      );
+      const result = await pluginServerProxyHost.isReady()();
+      expect(result).toEqual(E.right(false));
+    });
+
+    it('should resolve as true on request success', async () => {
+      (requestModule.mkRequestTE as jest.Mock).mockReturnValue(
+        TE.right('Success')
+      );
+      const result = await pluginServerProxyHost.isReady()();
+      expect(result).toEqual(E.right(true));
+    });
+  });
+
+  describe('activePluginNames', () => {
+    it('should return an array of plugin names on success', async () => {
+      const mockPlugins = ['plugin1', 'plugin2'];
+      (requestModule.mkRequestTE as jest.Mock).mockReturnValue(
+        TE.right({ data: mockPlugins })
+      );
+      const result = await pluginServerProxyHost.activePluginNames()();
+      expect(result).toEqual(E.right(mockPlugins));
+    });
+
+    it('should return an error message on failure', async () => {
+      const errorMessage = 'Network error';
+      (requestModule.mkRequestTE as jest.Mock).mockReturnValue(
+        TE.left({ message: errorMessage })
+      );
+      const result = await pluginServerProxyHost.activePluginNames()();
+      expect(result).toEqual(E.left(errorMessage));
+    });
+  });
+  describe('installCustomRoutes', () => {
+    let app: Express;
+
+    beforeEach(() => {
+      // Reset mocks and create a new Express application before each test
+      jest.clearAllMocks();
+      app = express();
+      app.use = jest.fn(); // Mock the use function to spy on middleware registration
+    });
+
+    it('installs custom proxy routes correctly', async () => {
+      const expectedServerUrl = 'http://mock-server-url.com';
+      const proxyMiddlewareMock = jest.fn();
+
+      // Mock createProxyMiddleware to return a dummy middleware function
+      (createProxyMiddleware as jest.Mock).mockImplementation(
+        () => proxyMiddlewareMock
+      );
+
+      // Assume installCustomRoutes is a function that takes an Express app as an argument
+      await pluginServerProxyHost.installCustomRoutes(app)();
+
+      expect(app.use).toHaveBeenCalledWith(
+        '/plugins/:pluginName/*',
+        expect.any(Function) // This is the middleware function, which we cannot directly compare
+      );
+
+      // simulate a call to the middleware to see if it correctly sets up and calls the proxy
+      const mockReq = { params: { pluginName: 'testPlugin' } };
+      const mockRes = {};
+      const mockNext = jest.fn();
+
+      // Find the middleware function and call it with mocked request, response, and next
+      const middleware = (app.use as jest.Mock).mock.calls.find(
+        (call) => call[0] === '/plugins/:pluginName/*'
+      )[1];
+      middleware(mockReq, mockRes, mockNext);
+
+      // Verify that the proxy middleware was created with the correct configuration
+      expect(createProxyMiddleware).toHaveBeenCalledWith({
+        target: expectedServerUrl,
+        changeOrigin: true,
+        logLevel: 'debug'
+      });
+
+      // Verify that the proxy middleware function was called
+      expect(proxyMiddlewareMock).toHaveBeenCalledWith(
+        mockReq,
+        mockRes,
+        mockNext
+      );
     });
   });
 });
