@@ -1,6 +1,6 @@
 {
   "name": "eth-contract",
-  "version": "0.9.0-alpha",
+  "version": "0.10.0-alpha",
   "description": "",
   "main": "index.js",
   "directories": {
