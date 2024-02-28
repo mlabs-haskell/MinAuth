@@ -1,10 +1,20 @@
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
 import { Logger } from '../plugin/logger.js';
-import { IAuthMapper, IsAuthResponse } from './authmapper.js';
+import { IAuthMapper, IsAuthResponse, fpToTsAuthMapper } from './authmapper.js';
+import {
+  FpInterfaceType,
+  InterfaceKind,
+  TsInterfaceType
+} from './plugin-promise-api.js';
 
 /** An auxilliary abbrevation */
-type AuthMapper = IAuthMapper<IsAuthResponse, unknown, unknown>;
+type AuthMapper<If extends InterfaceKind> = IAuthMapper<
+  If,
+  IsAuthResponse,
+  unknown,
+  unknown
+>;
 
 /**
  *  Configuration for the MinAuthBinaryStrategy
@@ -14,7 +24,7 @@ type AuthMapper = IAuthMapper<IsAuthResponse, unknown, unknown>;
  */
 export interface MinAuthStrategyConfig {
   logger: Logger;
-  authMapper: IAuthMapper<IsAuthResponse, unknown, unknown>;
+  authMapper: AuthMapper<FpInterfaceType> | AuthMapper<TsInterfaceType>;
 }
 
 /**
@@ -28,14 +38,18 @@ export interface MinAuthStrategyConfig {
 export default class MinAuthBinaryStrategy extends Strategy {
   name = 'MinAuthBinaryStrategy';
 
-  readonly authMapper: AuthMapper;
+  readonly authMapper: AuthMapper<TsInterfaceType>;
 
   readonly log: Logger;
 
   public constructor(config: MinAuthStrategyConfig) {
     super();
     this.log = config.logger;
-    this.authMapper = config.authMapper;
+    if (config.authMapper.__interface_tag === 'fp') {
+      this.authMapper = fpToTsAuthMapper(config.authMapper);
+    } else {
+      this.authMapper = config.authMapper;
+    }
   }
 
   async authenticate(req: Request): Promise<void> {
@@ -43,7 +57,8 @@ export default class MinAuthBinaryStrategy extends Strategy {
 
     // forward the proof verification to the plugin server
     const authResp = await this.authMapper.requestAuth(req.body);
-    const authRespSerialized = authResp.serialized();
+    const authRespSerialized =
+      this.authMapper.authResponseEncDecoder.encode(authResp);
 
     if (authResp.authStatus == 'full') {
       this.log.debug(

@@ -33,6 +33,22 @@ export const tsToFpDecoder = <T>(
 };
 
 /**
+ *  Convert a decoder from the functional interface to the idiomatic typescript style.
+ */
+export const fpToTsDecoder = <T>(
+  fpDec: Decoder<FpInterfaceType, T>
+): Decoder<TsInterfaceType, T> => {
+  return {
+    __interface_tag: 'ts',
+    decode: (i: unknown) =>
+      E.fold(
+        () => undefined as T | undefined,
+        (r) => r as T
+      )(fpDec.decode(i))
+  };
+};
+
+/**
  * An interface for the encoder concept.
  * Encoding MUST NOT fail.
  * The returned value MUST serializable via `JSON.stringify`.
@@ -50,6 +66,18 @@ export const tsToFpEncoder = <T>(
 ): Encoder<FpInterfaceType, T> => {
   return {
     __interface_tag: 'fp',
+    encode: tsEnc.encode
+  };
+};
+
+/**
+ * Convert an encoder from the idiomatic typescript interface to the functional style
+ */
+export const fpToTsEncoder = <T>(
+  tsEnc: Encoder<FpInterfaceType, T>
+): Encoder<TsInterfaceType, T> => {
+  return {
+    __interface_tag: 'ts',
     encode: tsEnc.encode
   };
 };
@@ -134,5 +162,15 @@ export const combineEncDec = <InterfaceType extends InterfaceKind, T>(
   return {
     ...enc,
     ...dec
+  };
+};
+
+export const fpToTsEncDec = <T>(
+  fpEncDec: EncodeDecoder<FpInterfaceType, T>
+): EncodeDecoder<TsInterfaceType, T> => {
+  return {
+    __interface_tag: 'ts',
+    encode: fpEncDec.encode,
+    decode: fpToTsDecoder(fpEncDec).decode
   };
 };

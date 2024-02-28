@@ -1,3 +1,13 @@
+import { EncodeDecoder, fpToTsEncDec } from '../plugin/encodedecoder';
+import {
+  FpInterfaceType,
+  InterfaceKind,
+  RetType,
+  TsInterfaceType,
+  WithInterfaceTag
+} from '../plugin/interfacekind';
+import { toFailablePromise } from './pluginhost';
+
 /**
  * Represents the response from an authentication request, encapsulating the status
  * and message related to the authentication process, along with a method for serialization.
@@ -12,12 +22,6 @@ export interface IsAuthResponse {
 
   /** A descriptive message providing details about the authentication process or its outcome. */
   authMessage: string;
-
-  /**
-   * Returns a serialized representation of the authentication response.
-   * @returns The serialized form of the auth response.
-   */
-  serialized(): unknown;
 }
 
 /**
@@ -30,16 +34,17 @@ export interface IsAuthResponse {
  * @template AuthValidityReport The type representing the outcome of the validity check.
  */
 export interface IAuthMapper<
+  InterfaceType extends InterfaceKind,
   AuthResponse extends IsAuthResponse,
   AuthResponseValidityCheck,
   AuthValidityReport
-> {
+> extends WithInterfaceTag<InterfaceType> {
   /**
    * Asynchronously requests authentication based on the provided request body.
    * @param authRequestBody The request body for the authentication request.
    * @returns A promise resolving to an `AuthResponse`.
    */
-  requestAuth(authRequestBody: unknown): Promise<AuthResponse>;
+  requestAuth(authRequestBody: unknown): RetType<InterfaceType, AuthResponse>;
 
   /**
    * Asynchronously checks the validity of an authentication response.
@@ -48,7 +53,7 @@ export interface IAuthMapper<
    */
   checkAuthValidity(
     authResponse: AuthResponseValidityCheck
-  ): Promise<AuthValidityReport>;
+  ): RetType<InterfaceType, AuthValidityReport>;
 
   /**
    * Extracts necessary information from an `AuthResponse` to perform a validity check.
@@ -56,6 +61,12 @@ export interface IAuthMapper<
    * @returns The extracted information necessary for the validity check.
    */
   extractValidityCheck(authResponse: AuthResponse): AuthResponseValidityCheck;
+
+  /**
+   * Provide an encoder/decoder for the authentication response.
+   * Use it to make sure that it is in a serializable format
+   */
+  readonly authResponseEncDecoder: EncodeDecoder<InterfaceType, AuthResponse>;
 }
 
 /**
@@ -71,14 +82,28 @@ export interface IAuthMapper<
  * @returns An `IAuthMapper` instance with transformed `checkAuthValidity` output.
  */
 export const mapValidityReport = <T extends IsAuthResponse, A, V, B>(
-  authMapper: IAuthMapper<T, V, A>,
+  authMapper: IAuthMapper<TsInterfaceType, T, V, A>,
   f: (a: A) => Promise<B>
-): IAuthMapper<T, V, B> => {
+): IAuthMapper<TsInterfaceType, T, V, B> => {
   return {
+    __interface_tag: 'ts',
     extractValidityCheck: authMapper.extractValidityCheck,
     requestAuth: authMapper.requestAuth,
+    authResponseEncDecoder: authMapper.authResponseEncDecoder,
     checkAuthValidity: (input: V): Promise<B> => {
       return authMapper.checkAuthValidity(input).then(f);
     }
+  };
+};
+
+export const fpToTsAuthMapper = <T extends IsAuthResponse, V, A>(
+  authMapper: IAuthMapper<FpInterfaceType, T, V, A>
+): IAuthMapper<TsInterfaceType, T, V, A> => {
+  return {
+    __interface_tag: 'ts',
+    extractValidityCheck: authMapper.extractValidityCheck,
+    requestAuth: (x) => toFailablePromise(authMapper.requestAuth(x)),
+    authResponseEncDecoder: fpToTsEncDec(authMapper.authResponseEncDecoder),
+    checkAuthValidity: (x) => toFailablePromise(authMapper.checkAuthValidity(x))
   };
 };

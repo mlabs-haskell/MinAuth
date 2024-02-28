@@ -9,53 +9,87 @@ import {
 import {
   FpInterfaceType,
   TsInterfaceType,
-  fpInterfaceTag
+  fpInterfaceTag,
+  tsInterfaceTag
 } from '../../plugin/interfacekind.js';
 import { OutputValidity } from '../../plugin/plugintype.js';
-/**
- * Represents an authentication response with details on the authentication status, message, and roles.
- */
-export interface IsAuthResponse {
-  authStatus: 'full' | 'partial' | 'none';
-  authMessage: string;
-  serialized(): unknown;
-  roles: string[];
-}
+import { z } from 'zod';
+import { EncodeDecoder, wrapZodDec } from '../../plugin/encodedecoder.js';
+
+const PluginOutputSchema = z.record(
+  z.string(),
+  z.object({
+    output: z.unknown(), // plugin dependent
+    roles: z.array(z.string())
+  })
+);
 
 /**
  * Type for mapping auth plugin names to their outputs and associated roles.
  */
-export type PluginOutputs = {
-  [pluginName: string]: { output: unknown; roles: string[] };
-};
+export type PluginOutputs = z.infer<typeof PluginOutputSchema>;
 
-type InvalidAuth = {
-  authStatus: 'none';
-  authMessage: string;
-  serialized(): unknown;
-};
+// Define schemas for InvalidAuth, PartialAuth, and FullAuth
+const BaseAuthSchema = z.object({
+  authStatus: z.enum(['none', 'partial', 'full']),
+  authMessage: z.string()
+});
 
-type PartialAuth = {
-  authStatus: 'partial';
-  authMessage: string;
-  serialized(): unknown;
-  roles: string[];
-  outputs: PluginOutputs;
-};
+export const InvalidAuthSchema = BaseAuthSchema.extend({
+  authStatus: z.literal('none')
+});
 
-type FullAuth = {
-  authStatus: 'full';
-  authMessage: string;
-  serialized(): unknown;
-  roles: string[];
-  outputs: PluginOutputs;
-};
+export type InvalidAuth = z.infer<typeof InvalidAuthSchema>;
+
+export const PartialAuthSchema = BaseAuthSchema.extend({
+  authStatus: z.literal('partial'),
+  roles: z.array(z.string()),
+  outputs: PluginOutputSchema
+});
+
+export type PartialAuth = z.infer<typeof PartialAuthSchema>;
+
+export const FullAuthSchema = BaseAuthSchema.extend({
+  authStatus: z.literal('full'),
+  roles: z.array(z.string()),
+  outputs: PluginOutputSchema
+});
+
+export type FullAuth = z.infer<typeof FullAuthSchema>;
+
+export const PluginRolesAuthSchema = z.union([
+  InvalidAuthSchema,
+  PartialAuthSchema,
+  FullAuthSchema
+]);
+
+export type PluginRolesAuth = z.infer<typeof PluginRolesAuthSchema>;
 
 export type PluginRoleMap = {
   [pluginName: string]: ((pluginOutput: unknown) => string[]) | string[];
 };
 
-type PluginRolesAuth = InvalidAuth | PartialAuth | FullAuth;
+export const pluginRolesAuthEncDecoderFp: EncodeDecoder<
+  FpInterfaceType,
+  PluginRolesAuth
+> = {
+  __interface_tag: fpInterfaceTag,
+  encode: (auth: PluginRolesAuth): unknown => {
+    return auth as unknown;
+  },
+  decode: wrapZodDec(fpInterfaceTag, PluginRolesAuthSchema).decode
+};
+
+export const pluginRolesAuthEncDecoderTs: EncodeDecoder<
+  TsInterfaceType,
+  PluginRolesAuth
+> = {
+  __interface_tag: tsInterfaceTag,
+  encode: (auth: PluginRolesAuth): unknown => {
+    return auth as unknown;
+  },
+  decode: wrapZodDec(tsInterfaceTag, PluginRolesAuthSchema).decode
+};
 
 /**
  * Class for mapping plugin outputs to roles and determining authentication status based on the outputs of various plugins.
@@ -69,8 +103,16 @@ type PluginRolesAuth = InvalidAuth | PartialAuth | FullAuth;
  * process with specific inputs, or `checkAuthValidity` to validate the current state of authentication based on plugin outputs.
  */
 export default class PluginToRoleMapper
-  implements IAuthMapper<PluginRolesAuth, PluginOutputs, PluginRolesAuth>
+  implements
+    IAuthMapper<
+      TsInterfaceType,
+      PluginRolesAuth,
+      PluginOutputs,
+      PluginRolesAuth
+    >
 {
+  readonly __interface_tag: TsInterfaceType = 'ts';
+
   private pluginHost: IPluginHost<TsInterfaceType>; // Specify the correct InterfaceKind if needed
   private roleMap: Record<string, (pluginOutput: unknown) => string[]>;
 
@@ -161,11 +203,12 @@ export default class PluginToRoleMapper
     return {
       authStatus,
       authMessage,
-      serialized: () => ({}),
       roles: Array.from(acquiredRoles),
       outputs
     };
   }
+
+  readonly authResponseEncDecoder = pluginRolesAuthEncDecoderTs;
 
   public async checkAuthValidity(
     outputRoleMap: PluginOutputs
@@ -208,7 +251,6 @@ export default class PluginToRoleMapper
     return {
       authStatus,
       authMessage,
-      serialized: () => ({}),
       roles: Array.from(roles),
       outputs: outputRoleMap
     };
