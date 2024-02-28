@@ -44,12 +44,18 @@ export default class PluginServerProxyHost
       input: unknown
     ): TaskEither<string, Either<string, unknown>> => {
       return pipe(
-        mkRequestTE('/verifyProof', z.unknown(), { body: { plugin, input } }),
+        mkRequestTE(
+          `${this.serverUrl}/verifyProof`,
+          z.object({ output: z.unknown() }),
+          {
+            body: { plugin, input }
+          }
+        ),
         TE.fold(
           // For left (general HTTP error), transform it into a right containing a left (E.left)
           (error) => TE.of(E.left(error.message)),
           // For right (successful plugin response), keep it as a right containing a right (E.right)
-          (ok) => TE.of(E.right(ok.data))
+          (ok) => TE.of(E.right(ok.data.output))
         )
       );
     };
@@ -82,8 +88,8 @@ export default class PluginServerProxyHost
       unknown
     ]): TaskEither<string, OutputValidity> => {
       return pipe(
-        mkRequestTE('/validateOutput', z.unknown(), {
-          body: { pluginName, output }
+        mkRequestTE(`${this.serverUrl}/validateOutput`, z.unknown(), {
+          body: { plugin: pluginName, output }
         }),
         TE.fold(
           (error) => TE.of(outputInvalid(error.message)),
@@ -105,7 +111,7 @@ export default class PluginServerProxyHost
 
   isReady(): TaskEither<string, boolean> {
     return pipe(
-      mkRequestTE('/isReady', z.unknown()),
+      mkRequestTE(`${this.serverUrl}/isReady`, z.unknown()),
       TE.fold(
         (error) => TE.of(false),
         (success) => TE.of(true)
@@ -115,7 +121,10 @@ export default class PluginServerProxyHost
 
   activePluginNames(): TaskEither<string, string[]> {
     return pipe(
-      mkRequestTE('/plugins/activePlugins', z.array(z.string())),
+      mkRequestTE(
+        `${this.serverUrl}/plugins/activePlugins`,
+        z.array(z.string())
+      ),
       TE.map((response) => response.data),
       TE.mapLeft((e: ErrorResponse) => e.message)
     );

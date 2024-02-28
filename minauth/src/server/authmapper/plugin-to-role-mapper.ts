@@ -121,7 +121,7 @@ export default class PluginToRoleMapper
   implements
     IAuthMapper<
       TsInterfaceType,
-      PMap<unknown>,
+      PluginInputs,
       PluginRolesAuth,
       PluginOutputs,
       PluginRolesAuth
@@ -218,9 +218,17 @@ export default class PluginToRoleMapper
 
     Object.keys(valid).forEach((pluginName) => {
       const output = valid[pluginName];
+      this.log.debug('Processing output from plugin:', pluginName, output);
       const roles = this.roleMap[pluginName](output);
       roles.forEach((role) => acquiredRoles.add(role));
       outputs[pluginName] = { output, roles };
+    });
+
+    this.log.debug('Authentication response:', {
+      authStatus,
+      authMessage,
+      roles: Array.from(acquiredRoles),
+      outputs
     });
 
     return {
@@ -246,6 +254,10 @@ export default class PluginToRoleMapper
   public async checkAuthValidity(
     outputRoleMap: PluginOutputs
   ): Promise<PluginRolesAuth> {
+    this.log.debug(
+      'Checking authentication validity for outputs:',
+      outputRoleMap
+    );
     const outputs: PMap<unknown> = Object.keys(outputRoleMap).reduce(
       (acc: PMap<unknown>, pluginName: string) => {
         acc[pluginName] = outputRoleMap[pluginName].output;

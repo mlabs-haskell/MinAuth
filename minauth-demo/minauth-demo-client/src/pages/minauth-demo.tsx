@@ -14,7 +14,6 @@ import {
   simplePreimageGetRoles,
   simplePreimageSetRoles
 } from '@/helpers/demo-admin';
-import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
 import Erc721TimelockProverComponent, {
   Erc721TimelockAdminComponent
@@ -23,6 +22,7 @@ import Erc721TimelockProver from 'minauth-erc721-timelock-plugin/dist/prover';
 import ReactMarkdown from 'react-markdown';
 import { ServerConfig } from '@/api/server-config';
 import Overlay from '@/components/overlay';
+import { ApiResponse } from 'minauth/dist/common/request';
 
 type ProverFormUpdater = 'Prover' | 'TexdEdit';
 

@@ -91,7 +91,10 @@ const handleValidateOutput =
         ),
         TE.asUnit
       )
-    );
+    ).catch((e) => {
+      env.logger.error('error validating output', e);
+      resp.status(500).json({ message: 'internal server error' });
+    });
 
 /**
  * Install the basic routes for the plugin server:

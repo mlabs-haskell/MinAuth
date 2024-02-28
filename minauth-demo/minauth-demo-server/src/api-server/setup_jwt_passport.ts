@@ -13,12 +13,6 @@ import dotenv from 'dotenv';
 import { Logger, ILogObj } from 'tslog';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
-import MinAuthBinaryStrategy from 'minauth/dist/server/minauth-passport.js';
-import PluginToRoleMapper, {
-  PluginRoleMap
-} from 'minauth/dist/server/authmapper/plugin-to-role-mapper.js';
-import PluginServerProxyHost from 'minauth/dist/server/pluginhost/plugin-server-proxy-host.js';
-import z from 'zod';
 
 const log = new Logger<ILogObj>();
 
@@ -34,31 +28,6 @@ const JWT_EXPIRES_IN = 100;
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const DATABASE_FILENAME = './tokenstore.db';
-const VERIFIER_URL: string = 'http://127.0.0.1:3001/verifyProof';
-
-const ApiServerMinauthConfigSchema = z.object({
-  pluginToRoleMap: z.record(z.string(), z.array(z.string()))
-});
-
-type ApiServerMinauthConfig = z.infer<typeof ApiServerMinauthConfigSchema>;
-
-export const setupMinauthStrategy = (
-  config: ApiServerMinauthConfig
-): passport.Strategy => {
-  // the role map could be more complex, i.e. the role set can be dependent on the plugin output
-  const roleMap: PluginRoleMap = config.pluginToRoleMap;
-
-  const pluginhost = new PluginServerProxyHost({ serverUrl: VERIFIER_URL });
-
-  const authMapper = PluginToRoleMapper.initialize(pluginhost, roleMap);
-
-  const strategy = new MinAuthBinaryStrategy({
-    logger: log.getSubLogger({ name: 'MinAuthStrategy' }),
-    authMapper
-  });
-
-  return strategy;
-};
 
 /**
  * Open a connection to the SQLite database, creating the database and the required table if they don't exist.
@@ -93,9 +62,8 @@ const openDB = async (): Promise<Database> => {
  * @returns {passport.Authenticator} The configured Passport authenticator instance.
  */
 export const setupPassport = (
-  config: ApiServerMinauthConfig
+  strategy: passport.Strategy
 ): passport.Authenticator => {
-  const strategy = setupMinauthStrategy(config);
   const jwtOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: SECRET_KEY

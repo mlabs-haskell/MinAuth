@@ -9,12 +9,12 @@ import { AuthResponse, getAuth } from '@/helpers/jwt';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { FormDataChange } from './simple-preimage-prover.js';
 import PreimageInputWidget from './preimage-input';
-import { mkRequest } from '@/helpers/request';
 import MembershipsProver from 'minauth-merkle-membership-plugin/dist/prover.js';
 /* import { Input } from 'minauth-merkle-membership-plugin/dist/plugin.js'; */
 import * as ZkProgram from 'minauth-merkle-membership-plugin/dist/merklemembershipsprogram.js';
 import { Either, isLeft } from 'fp-ts/lib/Either';
 import { ServerConfig } from '@/api/server-config';
+import { mkRequest } from 'minauth/dist/common/request.js';
 
 export const JsonProofSchema = z.object({
   publicInput: z.array(z.string()),

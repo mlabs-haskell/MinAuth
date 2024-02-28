@@ -118,7 +118,7 @@ describe('PluginServerProxyHost', () => {
       expect(requestModule.mkRequestTE).toHaveBeenCalledWith(
         '/validateOutput',
         expect.anything(),
-        { body: { pluginName, output } }
+        { body: { plugin: pluginName, output } }
       );
     });
   };

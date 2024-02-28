@@ -4,11 +4,19 @@ import {
   ApiResponseSchema,
   mkRequest
 } from 'minauth/dist/common/request.js';
-import { MinAuthProof } from 'minauth/dist/common/proof';
 import { ServerConfig } from '@/api/server-config';
+import { MinAuthProof } from 'minauth/dist/common/proof';
 
 const submitURL = `${ServerConfig.url}/login`;
 const refreshURL = `${ServerConfig.url}/token`;
+
+// this is based on a plugintorolemapper - an authmapper used by the server
+export const AuthReqSchema = z.record(
+  z.string(), // plugin name
+  z.unknown() // plugin-specific input
+);
+
+export type AuthReq = z.infer<typeof AuthReqSchema>;
 
 export const AuthSchema = z.object({
   token: z.string(),
@@ -26,7 +34,8 @@ export type AuthResponse = ApiResponse<typeof AuthSchema>;
 export type RefreshResponse = ApiResponse<typeof RefreshSchema>;
 
 export const getAuth = async (submissionData: MinAuthProof) => {
-  const res = await mkRequest(submitURL, AuthSchema, { body: submissionData });
+  const authReq: AuthReq = { [submissionData.plugin]: submissionData.input };
+  const res = await mkRequest(submitURL, AuthSchema, { body: authReq });
   return res;
 };
 

@@ -1,7 +1,7 @@
 import { AuthData, mkAuthorizedRequest } from '@/helpers/jwt';
-import { ApiResponse } from '@/helpers/request';
 import { z } from 'zod';
 import { ServerConfig } from './server-config';
+import { ApiResponse } from 'minauth/dist/common/request.js';
 
 const resourceUrl = `${ServerConfig.url}/protected`;
 
