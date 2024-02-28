@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-      "test": "jest --config jest.config.ts && echo \"E2E & integration tests are provided in the minauth-demo package.\" && exit 1"
+    "test": "echo \"E2E & integration tests are provided in the minauth-demo package.\" && jest --config jest.config.ts"
   },
   "repository": {
     "type": "git",
@@ -44,6 +44,7 @@
     "@types/passport": "^1.0.12",
     "@types/passport-jwt": "^3.0.9",
     "@types/passport-strategy": "^0.2.35",
+    "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^8.51.0",
@@ -53,6 +54,7 @@
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.0.3",
+    "supertest": "^6.3.4",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",

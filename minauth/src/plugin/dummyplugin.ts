@@ -47,18 +47,33 @@ export class DummyPluginTs
   constructor(public inputs: InputStore) {}
 
   verifyAndGetOutput(input: string): Promise<string> {
-    return Promise.resolve(verifyAndGetOutput(input, this.inputs));
+    return new Promise((resolve, reject) => {
+      try {
+        const output = verifyAndGetOutput(input, this.inputs);
+        resolve(output);
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   checkOutputValidity(output: string): Promise<OutputValidity> {
-    return Promise.resolve(checkOutputValidity(output, this.inputs));
+    return new Promise((resolve, reject) => {
+      try {
+        const ret = checkOutputValidity(output, this.inputs);
+        resolve(ret);
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
-  readonly customRoutes = Router().get('/leak', (req, res) => {
-    const input = req.body;
+  readonly customRoutes = Router().post('/leak', (req, res) => {
+    const { input } = req.body;
+    console.debug('-------------------input', input);
     res.json({
       known: this.inputs.has(input),
-      shouldVerify: this.inputs.get(input)
+      shouldVerify: this.inputs.get(input) || false
     });
   });
 
@@ -102,11 +117,12 @@ export class DummyPluginFp
     );
   }
 
-  readonly customRoutes = Router().get('/leak', (req, res) => {
-    const input = req.body;
+  readonly customRoutes = Router().post('/leak', (req, res) => {
+    const { input } = req.body;
+    console.debug('-------------------input', input);
     res.json({
       known: this.inputs.has(input),
-      shouldVerify: this.inputs.get(input)
+      shouldVerify: this.inputs.get(input) || false
     });
   });
 
