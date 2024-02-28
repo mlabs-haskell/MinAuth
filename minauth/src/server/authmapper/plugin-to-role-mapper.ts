@@ -3,6 +3,8 @@ import { Either } from 'fp-ts/lib/Either.js';
 import {
   IPluginHost,
   PMap,
+  PluginInputsSchema,
+  PluginInputs,
   fpToTsPluginHost,
   splitPMap
 } from '../pluginhost.js';
@@ -15,6 +17,7 @@ import {
 import { OutputValidity } from '../../plugin/plugintype.js';
 import { z } from 'zod';
 import { EncodeDecoder, wrapZodDec } from '../../plugin/encodedecoder.js';
+import { Logger } from '../../plugin/logger.js';
 
 const PluginOutputSchema = z.record(
   z.string(),
@@ -91,6 +94,17 @@ export const pluginRolesAuthEncDecoderTs: EncodeDecoder<
   decode: wrapZodDec(tsInterfaceTag, PluginRolesAuthSchema).decode
 };
 
+export const pluginAuthReqEncDecoderTs: EncodeDecoder<
+  TsInterfaceType,
+  PMap<unknown>
+> = {
+  __interface_tag: tsInterfaceTag,
+  encode: (auth: PMap<unknown>): unknown => {
+    return auth as unknown;
+  },
+  decode: wrapZodDec(tsInterfaceTag, PluginInputsSchema).decode
+};
+
 /**
  * Class for mapping plugin outputs to roles and determining authentication status based on the outputs of various plugins.
  * This class implements the `IAuthMapper` interface, providing a concrete implementation for authentication processes
@@ -102,10 +116,12 @@ export const pluginRolesAuthEncDecoderTs: EncodeDecoder<
  * and a `PluginRoleMap` that defines how to extract roles from plugin outputs. Then, use `requestAuth` to initiate the authentication
  * process with specific inputs, or `checkAuthValidity` to validate the current state of authentication based on plugin outputs.
  */
+
 export default class PluginToRoleMapper
   implements
     IAuthMapper<
       TsInterfaceType,
+      PMap<unknown>,
       PluginRolesAuth,
       PluginOutputs,
       PluginRolesAuth
@@ -125,7 +141,8 @@ export default class PluginToRoleMapper
 
   private constructor(
     pluginHost: IPluginHost<FpInterfaceType> | IPluginHost<TsInterfaceType>,
-    roleMap: PluginRoleMap
+    roleMap: PluginRoleMap,
+    readonly log: Logger
   ) {
     // if pluginhost is of fp interface type, convert it to ts interface type
     if (pluginHost.__interface_tag === fpInterfaceTag) {
@@ -151,9 +168,10 @@ export default class PluginToRoleMapper
 
   static initialize(
     pluginHost: IPluginHost<FpInterfaceType> | IPluginHost<TsInterfaceType>,
-    roleMap: PluginRoleMap
+    roleMap: PluginRoleMap,
+    log: Logger
   ): PluginToRoleMapper {
-    return new PluginToRoleMapper(pluginHost, roleMap);
+    return new PluginToRoleMapper(pluginHost, roleMap, log);
   }
 
   private determineAuthStatusAndMessage(
@@ -180,8 +198,13 @@ export default class PluginToRoleMapper
   }
 
   public async requestAuth(inputs: PMap<unknown>): Promise<PluginRolesAuth> {
+    this.log.debug('Requesting authentication with inputs:', inputs);
+
     const resps: PMap<Either<string, unknown>> =
       await this.pluginHost.verifyProofAndGetOutput(inputs);
+
+    this.log.debug('Received responses from plugins:', resps);
+
     const { errors: errorPlugins, valid } = splitPMap(resps);
 
     const errors = new Set<string>(Object.keys(errorPlugins));
@@ -208,8 +231,18 @@ export default class PluginToRoleMapper
     };
   }
 
-  readonly authResponseEncDecoder = pluginRolesAuthEncDecoderTs;
+  readonly authResponseEncDecoder: EncodeDecoder<
+    TsInterfaceType,
+    PluginRolesAuth
+  > = pluginRolesAuthEncDecoderTs;
 
+  readonly authRequestEncDecoder: EncodeDecoder<TsInterfaceType, PluginInputs> =
+    pluginAuthReqEncDecoderTs;
+
+  // TODO: currently is the validation fails for some plugin the auth response will shrink.
+  // this might be unexpected behavior. We might just want to return the original auth response
+  // but with with information that the output was not considered valid by particular plugins.
+  // This would allow to resend the same auth response later if one expect that it'd work now.
   public async checkAuthValidity(
     outputRoleMap: PluginOutputs
   ): Promise<PluginRolesAuth> {

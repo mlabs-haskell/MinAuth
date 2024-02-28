@@ -1,5 +1,5 @@
 import * as expressCore from 'express-serve-static-core';
-import { IMinAuthPlugin, OutputValidity } from '../plugin/plugintype.js';
+import { OutputValidity } from '../plugin/plugintype.js';
 import {
   FpInterfaceType,
   InterfaceKind,
@@ -10,16 +10,20 @@ import {
 import { Either } from 'fp-ts/lib/Either.js';
 import { TaskEither } from 'fp-ts/lib/TaskEither.js';
 import * as E from 'fp-ts/lib/Either.js';
+import * as z from 'zod';
+
+export const PMapSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
+  z.record(z.string(), valueSchema);
 
 /**
  * Convenience abbreviation for a maping from plugin names to a generic type `T`.
+ * NOTE. Keep it compatible with PMapSchema.
  */
 export type PMap<T> = { [plugin: string]: T };
 
-/**
- * Similarly - represents a map of plugin names to their respective `IMinAuthPlugin` instances.
- */
-export type Plugins = PMap<IMinAuthPlugin<InterfaceKind, unknown, unknown>>;
+export const PluginInputsSchema = PMapSchema(z.unknown());
+
+export type PluginInputs = z.infer<typeof PluginInputsSchema>;
 
 /**
  * Interface for a plugin host which manages hosting and interactions with a set of active plugins.
@@ -32,7 +36,7 @@ export interface IPluginHost<InterfaceType extends InterfaceKind>
    * @returns A map of plugin outputs wrapped in `Either` to distinguish between valid outputs and errors.
    */
   verifyProofAndGetOutput(
-    inputs: PMap<unknown>
+    inputs: PluginInputs
   ): RetType<InterfaceType, PMap<Either<string, unknown>>>;
 
   /**
@@ -41,7 +45,7 @@ export interface IPluginHost<InterfaceType extends InterfaceKind>
    * @returns A map indicating the validity of each plugin's output.
    */
   checkOutputValidity(
-    output: PMap<unknown>
+    output: PluginInputs
   ): RetType<InterfaceType, PMap<OutputValidity>>;
 
   /**
@@ -99,13 +103,13 @@ export const fpToTsPluginHost = (
   return {
     __interface_tag: 'ts',
     verifyProofAndGetOutput: (
-      inputs: PMap<unknown>
+      inputs: PluginInputs
     ): Promise<PMap<Either<string, unknown>>> => {
       // Convert FP-style calls to TS-style promises
       return toFailablePromise(host.verifyProofAndGetOutput(inputs));
     },
     checkOutputValidity: (
-      output: PMap<unknown>
+      output: PluginInputs
     ): Promise<PMap<OutputValidity>> => {
       // Convert FP-style calls to TS-style promises
       return toFailablePromise(host.checkOutputValidity(output));

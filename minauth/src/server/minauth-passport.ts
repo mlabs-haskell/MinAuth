@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { Strategy } from 'passport-strategy';
 import { Logger } from '../plugin/logger.js';
-import { IAuthMapper, IsAuthResponse, fpToTsAuthMapper } from './authmapper.js';
+import { IAuthMapper, fpToTsAuthMapper } from './authmapper.js';
 import {
   FpInterfaceType,
   InterfaceKind,
@@ -9,9 +9,10 @@ import {
 } from './plugin-promise-api.js';
 
 /** An auxilliary abbrevation */
-type AuthMapper<If extends InterfaceKind> = IAuthMapper<
+type AuthMapper<If extends InterfaceKind, AuthReq, AuthResp> = IAuthMapper<
   If,
-  IsAuthResponse,
+  AuthReq,
+  AuthResp,
   unknown,
   unknown
 >;
@@ -22,9 +23,26 @@ type AuthMapper<If extends InterfaceKind> = IAuthMapper<
  *  The strategy retain only fully successful authentications.
  *  And implements the passport.js strategy interface.
  */
-export interface MinAuthStrategyConfig {
+export interface MinAuthStrategyConfig<AuthReq, AuthResp> {
   logger: Logger;
-  authMapper: AuthMapper<FpInterfaceType> | AuthMapper<TsInterfaceType>;
+  authMapper:
+    | AuthMapper<FpInterfaceType, AuthReq, AuthResp>
+    | AuthMapper<TsInterfaceType, AuthReq, AuthResp>;
+}
+/**
+ * Represents the response from an authentication request, encapsulating the status
+ * and message related to the authentication process, along with a method for serialization.
+ */
+export interface IsAuthResponse {
+  /** Indicates the level of authentication achieved.
+   *  - `'full'` indicates that the all the plugins have authenticated the user.
+   *  - `'partial'` indicates that some of the plugins have authenticated the user.
+   *  - `'none'` indicates that none of the plugins have authenticated the user.
+   */
+  authStatus: 'full' | 'partial' | 'none';
+
+  /** A descriptive message providing details about the authentication process or its outcome. */
+  authMessage: string;
 }
 
 /**
@@ -35,14 +53,17 @@ export interface MinAuthStrategyConfig {
  * (In theory the auth mapper can return a partial success - the authenticating
  * user receives maximal authority given the input.)
  */
-export default class MinAuthBinaryStrategy extends Strategy {
+export default class MinAuthBinaryStrategy<
+  AuthReq,
+  AuthResp extends IsAuthResponse
+> extends Strategy {
   name = 'MinAuthBinaryStrategy';
 
-  readonly authMapper: AuthMapper<TsInterfaceType>;
+  readonly authMapper: AuthMapper<TsInterfaceType, AuthReq, AuthResp>;
 
   readonly log: Logger;
 
-  public constructor(config: MinAuthStrategyConfig) {
+  public constructor(config: MinAuthStrategyConfig<AuthReq, AuthResp>) {
     super();
     this.log = config.logger;
     if (config.authMapper.__interface_tag === 'fp') {
@@ -54,9 +75,20 @@ export default class MinAuthBinaryStrategy extends Strategy {
 
   async authenticate(req: Request): Promise<void> {
     this.log.info('called `authenticate` with request body:', req.body);
+    this.log.debug('Parsing request body.');
 
-    // forward the proof verification to the plugin server
-    const authResp = await this.authMapper.requestAuth(req.body);
+    const authReq: AuthReq | undefined =
+      this.authMapper.authRequestEncDecoder.decode(req.body);
+
+    if (!authReq) {
+      const message =
+        'Failed to parse authentication request. Consult the strategy AuthMapper.';
+      this.fail({ message }, 400);
+      return;
+    }
+
+    const authResp = await this.authMapper.requestAuth(authReq);
+
     const authRespSerialized =
       this.authMapper.authResponseEncDecoder.encode(authResp);
 
@@ -65,7 +97,6 @@ export default class MinAuthBinaryStrategy extends Strategy {
         'proof verification output:',
         JSON.stringify(authRespSerialized, null, 2)
       );
-
       this.success(authResp);
     } else {
       const message = `Authentication rejected: ${authResp.authMessage}`;
