@@ -115,11 +115,6 @@ export class SimplePreimagePlugin
   }
 
   /**
-   * Trivial - no public inputs.
-   */
-  publicInputArgsSchema: z.ZodType<unknown> = z.any();
-
-  /**
    * Provide an endpoint returning a list of roles recognized by the plugin.
    * Additionally, provide an endpoint to update the roles
    * NOTE. the setRoles endpoint should not be used by the client

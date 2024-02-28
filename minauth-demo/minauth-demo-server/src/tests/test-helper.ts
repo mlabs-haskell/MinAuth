@@ -28,17 +28,17 @@ export type ChoosePluginConfig<P extends PluginKind> =
         }[];
       }
     : P extends 'simple-preimage'
-    ? {
-        roles: Map<Field, string>;
-      }
-    : never;
+      ? {
+          roles: Map<Field, string>;
+        }
+      : never;
 
 export type ChooseProofGeneratorConfig<P extends PluginKind> =
   P extends 'merkle-memberships'
     ? MerkleMembershipsPG.Conf
     : P extends 'simple-preimage'
-    ? SimplePreimagePG.Conf
-    : never;
+      ? SimplePreimagePG.Conf
+      : never;
 
 export type TestPluginServerConf = {
   loadPlugins: Record<
@@ -215,9 +215,20 @@ const startPluginServer = async (
   return p;
 };
 
-const startSomeServer = async (): Promise<cp.ChildProcess> => {
+const startApiServer = async (
+  pluginNames: string[]
+): Promise<cp.ChildProcess> => {
+  // Join the plugin names into a comma-separated string
+  const pluginNamesString = pluginNames.join(',');
+
+  // Spawn the child process with a custom environment variable PLUGIN_NAMES
   const p = cp.spawn('node', ['dist/api-server/index.js'], {
-    stdio: 'inherit'
+    stdio: 'inherit',
+    // Spread the existing process.env and add/override the PLUGIN_NAMES variable
+    env: {
+      ...process.env,
+      PLUGIN_NAMES: pluginNamesString
+    }
   });
 
   testLogger.debug('api server spawned', p.pid);
@@ -247,11 +258,12 @@ const mkJestTest = (c: TestCase) =>
 
 export const runTestGroup = (g: TestGroup) =>
   describe(`testGroup: ${g.name}`, () => {
+    const pluginNames: string[] = Object.keys(g.server.loadPlugins);
     let pluginServerProcess: cp.ChildProcess;
     let someServerProcess: cp.ChildProcess;
 
     beforeAll(async () => {
-      someServerProcess = await startSomeServer();
+      someServerProcess = await startApiServer(pluginNames);
       pluginServerProcess = await startPluginServer(g.server);
     });
 

@@ -143,11 +143,6 @@ export class Erc721TimelockPlugin
     }
   }
 
-  /**
-   * Trivial - no public inputs.
-   */
-  publicInputArgsSchema: z.ZodType<unknown> = z.any();
-
   // private handleAdminMint = async (req: Request, res: Response) => {
   //   const reqSchema = z.object({
   //     address: z.string().regex(/^0x[a-fA-F0-9]{40}$/)

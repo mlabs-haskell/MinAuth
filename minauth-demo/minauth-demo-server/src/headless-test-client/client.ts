@@ -15,6 +15,18 @@ import { Option } from 'fp-ts/lib/Option.js';
 import * as O from 'fp-ts/lib/Option.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
 
+// because the server currently uses plugin to role mapper
+// the auth request is dictated by its request scheme which
+// is
+// export const PluginInputsSchema = PMapSchema(z.unknown());
+
+const buildAuthReq = (
+  proof: MinAuthProof
+): { [pluginName: string]: unknown } => {
+  console.log('==============================================');
+  return { [proof.plugin]: proof.input };
+};
+
 export type ClientEnv = Readonly<{
   serverUrl: string;
   logger: Logger;
@@ -131,15 +143,15 @@ const mkRequest = <T>(req: Request<T>): Client<T> =>
                   respBody: err.response.data
                 }
               : err.response.status == 400
-              ? {
-                  __tag: 'badRequest',
-                  respBody: err.response.data
-                }
-              : {
-                  __tag: 'serverError',
-                  reason: `bad status code: ${err.response.status}`,
-                  respBody: err.response.data
-                }
+                ? {
+                    __tag: 'badRequest',
+                    respBody: err.response.data
+                  }
+                : {
+                    __tag: 'serverError',
+                    reason: `bad status code: ${err.response.status}`,
+                    respBody: err.response.data
+                  }
             : // no response
               {
                 __tag: 'ioFailure',
@@ -163,11 +175,11 @@ const mkRequest = <T>(req: Request<T>): Client<T> =>
 export const login = (proof: MinAuthProof): Client<LoginResponse> =>
   wrapPublicApi(
     'login',
-    proof
+    buildAuthReq(proof)
   )(
     mkRequest({
       method: 'POST',
-      body: proof,
+      body: buildAuthReq(proof),
       urlComponents: ['login'],
       jwt: O.none,
       respSchema: loginResponseSchema

@@ -66,10 +66,23 @@ const plugin_host: IPluginHost<TsInterfaceType> = setupPluginServerProxyHost();
 // back and forth between authentication plugins responses
 type Role = 'user';
 
-const roleMap: { [pluginName: string]: Role[] } = {
-  'erc721-timelock': ['user'],
-  'simple-preimage': ['user']
-};
+// Read the plugin names from the environment variable or use the default names.
+const pluginNamesEnv = process.env.PLUGIN_NAMES;
+const defaultPluginNames = ['erc721-timelock', 'simple-preimage'];
+
+// Split the environment variable by comma to get an array of plugin names or use the default names if the variable is unset or empty.
+const pluginNames =
+  pluginNamesEnv && pluginNamesEnv.length > 0
+    ? pluginNamesEnv.split(',')
+    : defaultPluginNames;
+
+// Initialize the roleMap using the plugin names array.
+const roleMap: { [pluginName: string]: Role[] } = {};
+pluginNames.forEach((pluginName) => {
+  roleMap[pluginName] = ['user'];
+});
+
+log.info('roleMap:', roleMap);
 
 const authMapper = PluginToRoleMapper.initialize(
   plugin_host,
