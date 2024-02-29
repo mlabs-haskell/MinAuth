@@ -5,7 +5,6 @@ import {
 } from 'minauth/dist/plugin/plugintype.js';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
 import { Logger } from 'minauth/dist/plugin/logger.js';
-import ProvePreimageProgram from './hash-preimage-proof.js';
 import { VerificationKey } from 'minauth/dist/common/verificationkey.js';
 import { PluginRouter } from 'minauth/dist/plugin/pluginrouter.js';
 

@@ -27,7 +27,7 @@ and other details such as the user's private key go into the authorization verif
 On succesful authorization the MinAuth plugin return the set of proven data to the verifying entity
 to provide access to its services.
 
-### ZK-document
+### ZK-document & zk-claims
 
 First we assume the existence of a document type that is issued and recognized by
 the 3rd party. This can be done via a signature of a trusted public key, i.e. the
@@ -40,6 +40,7 @@ The document can then be used by the prover as input to claim proving algorithms
 The proofs coming from the algorithms are then used in the verifier final proof verifier,
 which is integrated and customizable in the IMinauthPlugin intance provided by this
 package.
+
 
 ### ZK-document standard (schema)
 
@@ -68,21 +69,31 @@ In most cases users of the library will want to use their own claim provers desi
 to suit there needs, but some demonstrational one are implemented as a part of the
 package.
 
-### Document valid to X
+### Document valid to X (and general date claim prover)
 
 Assuming the document being a list of Fields. Validity timestamp index is hardcoded into the claim prover.
 X is a part of the public input.
 
-### Age over X
+### Age over X (and general number size claim prover)
 
 Assuming the document being a list of Fields Age index is hardcoded into the claim prover.
 X is a part of the public input.
 
-### Country of residence equal to X via `ISO 3166-1 numeric`
+### Country of residence equal to X via `ISO 3166-1 numeric` (and general string prover)
 
 Assuming the document being a list of Fields Age index is hardcoded into the claim prover.
 X is a part of the public input.
 
+### Possible zk-claims rollups
+
+If possible the claims will be able to be rolled up for space & server-time efficiency.
+The verifier could ask for a joined claim of:
+
+- Document valid > month from now
+- Subject age > 18
+- Subject residency in EU
+
+All the claims could be rolled up into a single proof of constant size.
 
 ## Configuration
 
