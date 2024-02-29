@@ -1,0 +1,62 @@
+{
+  "name": "minauth-verified-zkdocument-plugin",
+  "version": "0.10.0-alpha",
+  "description": "Plugin for authorization with verified zk claims on 3rd-party approved documents.",
+  "type": "module",
+  "main": "dist/index.js",
+  "browser": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint . --ext .ts",
+    "prettier-format": "prettier --config .prettierrc './**/*.ts' --write",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "fp-ts": "^2.16.1",
+    "minauth": "0.10.0-alpha",
+    "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.*",
+    "@types/express": "^4.17.17",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "o1js": "0.16.0"
+  },
+  "keywords": [
+    "authentication",
+    "blockchain",
+    "cryptography",
+    "express",
+    "mina",
+    "minauth",
+    "o1js",
+    "passport",
+    "security",
+    "typescript",
+    "zero-knowledge"
+  ],
+  "author": {
+    "name": "Michał Adamczyk",
+    "email": "michal@mlabs.city",
+    "url": "https://github.com/adamczykm"
+  },
+  "contributors": [],
+  "license": "Apache-2.0"
+}

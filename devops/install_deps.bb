@@ -10,13 +10,15 @@
 (def packages [{:name "minauth-simple-preimage-plugin" :path "/home/anks/spre" :deps [:mlib]}
                {:name "minauth-erc721-timelock-plugin" :path "/home/anks/etl" :deps [:mlib]}
                {:name "minauth-merkle-membership-plugin" :path "/home/anks/mm" :deps [:mlib]}
+               {:name "minauth-verified-zkdocument-plugin" :path "/home/anks/zdoc" :deps [:mlib]}
                {:name "minauth-demo-server" :path "/home/anks/serv" :deps [:spre :mlib :mm :etl]}
                {:name "minauth-demo-client" :path "/home/anks/client" :deps [:spre :mlib :mm :etl]}])
 
 (def global-deps {:spre {:name "minauth-simple-preimage-plugin" :path "/home/anks/spre"}
-                 :etl {:name "minauth-erc721-timelock-plugin" :path "/home/anks/etl"}
-                 :mlib {:name "minauth" :path "/home/anks/mlib"}
-                 :mm {:name "minauth-merkle-membership-plugin" :path "/home/anks/mm"}})
+                  :etl {:name "minauth-erc721-timelock-plugin" :path "/home/anks/etl"}
+                  :zdoc {:name "minauth-verified-zkdocument-plugin" :path "/home/anks/zdoc"}
+                  :mlib {:name "minauth" :path "/home/anks/mlib"}
+                  :mm {:name "minauth-merkle-membership-plugin" :path "/home/anks/mm"}})
 
 (defn- logret [msg]
   (println msg)

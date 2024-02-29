@@ -54,3 +54,5 @@ The work on the library was funded by:
 * zkIgnite (https://zkignite.minaprotocol.com/)
 * MINA Navigators (https://minaprotocol.com/join-mina-navigators)
 * MLabs (https://mlabs.city/)
+
+Thank you! <3
