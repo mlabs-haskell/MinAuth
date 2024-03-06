@@ -15,15 +15,15 @@ const prog = ZkProgram({
 
   methods: {
     fromFieldClaim: {
-      privateInputs: [Proof<Field,Field>],
-      method(publicInput: CircuitString, fieldClaimProof: Proof<Field,Field>) {
+      privateInputs: [Proof<Field, Field>],
+      method(publicInput: CircuitString, fieldClaimProof: Proof<Field, Field>) {
         fieldClaimProof.verify();
         return fieldClaimProof.publicOutput;
       }
     },
     rollupClaims: {
-      privateInputs: [Proof<Field,Field>, Proof<Field,Field>],
-      method(claim1: Proof<Field,Field>, claim2: Proof<Field,Field>) {
+      privateInputs: [Proof<Field, Field>, Proof<Field, Field>],
+      method(claim1: Proof<Field, Field>, claim2: Proof<Field, Field>) {
         claim1.verify();
         claim2.verify();
         return claim1.publicOutput;

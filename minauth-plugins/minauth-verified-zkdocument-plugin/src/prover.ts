@@ -39,10 +39,8 @@ export class ZkDocumentClaimsProver
 
   /** Build a proof. */
   async prove(publicInput: Field, secretInput: Field): Promise<JsonProof> {
-    this.logger.debug('Building proof started.');
-    const proof = await ProvePreimageProgram.baseCase(publicInput, secretInput);
-    this.logger.debug('Building proof finished.');
-    return proof.toJSON();
+    this.logger.warn('TODO no proof');
+    return undefined as unknown as JsonProof;
   }
 
   /** Fetches a list of hashes recognized by the server. */
@@ -57,7 +55,7 @@ export class ZkDocumentClaimsProver
     // you have a verification key acquired by using cached circuit AND
     // not build a proof locally,
     // but use a serialized one - it will hang during verification.
-    return await ProvePreimageProgram.compile({ cache: Cache.None });
+    return undefined as unknown as { verificationKey: VerificationKey };
   }
 
   /** Initialize the prover */

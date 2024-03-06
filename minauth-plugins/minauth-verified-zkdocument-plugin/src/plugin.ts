@@ -6,7 +6,6 @@ import {
   outputInvalid,
   outputValid
 } from 'minauth/dist/plugin/plugintype.js';
-import ProvePreimageProgram from './hash-preimage-proof.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { TsInterfaceType } from 'minauth/dist/plugin/interfacekind.js';
@@ -114,9 +113,11 @@ export class ZkDocumentClaimsPlugin
     configuration: Configuration,
     logger: Logger
   ): Promise<ZkDocumentClaimsPlugin> {
-   const { verificationKey } = await ProvePreimageProgram.compile({
-      cache: Cache.None
-    });
+    // TODO
+    const verificationKey = undefined as unknown as VerificationKey;
+   // const { verificationKey } = await ProvePreimageProgram.compile({
+   //    cache: Cache.None
+   //  });
     return new ZkDocumentClaimsPlugin(verificationKey, logger);
   }
 
