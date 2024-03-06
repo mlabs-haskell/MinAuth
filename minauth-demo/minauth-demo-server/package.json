@@ -33,7 +33,7 @@
     "minauth-erc721-timelock-plugin": "0.10.0-alpha",
     "minauth-merkle-membership-plugin": "0.10.0-alpha",
     "minauth-simple-preimage-plugin": "0.10.0-alpha",
-    "o1js": "0.16.0",
+    "o1js": "0.16.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-strategy": "^1.0.0",

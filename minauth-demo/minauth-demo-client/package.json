@@ -26,7 +26,7 @@
     "minauth-merkle-membership-plugin": "0.10.0-alpha",
     "minauth-simple-preimage-plugin": "0.10.0-alpha",
     "next": "^14.0.3",
-    "o1js": "0.16.0",
+    "o1js": "0.16.2",
     "postcss": "8.4.32",
     "react": "18.2.0",
     "react-dom": "18.2.0",

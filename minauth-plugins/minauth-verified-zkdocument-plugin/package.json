@@ -1,6 +1,6 @@
 {
   "name": "minauth-verified-zkdocument-plugin",
-  "version": "0.10.0-alpha",
+  "version": "0.10.1-alpha",
   "description": "Plugin for authorization with verified zk claims on 3rd-party approved documents.",
   "type": "module",
   "main": "dist/index.js",
@@ -16,9 +16,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@types/luxon": "^3.4.2",
     "express": "^4.18.2",
     "fp-ts": "^2.16.1",
-    "minauth": "0.10.0-alpha",
+    "luxon": "^3.4.4",
+    "minauth": "0.10.1-alpha",
+    "o1js-pack": "^0.5.4",
     "zod": "^3.22.2"
   },
   "devDependencies": {
@@ -32,12 +35,12 @@
     "eslint-plugin-prettier": "^5.0.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.0.3",
-    "ts-node": "^10.9.1",
+    "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "o1js": "0.16.0"
+    "o1js": "0.16.2"
   },
   "keywords": [
     "authentication",
