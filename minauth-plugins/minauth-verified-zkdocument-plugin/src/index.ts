@@ -37,7 +37,7 @@ proof = await VerifyProgram.verifyP1(new Field(0), p1)
 }
 
 try{
-  proof = await VerifyProgram.verifyP1(new Field(0), vp1)
+  proof = await VerifyProgram.verifyP1(new Field(0), fakeP1)
   console.log("created a proof for VerifyProgram with VP1")
   console.log("verify the proof for VerifyProgram");
   await verify(proof, verifyProgramVk.verificationKey);
