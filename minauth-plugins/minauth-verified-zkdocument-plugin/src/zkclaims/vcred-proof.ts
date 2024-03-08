@@ -176,9 +176,14 @@ export const ValidateVCredProgram = ZkProgram({
 
         return new VCredValidationOutput({
           identificationHash,
-          saltedClaimsHash: Poseidon.hash([...cred.claims.toFields(), claimsSalt])
+          saltedClaimsHash: Poseidon.hash([
+            ...cred.claims.toFields(),
+            claimsSalt
+          ])
         });
       }
     }
   }
 });
+
+export class ValidateVCredProof extends ZkProgram.Proof(ValidateVCredProgram) {}
