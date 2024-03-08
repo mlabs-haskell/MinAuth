@@ -14,14 +14,17 @@ import {
   CircuitString
 } from 'o1js';
 
-// Constants
-export const MAX_VCRED_SIZE = 128;
-
 /**
  * Represents the claims as a CircuitString.
  * It's like Field[128] but has necessary interfaces for the circuit.
  */
-export const Claims = CircuitString;
+export class Claims extends Struct({
+  claims: CircuitString
+}) {
+  public toFields() {
+    return this.claims.toFields();
+  }
+}
 
 /**
  * Represents an issuer with a public key. Future versions might replace this
@@ -65,7 +68,7 @@ export class VCredStruct extends Struct({
       ...this.issuer.toFields(),
       this.issuanceDate,
       this.expirationDate,
-      this.claims,
+      ...this.claims.toFields(),
       ...this.credentialSchema.toFields()
     ];
   }
@@ -158,22 +161,22 @@ export const ValidateVCredProgram = ZkProgram({
         // Ensure the credential is within the validity period.
         publicInput.validFrom.assertGreaterThanOrEqual(
           cred.issuanceDate,
-          'Credential is not yet valid.'
+          "Valid from date cannot be set before the credential's issuance date."
         );
         publicInput.validTo.assertLessThanOrEqual(
           cred.expirationDate,
-          'Credential has expired.'
+          "Valid to date cannot be set after the credential's expiration date."
         );
 
         // Calculate hashes for credential identification and claims verification.
         const identificationHash = Poseidon.hash([
           Poseidon.hash(cred.issuer.toFields()),
-          Poseidon.hash([...cred.credentialSchema.toFields(), claimsSalt])
+          Poseidon.hash(cred.credentialSchema.toFields())
         ]);
 
         return new VCredValidationOutput({
           identificationHash,
-          saltedClaimsHash: Poseidon.hash(cred.claims.toFields())
+          saltedClaimsHash: Poseidon.hash([...cred.claims.toFields(), claimsSalt])
         });
       }
     }
