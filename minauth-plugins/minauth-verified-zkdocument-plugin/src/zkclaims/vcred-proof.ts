@@ -11,18 +11,159 @@ import {
   ZkProgram,
   Poseidon,
   Struct,
-  CircuitString
+  CircuitString,
+  UInt32,
+  CircuitValue,
+  arrayProp
 } from 'o1js';
+import { __decorate, __metadata } from "tslib";
+import { PackedUInt32Factory } from 'o1js-pack';
+
+export class IxRange extends Field {
+  public get first(): number {
+    return Number(PackedUInt32Factory().unpack(this)[0].toBigint());
+  }
+  public get last(): number {
+    return Number(PackedUInt32Factory().unpack(this)[1].toBigint());
+  }
+
+  static fromNumbers(first: number, last: number): IxRange {
+    return new IxRange(PackedUInt32Factory().pack([new UInt32(first), new UInt32(last)]));
+  }
+}
+
+// export class Fields extends CircuitValue {
+//   static maxLength = CircuitString.maxLength;
+
+//   constructor(fields: Field[]) {
+//     super(fields);
+//   }
+
+//   slice(ixRange: IxRange): Field[] {
+//     const first = ixRange.first;
+//     const last = ixRange.last;
+//     return new Fields(this.values.slice(first, last + 1));
+//   }
+
+
+// }
+
+// __decorate([
+//     arrayProp(Field, CircuitString.maxLength),
+//     __metadata("design:type", Array)
+// ], CircuitString.prototype, "values", void 0);
 
 /**
- * Represents the claims as a CircuitString.
+ * Represents indices to a set of claims along with a subject
+ * against which they are made.
+ */
+export class CredClaimSubject extends Struct({
+  pubKey: PublicKey,
+  claimsRange: IxRange
+}) {
+  public toFields() {
+    return this.pubKey.toFields().concat(this.claimsRange.toFields());
+  }
+
+  static fromFields(fields: Field[]): CredClaimSubject {
+    return new CredClaimSubject({
+      pubKey: new PublicKey(fields.slice(0, 2)),
+      claimsRange: new IxRange(fields.slice(2, 3)[0])
+    });
+
+}
+
+  static createCredClaimSubjectsArray(fields: Field[]): CredClaimSubject[] {
+    // Check if the length of the fields array is divisible by 3
+    if (fields.length % 3 !== 0) {
+      throw new Error('The array length must be divisible by 3.');
+    }
+
+    const credClaimSubjects: CredClaimSubject[] = [];
+    // Iterate over the fields array in steps of 3
+    for (let i = 0; i < fields.length; i += 3) {
+      // Extract fields for a single CredClaimSubject
+      const pubKeyFields = fields.slice(i, i + 2);
+      const claimRangeField = fields[i + 2];
+
+      // Create a new CredClaimSubject instance and add it to the result array
+      const credClaimSubject = new CredClaimSubject({
+        pubKey: new PublicKey(pubKeyFields),
+        claimsRange: new IxRange(claimRangeField)
+      });
+
+      credClaimSubjects.push(credClaimSubject);
+    }
+
+    return credClaimSubjects;
+  }
+}
+
+/**
+ * Represents the claims as a CircuitString (is it feasible?)
  * It's like Field[128] but has necessary interfaces for the circuit.
  */
 export class Claims extends Struct({
-  claims: CircuitString
+  // indices[i] : IxRange - the indices of the ith claims
+  indices: CircuitString,
+  // claims - the actual data indexed by the indices
+  // first field of the claim is the index of the pubkey
+  claims: CircuitString,
+  // in reality it's an array of `CredClaimSubject`s
+  subjects: CircuitString
 }) {
   public toFields() {
     return this.claims.toFields();
+  }
+
+  static fromRecord(record: Map<PublicKey, [[Field]]>): Claims {
+    // Initialize arrays to hold indices and claim data.
+    let indicesArray: Field[] = [];
+    let claimsArray: Field[] = [];
+    let subjectsArray: Field[] = [];
+
+    let claimIndex = 0; // To track the index of the claim.
+
+    // Iterate over the record entries.
+    record.forEach((claims, pubKey) => {
+
+      const firstSubjectClaimIndex = claimIndex;
+
+      // Iterate over the claims associated with the public key.
+      claims.forEach((claimFields) => {
+        // Calculate the indices for this claim.
+        const firstIndex = claimIndex;
+        const lastIndex = claimIndex + claimFields.length - 1;
+
+        const indices: IxRange = IxRange.fromNumbers(firstIndex, lastIndex);
+
+        // Update the index for the next claim.
+        claimIndex = lastIndex + 1;
+
+        // Add the indices to the indices array.
+        indicesArray.push(indices);
+
+        // Add the claim fields to the claims array.
+        claimsArray = claimsArray.concat(claimFields);
+
+      });
+
+      // Add the subject to the subjects array.
+      const subject = new CredClaimSubject({
+        pubKey: pubKey,
+        claimsRange: IxRange.fromNumbers(firstSubjectClaimIndex, claimIndex - 1)
+      });
+
+      subjectsArray = subjectsArray.concat(subject.toFields());
+    });
+
+
+    // Return the new Claims instance.
+    return new Claims({
+      indices: CircuitString.fromFields(indicesArray),
+      claims: claimsCircuitString,
+      subjects: subjectsCircuitString
+    });
   }
 }
 

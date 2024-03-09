@@ -41,7 +41,7 @@ export const mkZkClaimProveMethod =
     });
   };
 
-export const mkZkClaimProverProgram = ({ name, proveMethod }) => {
+export const mkZkClaimProverProgram = ({ name, proveMethod } : {name: string, proveMethod: any}) => {
   const program = ZkProgram({
     name,
     publicInput: ZkClaimValidationContext,
