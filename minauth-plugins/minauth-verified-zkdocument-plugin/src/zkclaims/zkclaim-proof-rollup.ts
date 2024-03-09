@@ -4,7 +4,7 @@ import { ZkClaimProofOutput, ZkClaimValidationContext } from './zkclaim-proof';
 
 /**
  * Context for VCred validation, defining the valid timeframe.
- * The fields are UTC Unix timestamps.
+ * The fields are Unix UTC timestamps.
  */
 export class ZkClaimRollupValidationContext extends Struct({
   validFrom: Field,
@@ -16,6 +16,10 @@ export class ZkClaimRollupValidationContext extends Struct({
  * and outside of it.
  * During a rollup all the resulting derived claims are combined and the
  * hash of results is combined as well.
+ * In the non-recursive case the rollupOutputVerificationHash is the same as
+ * claimOutputVerificationHash.
+ * In the recursive case the rollup resulting hash is computed like this:
+ * `hash(rollupOutputVerificationHash, claimOutputVerificationHash)`
  */
 export class ZkClaimRollupProofOutput extends Struct({
   outputVerificationHash: Field

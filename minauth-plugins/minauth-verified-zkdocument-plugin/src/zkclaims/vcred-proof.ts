@@ -41,7 +41,7 @@ export class Issuer extends Struct({
 /**
  * Represents a unique identifier for a credential schema.
  */
-export class CredentialSchemaId extends Struct({
+export class CredentialSchemaHash extends Struct({
   credId: Field
 }) {
   public toFields() {
@@ -58,7 +58,7 @@ export class VCredStruct extends Struct({
   issuanceDate: Field, // UTC timestamp
   expirationDate: Field, // UTC timestamp
   claims: Claims,
-  credentialSchema: CredentialSchemaId,
+  credentialSchema: CredentialSchemaHash,
   signature: Signature
 }) {
   // without the signature - for the signature verification
@@ -125,7 +125,7 @@ export class VCredValidationOutput extends Struct({
     export class VCredStruct extends Struct({
       id: Field,
 
-      credentialSchema: CredentialSchemaId,
+      credentialSchema: CredentialSchemaHash,
       claims: Claims,
 
       issuanceDate: Field, // UTC timestamp
