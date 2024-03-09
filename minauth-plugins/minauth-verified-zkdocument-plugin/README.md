@@ -16,6 +16,16 @@ It uses MINA's o1js library for its zero-knowledge proof part.
 The plugin allows to use zk cryptographically secure proofs of claims
 on the zk-documents to be used as a source of authentication.
 
+## Important info
+
+- The documentation below became a bit outdated.
+- An initial inquiry into the possible implementation of zk-circuits made it apparent that supporting
+ multi-subject credentials will make it much more complex and difficult. Such cases will mostly not
+ concern MinAuth and web authorization so in the first version it will be assumed that a credential
+ only have one subject and it will be represented by a MINA public key, as opposed to some more
+ involved identifiers.
+
+
 ## Simplified conceptual overview
 
 Plugin allows to assume one of roles: verifier, holder(prover), issuer.
@@ -37,6 +47,7 @@ the conceptual work done on the development on those standards given the same en
 goals that the projects share.
 In particular (https://www.w3.org/TR/vc-data-model/)[Verifiable Credentials Data Model v1.1]
 will be cited here for many system parts.
+
 
 ### Basic concepts / Vocabulary
 
