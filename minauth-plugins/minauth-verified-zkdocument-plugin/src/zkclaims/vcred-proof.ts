@@ -137,7 +137,7 @@ export class VCredValidationOutput extends Struct({
 
     Then we need a zk-program that will use this data to verify that the credential is valid,
     i.e.
-     - The signature must be made with a private key matching `issuer` public key.
+     - The signature must be valid and made with a private key matching `issuer` public key.
      - The credential is valid withing a given validity period.
     The zk program does not reveal any information about the credential, but it produces two verified hashes:
      - First for veryfing the credential's identification ( issuer x credential schema)

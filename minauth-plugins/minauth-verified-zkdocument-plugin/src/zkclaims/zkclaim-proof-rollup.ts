@@ -1,4 +1,4 @@
-import { Field, Proof, SelfProof, Struct, ZkProgram} from 'o1js';
+import { Poseidon, Field, Proof, SelfProof, Struct, ZkProgram } from 'o1js';
 import { ValidateVCredProof } from './vcred-proof';
 import { ZkClaimProofOutput, ZkClaimValidationContext } from './zkclaim-proof';
 
@@ -9,7 +9,7 @@ import { ZkClaimProofOutput, ZkClaimValidationContext } from './zkclaim-proof';
 export class ZkClaimRollupValidationContext extends Struct({
   validFrom: Field,
   validTo: Field,
-  identificationHash: Field,
+  vCredIdentificationHash: Field
 }) {}
 
 /** The assumption is that the computation is done both in the zk proof
@@ -23,13 +23,16 @@ export class ZkClaimRollupProofOutput extends Struct({
 
 // TODO: needs to come from actual provers dynamically
 // class proofType = ZkProgram.Proof(theprover);
-class ZkClaimValidationProof extends Proof<ZkClaimValidationContext, ZkClaimProofOutput>{}
+class ZkClaimValidationProof extends Proof<
+  ZkClaimValidationContext,
+  ZkClaimProofOutput
+> {}
 
 /** This Program allows to rollup multiple claims against a single VCred.
-  * The result will be a single proof.
-  * It is assumed that necessary data (required to match the proved output hash)
-  * is gathered outside of the built zk proof.
-  */
+ * The result will be a single proof.
+ * It is assumed that necessary data (required to match the proved output hash)
+ * is gathered outside of the built zk proof.
+ */
 export const ValidateZkClaimProgram = ZkProgram({
   name: 'ValidateZkClaim',
   publicInput: ZkClaimRollupValidationContext,
@@ -40,38 +43,75 @@ export const ValidateZkClaimProgram = ZkProgram({
       method(
         publicInput: ZkClaimRollupValidationContext,
         credProof: ValidateVCredProof,
-        claimProof: ZkClaimValidationProof,
+        claimProof: ZkClaimValidationProof
       ): ZkClaimRollupProofOutput {
-
         // verify proofs
         credProof.verify();
         claimProof.verify();
 
         // verify contexts
-        publicInput.identificationHash.assertEquals(credProof.publicOutput.identificationHash);
-        publicInput.validFrom.assertGreaterThanOrEqual(credProof.publicInput.validFrom);
-        publicInput.validTo.assertLessThanOrEqual(credProof.publicInput.validTo);
+        publicInput.vCredIdentificationHash.assertEquals(
+          credProof.publicOutput.identificationHash
+        );
+        publicInput.validFrom.assertGreaterThanOrEqual(
+          credProof.publicInput.validFrom
+        );
+        publicInput.validTo.assertLessThanOrEqual(
+          credProof.publicInput.validTo
+        );
+
+        // verify claim link to credential
+        claimProof.publicInput.saltedClaimsHash.assertEquals(
+          credProof.publicOutput.saltedClaimsHash
+        );
 
         // output
         const verificationHash = claimProof.publicOutput.outputVerificationHash;
 
-        return new ZkClaimRollupProofOutput({ outputVerificationHash: verificationHash });
+        return new ZkClaimRollupProofOutput({
+          outputVerificationHash: verificationHash
+        });
       }
     },
     recursiveClaim: {
       privateInputs: [SelfProof, ZkClaimValidationProof],
       method(
         publicInput: ZkClaimRollupValidationContext,
-        rollupProof: SelfProof<ZkClaimRollupValidationContext, ZkClaimRollupProofOutput>,
-        claimProof: ZkClaimValidationProof,
+        rollupProof: SelfProof<
+          ZkClaimRollupValidationContext,
+          ZkClaimRollupProofOutput
+        >,
+        claimProof: ZkClaimValidationProof
       ): ZkClaimRollupProofOutput {
+        // verify proofs
+        rollupProof.verify();
+        claimProof.verify();
 
-        // TODO
+        // verify contexts
+        publicInput.vCredIdentificationHash.assertEquals(
+          rollupProof.publicInput.vCredIdentificationHash
+        );
+        publicInput.validFrom.assertGreaterThanOrEqual(
+          rollupProof.publicInput.validFrom
+        );
+        publicInput.validTo.assertLessThanOrEqual(
+          rollupProof.publicInput.validTo
+        );
 
-        return undefined as unknown as ZkClaimRollupProofOutput;
+        // verify claim link to rollup credential
+        claimProof.publicInput.saltedClaimsHash.assertEquals(
+          rollupProof.publicInput.vCredIdentificationHash
+        );
 
+        const outputVerificationHash = Poseidon.hash([
+          rollupProof.publicOutput.outputVerificationHash,
+          claimProof.publicOutput.outputVerificationHash
+        ]);
+
+        return new ZkClaimRollupProofOutput({
+          outputVerificationHash
+        });
       }
     }
   }
 });
-
