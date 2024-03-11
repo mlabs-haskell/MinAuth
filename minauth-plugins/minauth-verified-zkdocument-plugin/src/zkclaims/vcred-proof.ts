@@ -13,8 +13,6 @@ import {
   Struct,
   CircuitString,
   UInt32,
-  CircuitValue,
-  arrayProp
 } from 'o1js';
 import { __decorate, __metadata } from "tslib";
 import { PackedUInt32Factory } from 'o1js-pack';
@@ -116,55 +114,55 @@ export class Claims extends Struct({
     return this.claims.toFields();
   }
 
-  static fromRecord(record: Map<PublicKey, [[Field]]>): Claims {
-    // Initialize arrays to hold indices and claim data.
-    let indicesArray: Field[] = [];
-    let claimsArray: Field[] = [];
-    let subjectsArray: Field[] = [];
+  // static fromRecord(record: Map<PublicKey, [[Field]]>): Claims {
+  //   // Initialize arrays to hold indices and claim data.
+  //   let indicesArray: Field[] = [];
+  //   let claimsArray: Field[] = [];
+  //   let subjectsArray: Field[] = [];
 
-    let claimIndex = 0; // To track the index of the claim.
+  //   let claimIndex = 0; // To track the index of the claim.
 
-    // Iterate over the record entries.
-    record.forEach((claims, pubKey) => {
+  //   // Iterate over the record entries.
+  //   record.forEach((claims, pubKey) => {
 
-      const firstSubjectClaimIndex = claimIndex;
+  //     const firstSubjectClaimIndex = claimIndex;
 
-      // Iterate over the claims associated with the public key.
-      claims.forEach((claimFields) => {
-        // Calculate the indices for this claim.
-        const firstIndex = claimIndex;
-        const lastIndex = claimIndex + claimFields.length - 1;
+  //     // Iterate over the claims associated with the public key.
+  //     claims.forEach((claimFields) => {
+  //       // Calculate the indices for this claim.
+  //       const firstIndex = claimIndex;
+  //       const lastIndex = claimIndex + claimFields.length - 1;
 
-        const indices: IxRange = IxRange.fromNumbers(firstIndex, lastIndex);
+  //       const indices: IxRange = IxRange.fromNumbers(firstIndex, lastIndex);
 
-        // Update the index for the next claim.
-        claimIndex = lastIndex + 1;
+  //       // Update the index for the next claim.
+  //       claimIndex = lastIndex + 1;
 
-        // Add the indices to the indices array.
-        indicesArray.push(indices);
+  //       // Add the indices to the indices array.
+  //       indicesArray.push(indices);
 
-        // Add the claim fields to the claims array.
-        claimsArray = claimsArray.concat(claimFields);
+  //       // Add the claim fields to the claims array.
+  //       claimsArray = claimsArray.concat(claimFields);
 
-      });
+  //     });
 
-      // Add the subject to the subjects array.
-      const subject = new CredClaimSubject({
-        pubKey: pubKey,
-        claimsRange: IxRange.fromNumbers(firstSubjectClaimIndex, claimIndex - 1)
-      });
+  //     // Add the subject to the subjects array.
+  //     const subject = new CredClaimSubject({
+  //       pubKey: pubKey,
+  //       claimsRange: IxRange.fromNumbers(firstSubjectClaimIndex, claimIndex - 1)
+  //     });
 
-      subjectsArray = subjectsArray.concat(subject.toFields());
-    });
+  //     subjectsArray = subjectsArray.concat(subject.toFields());
+  //   });
 
 
-    // Return the new Claims instance.
-    return new Claims({
-      indices: CircuitString.fromFields(indicesArray),
-      claims: claimsCircuitString,
-      subjects: subjectsCircuitString
-    });
-  }
+  //   // Return the new Claims instance.
+  //   return new Claims({
+  //     indices: CircuitString.fromFields(indicesArray),
+  //     claims: claimsCircuitString,
+  //     subjects: subjectsCircuitString
+  //   });
+  // }
 }
 
 /**
@@ -191,6 +189,23 @@ export class CredentialSchemaHash extends Struct({
 }
 
 /**
+ * Represents a unique identifier for a credential schema.
+ */
+export class CredTypeId extends Struct({
+  credTypeId: Field
+}) {
+  public toFields() {
+    return [this.credTypeId];
+  }
+
+  static fromCredInfo({credentialSchema, issuerPubkey } : {credentialSchema: Field[], issuerPubkey: PublicKey} ): CredTypeId {
+    return new CredTypeId({
+      credTypeId: Poseidon.hash([...credentialSchema, ...issuerPubkey.toFields()])
+    });
+  }
+}
+
+/**
  * Represents a Verifiable Credential (VCred) with its associated data.
  */
 export class VCredStruct extends Struct({
@@ -198,8 +213,9 @@ export class VCredStruct extends Struct({
   issuer: Issuer,
   issuanceDate: Field, // UTC timestamp
   expirationDate: Field, // UTC timestamp
+  subject: PublicKey,
   claims: Claims,
-  credentialSchema: CredentialSchemaHash,
+  credentialSchema: Field,
   signature: Signature
 }) {
   // without the signature - for the signature verification
@@ -209,6 +225,7 @@ export class VCredStruct extends Struct({
       ...this.issuer.toFields(),
       this.issuanceDate,
       this.expirationDate,
+      ...this.subject.toFields(),
       ...this.claims.toFields(),
       ...this.credentialSchema.toFields()
     ];
@@ -236,8 +253,8 @@ export class VCredValidationContext extends Struct({
  * you have to know the salt used to create the claims hash.
  */
 export class VCredValidationOutput extends Struct({
-  // Hash combining hasshes of the issuer's public key and the credential schema.
-  identificationHash: Field,
+  // Hash combining the issuer's public key and the credential schema.
+  schemaIdentificationHash: Field,
   // Salted hash of the credential's claims. No attacks possible against simple claims "{age: 18}".
   saltedClaimsHash: Field
 }) {}
@@ -310,13 +327,13 @@ export const ValidateVCredProgram = ZkProgram({
         );
 
         // Calculate hashes for credential identification and claims verification.
-        const identificationHash = Poseidon.hash([
-          Poseidon.hash(cred.issuer.toFields()),
-          Poseidon.hash(cred.credentialSchema.toFields())
+        const schemaIdentificationHash = Poseidon.hash([
+          ...cred.issuer.toFields(),
+          ...cred.credentialSchema.toFields()
         ]);
 
         return new VCredValidationOutput({
-          identificationHash,
+          schemaIdentificationHash,
           saltedClaimsHash: Poseidon.hash([
             ...cred.claims.toFields(),
             claimsSalt

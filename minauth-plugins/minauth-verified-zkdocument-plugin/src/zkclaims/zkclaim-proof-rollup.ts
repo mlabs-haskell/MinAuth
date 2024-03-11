@@ -55,7 +55,7 @@ export const ValidateZkClaimProgram = ZkProgram({
 
         // verify contexts
         publicInput.vCredIdentificationHash.assertEquals(
-          credProof.publicOutput.identificationHash
+          credProof.publicOutput.schemaIdentificationHash
         );
         publicInput.validFrom.assertGreaterThanOrEqual(
           credProof.publicInput.validFrom

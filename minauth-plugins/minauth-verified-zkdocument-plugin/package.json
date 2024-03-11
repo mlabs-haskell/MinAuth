@@ -22,6 +22,7 @@
     "luxon": "^3.4.4",
     "minauth": "0.10.1-alpha",
     "o1js-pack": "^0.5.4",
+    "tslog": "^4.9.2",
     "zod": "^3.22.2"
   },
   "devDependencies": {
