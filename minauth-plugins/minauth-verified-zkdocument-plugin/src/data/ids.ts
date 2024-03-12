@@ -7,23 +7,36 @@ import { Logger } from 'tslog';
 import { z } from 'zod';
 import * as SimpleSchemas from './simple.js';
 
-/**
- * Represents an issuer with a public key. Future versions might replace this
- * with a more complex ID system, such as DIDs.
- */
-export class IssuerId extends Struct({
+export class PubKeyId extends Struct({
   pubkey: PublicKey
 }) {
   public toFields() {
     return this.pubkey.toFields();
   }
 }
-
-export const IssuerIdSchema = z
+export const PubKeyIdSchema = z
   .object({
     pubkey: SimpleSchemas.PublicKeyB58Schema
   })
   .transform((o) => new IssuerId({ pubkey: o.pubkey }));
+
+/**
+ * Represents an issuer with a public key. Future versions might replace this
+ * with a more complex ID system, such as DIDs.
+ */
+export class IssuerId extends PubKeyId {}
+
+export const IssuerIdSchema = PubKeyIdSchema;
+
+
+/**
+ * Represents a subject with a public key. Future versions might replace this
+ * with a more complex ID system, such as DIDs.
+ */
+export class CredSubjectId extends PubKeyId {}
+
+export const CredSubjectIdSchema = PubKeyIdSchema;
+
 
 export class VCredId extends Struct({
   id: Field

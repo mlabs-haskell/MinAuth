@@ -1,30 +1,23 @@
-import { Struct, Field, PublicKey, Signature } from 'o1js';
+import { Struct, Field, Signature } from 'o1js';
 import {
   UnixTimestamp,
   UnixTimestampSchema,
-  PublicKeyB58Schema,
-  FieldSchemaDec,
-  FieldSchemaHex,
-  SignatureSchema
+  SignatureSchema,
+  FieldSchema
 } from './simple.js';
-import { IssuerId, VCredId, VCredIdSchema, IssuerIdSchema } from './ids.js';
+import { IssuerId, VCredId, VCredIdSchema, IssuerIdSchema, CredSubjectId, CredSubjectIdSchema } from './ids.js';
 import { Claims } from './claims.js';
 import { z } from 'zod';
 
-export function VCredStructUnsigned(n: number) {
-  const ClaimsType = Claims(n);
-
-  if (n <= 0 || n > ClaimsType.MAX_SIZE) {
-    // Adjust the limits as necessary.
-    throw new Error(`Invalid claims array size: ${n}`);
-  }
+export function VCredStructUnsigned(claimSizes: number[]) {
+  const ClaimsType = Claims(claimSizes);
 
   const Fields = {
     id: VCredId,
     issuer: IssuerId,
     issuanceDate: UnixTimestamp,
     expirationDate: UnixTimestamp,
-    subject: PublicKey,
+    subject: CredSubjectId,
     claims: ClaimsType,
     credentialSchemaHash: Field
   };
@@ -50,9 +43,9 @@ export function VCredStructUnsigned(n: number) {
         issuer: IssuerIdSchema,
         issuanceDate: UnixTimestampSchema,
         expirationDate: UnixTimestampSchema,
-        subject: PublicKeyB58Schema,
+        subject: CredSubjectIdSchema,
         claims: ClaimsType.schema,
-        credentialSchemaHash: FieldSchemaDec.or(FieldSchemaHex)
+        credentialSchemaHash: FieldSchema
       });
     }
 
@@ -66,8 +59,8 @@ export function VCredStructUnsigned(n: number) {
   return BaseVCredStruct_;
 }
 
-export function VCredStruct(n: number) {
-  const BaseVCredStructType = VCredStructUnsigned(n);
+export function VCredStruct(claimSizes: number[]) {
+  const BaseVCredStructType = VCredStructUnsigned(claimSizes);
 
   const Fields = { ...BaseVCredStructType.Fields, signature: Signature };
 

@@ -2,21 +2,25 @@ import { Field, PublicKey, Struct, Signature } from 'o1js';
 import { Logger } from 'tslog';
 import { z } from 'zod';
 
+export const FieldSchemaInt = z.number().int().transform((n) => new Field(BigInt(n)));
+export const FieldSchemaBigInt = z.bigint().transform(Field);
 export const FieldSchemaDec = z.string().regex(/^\d+$/).transform(Field);
 export const FieldSchemaHex = z
   .string()
   .regex(/^(0x|0X)?[0-9a-fA-F]+$/)
   .transform((s) => Field(BigInt(s)));
-export const FieldsSchema = z.array(z.union([FieldSchemaDec, FieldSchemaHex]));
+
+export const FieldSchema = z.union([FieldSchemaInt, FieldSchemaBigInt, FieldSchemaDec,FieldSchemaHex]);
+export const FieldsSchema = z.array(FieldSchema);
 export const Base58Schema = z.string().regex(/^[A-HJ-NP-Za-km-z1-9]+$/);
 export const PublicKeyB58Schema = Base58Schema.length(55).transform(
   PublicKey.fromBase58
 );
 export const SignatureSchema = z
   .object({
-    signature: Base58Schema.length(96)
+    signatureBase58: Base58Schema.length(96)
   })
-  .transform((o) => Signature.fromBase58(o.signature));
+  .transform((o) => Signature.fromBase58(o.signatureBase58));
 
 export class UnixTimestamp extends Struct({
   unixTimestamp: Field
@@ -36,6 +40,16 @@ export const UnixTimestampSchema = z
 export const inline_tests = () => {
   const log = new Logger({ name: 'simple schema inline tests' });
 
+    const fieldi = 123;
+    const f1: Field = FieldSchemaInt.parse(fieldi);
+    log.info('Parsed field from int encoding: ', fieldi, f1);
+
+
+    const fieldbigi = 123n;
+    const f2: Field = FieldSchemaBigInt.parse(fieldbigi);
+    log.info('Parsed field from big int encoding: ', fieldbigi, f2);
+
+
   // const PublicKeySchema = z.string().transform(PrivateKey.from);
   const fielddecstr = '123';
   const field: Field = FieldSchemaDec.parse(fielddecstr);
@@ -44,7 +58,7 @@ export const inline_tests = () => {
     FieldSchemaDec.parse('abc');
   } catch (e) {
     const err = e as z.ZodError;
-    log.debug('Caught error: ', err.message);
+    log.debug('Valid error: ', err.message);
   }
 
   const fieldhexstr = '0x123';
@@ -58,7 +72,7 @@ export const inline_tests = () => {
     FieldSchemaHex.parse('0xzbc');
   } catch (e) {
     const err = e as z.ZodError;
-    log.debug('Caught error: ', err.message);
+    log.debug('Valid error: ', err.message);
   }
 
   const fieldsencoded = ['123', '0x123'];
@@ -76,7 +90,7 @@ export const inline_tests = () => {
     PublicKeyB58Schema.parse('abc');
   } catch (e) {
     const err = e as z.ZodError;
-    log.debug('Caught error: ', err.message);
+    log.debug('Valid error: ', err.message);
   }
 
   // tests for unix timestamp
@@ -93,7 +107,7 @@ export const inline_tests = () => {
     UnixTimestampSchema.parse({ unixTimestamp: 'abc' });
   } catch (e) {
     const err = e as z.ZodError;
-    log.debug('Caught error: ', err.message);
+    log.debug('Valid error: ', err.message);
   }
 
   const signature = SignatureSchema.parse({
@@ -109,6 +123,6 @@ export const inline_tests = () => {
     });
   } catch (e) {
     const err = e as z.ZodError;
-    log.debug('Caught error: ', err.message);
+    log.debug('Valid error: ', err.message);
   }
 };

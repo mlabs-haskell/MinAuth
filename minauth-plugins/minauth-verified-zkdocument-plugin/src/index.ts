@@ -32,6 +32,7 @@ log.info('========= Schemas =========');
 
 log.info('Creating a new credential schema');
 
+
 log.info('Registering the new credential schema');
 
 log.info('Issuing a credential');
