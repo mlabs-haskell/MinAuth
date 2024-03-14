@@ -5,32 +5,32 @@ import { arraysAreEqual, ftn } from '../helpers/utils.js';
 
 const CLAIMS_MAX_SIZE = 128;
 
-export interface IClaim {
-  length: Field;
-  claimValue: Field[];
+export interface IClaimStruct {
+  get length(): Field;
+  get claimValue(): Field[];
   toFields(): Field[];
 }
 
-export interface IClaimClass {
-  new (claimValue: Field[]): IClaim;
-  fromFields(fields: Field[]): IClaim;
+export interface IClaimStructClass {
+  new (claimValue: Field[]): IClaimStruct;
+  fromFields(fields: Field[]): IClaimStruct;
   schema: z.ZodType<any>;
 }
 
-export interface IClaims {
+export interface IFieldClaims {
   count: Field;
   packed: Field[];
   toFields(): Field[];
   getClaim(ix: Field, assert: Field[]): Field[];
 }
 
-export const ClaimStruct = (length: number): IClaimClass => {
+export const ClaimStruct = (length: number): IClaimStructClass => {
   class Claim_
     extends Struct({
       length: Field,
       claimValue: Provable.Array(Field, length)
     })
-    implements IClaim
+    implements IClaimStruct
   {
     constructor(claimValue: Field[]) {
       if (claimValue.length !== length) {
@@ -58,7 +58,7 @@ export const ClaimStruct = (length: number): IClaimClass => {
       .transform((o) => new Claim_(o.claimValue));
   }
 
-  return Claim_ as IClaimClass;
+  return Claim_ as IClaimStructClass;
 };
 
 export const mkClaimStruct = (flds: Field[]) => {
@@ -66,11 +66,11 @@ export const mkClaimStruct = (flds: Field[]) => {
   return ClaimStruct(n).fromFields(flds);
 };
 
-export const computeClaimSizes = (claims: IClaim[]) => {
+export const computeClaimSizes = (claims: IClaimStruct[]) => {
   return claims.map(c => ftn(c.length));
 };
 
-export const mkClaims = (claims: IClaim[]): IClaims => {
+export const mkClaims = (claims: IClaimStruct[]): IFieldClaims => {
   const size = computeClaimSizes(claims);
   return Claims(size).fromClaims(claims);
 };
@@ -94,7 +94,7 @@ export function Claims(claimSizes: number[]) {
       count: Field,
       packed: Provable.Array(Field, totalSize)
     })
-    implements IClaims
+    implements IFieldClaims
   {
     static MAX_SIZE = CLAIMS_MAX_SIZE;
 
@@ -102,7 +102,7 @@ export function Claims(claimSizes: number[]) {
       return [this.count, ...this.packed];
     }
 
-    static fromClaims(claims: IClaim[]) {
+    static fromClaims(claims: IClaimStruct[]) {
       const receivedSizes = claims.map((c) => ftn(c.length));
 
       if (!arraysAreEqual(receivedSizes, claimSizes)) {

@@ -1,9 +1,5 @@
-import { Field, PrivateKey, Provable, PublicKey, Signature, Struct, verify } from 'o1js';
 import { Logger } from 'tslog';
-import { z } from 'zod';
-import * as Simple from './data/simple.js';
-import * as Ids from './data/ids.js';
-import { IxRange } from './zkclaims/vcred-proof.js';
+import { CredentialStandard } from './credential';
 
 const log = new Logger({ name: 'index.ts prototyping' });
 
@@ -30,18 +26,47 @@ log.info('========= Schemas =========');
 // const IssuerIdSchema = PublicKeyB58Schema;
 // type IssuerId = z.infer<typeof IssuerIdSchema>;
 
-log.info('Creating a new credential schema');
+log.info('Creating a new credential standard');
+
+const KnownUserCredential: CredentialStandard = {
+  standardId: "eth.example.KnownUserCredential-v1.0",
+  description: "Credential that will be given to users after verification of documents.",
+  schema: {
+    dateOfBirth: {
+      standardId: "dateOfBirth",
+      description: "Date of birth as stated on provided national id or a passport",
+      referenceToExternalStandard: "The format is described here https://www.w3.org/TR/xmlschema11-2/#dateTime",
+      fieldsConversion: {
+        length: 1,
+        description: "Converts the date to unix timestamp (seconds) and then to a single o1js Field.",
+        codeExample: "// for example using `luxon.DateTime`\n return new Field(BigInt(cred.dateOfBirth.toUtc().toUnixInteger()));"
+      }
+    },
+    citizenship: {
+      standardId: "citizenship",
+      description: "Country citizenship as confirmed by verified documentation. Only single-country citizenships supported.",
+      referenceToExternalStandard: "The citizenship is in the form of a country code following the standard ISO 3166-1 alpha-3",
+      fieldsConversion: {
+        length: 3,
+        description: "Each of 3 letter is represented as a field using o1js.CircuitString.fromString",
+        codeExample: "o1js.CircuitString.fromString(cred.citizenship).toFields()"
+      }
+    }
+  }
+}
 
 
-log.info('Registering the new credential schema');
+log.info('Registering the new credential standard - later');
 
 log.info('Issuing a credential');
 
-log.info('Delivering the credential to the holder ');
+log.info('1. Create credential');
 
-log.info('  1. simplest way possible');
+log.info('2. Have it serialized');
 
-log.info('  2. (maybe later) on valid pkey proof ');
+log.info('3. Verify and sign');
+
+log.info('4. Make it available to holder on access code.');
 
 log.info('========= Holder / Prover =========');
 
@@ -97,11 +122,3 @@ log.info('Checking outputs validity');
 log.info('Revocation proofs');
 
 log.info('');
-
-const p = PrivateKey.random();
-
-const pk = p.toPublicKey();
-
-const pkf = pk.toFields();
-
-console.log(pkf.length);

@@ -12,7 +12,7 @@ import { z } from 'zod';
 export function VCredStructUnsigned(claimSizes: number[]) {
   const ClaimsType = Claims(claimSizes);
 
-  const Fields = {
+  const Data = {
     id: VCredId,
     issuer: IssuerId,
     issuanceDate: UnixTimestamp,
@@ -22,8 +22,8 @@ export function VCredStructUnsigned(claimSizes: number[]) {
     credentialSchemaHash: Field
   };
 
-  class BaseVCredStruct_ extends Struct(Fields) {
-    static Fields = Fields;
+  class BaseVCredStruct_ extends Struct(Data) {
+    static Fields = Data;
 
     public toFields() {
       return [

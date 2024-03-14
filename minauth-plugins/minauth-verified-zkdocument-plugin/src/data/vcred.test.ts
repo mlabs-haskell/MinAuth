@@ -1,6 +1,6 @@
 import { Field, PrivateKey, Signature } from 'o1js';
 import { VCredStruct, VCredStructUnsigned } from './vcred.js'; // Update import path as needed
-import { ClaimStruct, IClaim, mkClaims } from './claims.js'; // Import necessary dependencies
+import { ClaimStruct, IClaimStruct, mkClaims } from './claims.js'; // Import necessary dependencies
 import { CredSubjectId, IssuerId, VCredId } from './ids.js';
 import { UnixTimestamp } from './simple.js';
 
@@ -10,8 +10,8 @@ describe('VCredStruct tests', () => {
   const pk2 = PrivateKey.random().toPublicKey();
   const pk2s = pk2.toBase58();
 
-  let claim1: IClaim;
-  let claim2: IClaim;
+  let claim1: IClaimStruct;
+  let claim2: IClaimStruct;
 
   const claim1s = {
     claimValue: [1, 2, 3]

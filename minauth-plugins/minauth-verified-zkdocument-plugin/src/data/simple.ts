@@ -32,7 +32,7 @@ export class UnixTimestamp extends Struct({
 
 export const UnixTimestampSchema = z
   .object({
-    unixTimestamp: FieldSchemaDec
+    unixTimestamp: FieldSchemaDec.or(FieldSchemaInt).or(FieldSchemaBigInt)
   })
   .transform((o) => new UnixTimestamp({ unixTimestamp: o.unixTimestamp }));
 
@@ -43,7 +43,6 @@ export const inline_tests = () => {
     const fieldi = 123;
     const f1: Field = FieldSchemaInt.parse(fieldi);
     log.info('Parsed field from int encoding: ', fieldi, f1);
-
 
     const fieldbigi = 123n;
     const f2: Field = FieldSchemaBigInt.parse(fieldbigi);
